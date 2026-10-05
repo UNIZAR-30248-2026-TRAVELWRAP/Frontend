@@ -14,25 +14,30 @@ jobs:
       - name: Descargar el código del repositorio
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Descarga todo el historial de commits para SonarCloud
+          fetch-depth: 0
 
       - name: Configurar entorno de Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
+          cache-dependency-path: './Frontend/package-lock.json' 
 
       - name: Instalar dependencias
         run: npm ci
+        working-directory: ./Frontend
 
       - name: Instalar navegadores de Playwright
         run: npx playwright install --with-deps
+        working-directory: ./Frontend
 
       - name: Validar compilación TypeScript y Build de Vite
         run: npm run build
+        working-directory: ./Frontend
 
       - name: Ejecutar pruebas automatizadas (si existen)
         run: npm test --if-present
+        working-directory: ./Frontend
 
       - name: Analizar código con SonarCloud
         uses: SonarSource/sonarcloud-github-action@master
