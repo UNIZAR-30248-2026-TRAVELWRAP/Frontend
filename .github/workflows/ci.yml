@@ -1,4 +1,4 @@
-name: Backend Integration Pipeline
+name: Frontend Integration Pipeline
 
 on:
   push:
@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Descargar el código del repositorio
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Descarga todo el historial de commits para SonarCloud
 
       - name: Configurar entorno de Node.js
         uses: actions/setup-node@v4
@@ -23,13 +25,15 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
-      - name: Verificar sintaxis del código
-        run: node --check src/index.js
+      - name: Instalar navegadores de Playwright
+        run: npx playwright install --with-deps
+
+      - name: Validar compilación TypeScript y Build de Vite
+        run: npm run build
 
       - name: Ejecutar pruebas automatizadas (si existen)
         run: npm test --if-present
 
-      # SonarQube analysis
       - name: Analizar código con SonarCloud
         uses: SonarSource/sonarcloud-github-action@master
         env:
