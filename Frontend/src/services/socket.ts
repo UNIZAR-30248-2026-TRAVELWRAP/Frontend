@@ -8,7 +8,7 @@ chatSocket.on('nuevo_mensaje', (mensaje) => {
   console.log('He recibido un mensaje:', mensaje);
 });
 
-// Enviar un mensaje
-const enviarMensaje = (texto: string) => {
+// Enviar un mensaje (de momento exportado para que la interfaz pueda usarlo)
+export const enviarMensaje = (texto: string) => {
   chatSocket.emit('enviar_mensaje', { texto: texto, usuario: 'Berta' });
 };
