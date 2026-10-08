@@ -1,10 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import type { Session } from "@supabase/supabase-js";
+import type { Sesion } from "../services/authApi";
 import Login from "../screens/Login";
 import InvitarViajeros from "../screens/InvitarViajeros";
 
 interface AppRouterProps {
-  session: Session | null;
+  session: Sesion | null;
   handleLogin: (email: string, password: string) => Promise<void>;
   error: string;
   loading: boolean;
@@ -32,7 +32,7 @@ export default function AppRouter({ session, handleLogin, error, loading }: AppR
           element={
             session ? (
               <div style={{ padding: 24, fontFamily: "'Nunito', sans-serif" }}>
-                Sesión iniciada como {session.user.email}
+                Sesión iniciada como {session.usuario.email}
               </div>
             ) : (
               <Navigate to="/login" replace />

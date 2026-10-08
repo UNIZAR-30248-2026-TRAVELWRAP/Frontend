@@ -1,44 +1,51 @@
 import { useEffect, useState } from "react"
-import type { Session } from "@supabase/supabase-js"
-import { supabase } from "./lib/supabase"
 import AppRouter from "./router/AppRouter"
+import { ApiError, login, refrescar, type Sesion } from "./services/authApi"
+import { borrarSesion, guardarSesion, leerSesion } from "./services/sesionStorage"
 
 export default function App() {
-  const [session, setSession] = useState<Session | null>(null)
-  const [checking, setChecking] = useState(true)
+  const [sesion, setSesion] = useState<Sesion | null>(null)
+  const [comprobando, setComprobando] = useState(() => leerSesion() !== null)
   const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
+  const [cargando, setCargando] = useState(false)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
-      setChecking(false)
-    })
-    const { data } = supabase.auth.onAuthStateChange((_event, next) => {
-      setSession(next)
-    })
-    return () => data.subscription.unsubscribe()
+    const guardada = leerSesion()
+    if (!guardada) return
+    refrescar(guardada.refresh_token)
+      .then((tokens) => {
+        const renovada = { ...guardada, ...tokens }
+        guardarSesion(renovada)
+        setSesion(renovada)
+      })
+      .catch((e) => {
+        if (e instanceof ApiError && e.estado === 401) borrarSesion()
+      })
+      .finally(() => setComprobando(false))
   }, [])
 
   const handleLogin = async (email: string, password: string) => {
-    setLoading(true)
+    setCargando(true)
     setError("")
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-    if (authError) setError("Email o contraseña incorrectos")
-    setLoading(false)
+    try {
+      const nueva = await login(email, password)
+      guardarSesion(nueva)
+      setSesion(nueva)
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Ha ocurrido un error")
+    } finally {
+      setCargando(false)
+    }
   }
 
-  if (checking) return null
+  if (comprobando) return null
 
   return (
-    <AppRouter 
-      session={session} 
-      handleLogin={handleLogin} 
-      error={error} 
-      loading={loading} 
+    <AppRouter
+      session={sesion}
+      handleLogin={handleLogin}
+      error={error}
+      loading={cargando}
     />
   )
 }
