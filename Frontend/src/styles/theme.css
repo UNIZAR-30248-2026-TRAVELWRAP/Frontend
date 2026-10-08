@@ -1,0 +1,196 @@
+:root {
+  --tw-navy: #1a365d;
+  --tw-blue: #2b6cb0;
+  --tw-accent: #dd6b20;
+  --tw-bg: #f7fafc;
+  --tw-card: #ffffff;
+  --tw-muted: #718096;
+  --tw-border: #e2e8f0;
+  --tw-green: #276749;
+  --tw-green-bg: #f0fff4;
+  --tw-green-mid: #38a169;
+  --tw-red: #c53030;
+  --tw-red-bg: #fff5f5;
+  --tw-light-blue: #ebf8ff;
+  --tw-light-accent: #fffaf0;
+
+  --tw-font: 'Nunito', sans-serif;
+
+  --tw-gradient-header: linear-gradient(145deg, var(--tw-navy), var(--tw-blue));
+  --tw-gradient-hero: linear-gradient(160deg, var(--tw-navy) 0%, var(--tw-blue) 100%);
+  --tw-gradient-success: linear-gradient(135deg, var(--tw-green) 0%, var(--tw-green-mid) 100%);
+  --tw-gradient-accent: linear-gradient(135deg, var(--tw-accent) 0%, #b7531a 100%);
+
+  --tw-radius-sm: 10px;
+  --tw-radius-md: 14px;
+  --tw-radius-lg: 18px;
+  --tw-radius-xl: 22px;
+
+  --tw-shadow-card: 0 2px 10px rgba(0, 0, 0, 0.06);
+  --tw-shadow-card-soft: 0 2px 8px rgba(0, 0, 0, 0.05);
+  --tw-shadow-card-raised: 0 4px 20px rgba(0, 0, 0, 0.08);
+  --tw-shadow-button: 0 4px 14px rgba(43, 108, 176, 0.35);
+}
+
+.tw-screen {
+  background: var(--tw-bg);
+  min-height: 100%;
+  font-family: var(--tw-font);
+}
+
+.tw-header {
+  background: var(--tw-gradient-header);
+  padding: 0 20px 24px;
+  border-radius: 0 0 28px 28px;
+}
+
+.tw-header-title {
+  font-family: var(--tw-font);
+  font-size: 22px;
+  font-weight: 800;
+  color: white;
+  line-height: 1.15;
+}
+
+.tw-header-subtitle {
+  color: rgba(255, 255, 255, 0.65);
+  font-family: var(--tw-font);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.tw-back-button {
+  background: rgba(255, 255, 255, 0.18);
+  border: none;
+  border-radius: 12px;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.tw-content {
+  padding: 22px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.tw-card {
+  background: var(--tw-card);
+  border-radius: var(--tw-radius-lg);
+  padding: 16px;
+  border: 1.5px solid var(--tw-border);
+  box-shadow: var(--tw-shadow-card-soft);
+}
+
+.tw-heading {
+  font-family: var(--tw-font);
+  font-weight: 800;
+  color: var(--tw-navy);
+  line-height: 1.15;
+}
+
+.tw-section-label {
+  font-family: var(--tw-font);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: var(--tw-muted);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.tw-label {
+  display: block;
+  font-family: var(--tw-font);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--tw-muted);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.tw-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: white;
+  border: 1.5px solid var(--tw-border);
+  border-radius: var(--tw-radius-md);
+  padding: 13px 16px;
+  font-family: var(--tw-font);
+  font-size: 14px;
+  color: var(--tw-navy);
+  outline: none;
+}
+
+.tw-btn {
+  width: 100%;
+  border-radius: var(--tw-radius-md);
+  padding: 14px;
+  font-family: var(--tw-font);
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.tw-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.tw-btn-primary {
+  background: var(--tw-blue);
+  color: white;
+  border: none;
+  box-shadow: var(--tw-shadow-button);
+}
+
+.tw-btn-secondary {
+  background: white;
+  color: var(--tw-blue);
+  border: 1.5px solid var(--tw-blue);
+}
+
+.tw-btn-danger {
+  background: var(--tw-red-bg);
+  color: var(--tw-red);
+  border: 1.5px solid rgba(197, 48, 48, 0.33);
+}
+
+.tw-btn-accent {
+  background: var(--tw-gradient-accent);
+  color: white;
+  border: none;
+}
+
+.tw-alert-error {
+  background: var(--tw-red-bg);
+  border: 1.5px solid rgba(197, 48, 48, 0.33);
+  border-radius: 12px;
+  padding: 10px 14px;
+  color: var(--tw-red);
+  font-family: var(--tw-font);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tw-info-box {
+  background: var(--tw-light-blue);
+  border-radius: 16px;
+  padding: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-family: var(--tw-font);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--tw-navy);
+}
