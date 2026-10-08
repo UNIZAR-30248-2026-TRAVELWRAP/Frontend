@@ -36,13 +36,42 @@ const inputStyle: CSSProperties = {
   outline: "none",
 }
 
+const buttonStyle: CSSProperties = {
+  width: "100%",
+  background: "white",
+  border: `1.5px solid ${C.border}`,
+  borderRadius: 15,
+  padding: "14px 16px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 10,
+  color: C.navy,
+  fontFamily: NUNITO,
+  fontSize: 15,
+  fontWeight: 800,
+  boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+}
+
+function GoogleLogo() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.4-.18-2.06H12v3.9h5.38a4.6 4.6 0 01-2 3.02v2.53h3.24c1.9-1.75 2.98-4.33 2.98-7.39z" />
+      <path fill="#34A853" d="M12 22c2.7 0 4.98-.9 6.63-2.38l-3.24-2.53c-.9.6-2.05.96-3.39.96-2.61 0-4.82-1.76-5.61-4.13H3.04v2.61A10 10 0 0012 22z" />
+      <path fill="#FBBC05" d="M6.39 13.92A6.02 6.02 0 016.07 12c0-.67.11-1.32.32-1.92V7.47H3.04A10 10 0 002 12c0 1.61.39 3.14 1.04 4.53l3.35-2.61z" />
+      <path fill="#EA4335" d="M12 5.95c1.47 0 2.79.5 3.82 1.49l2.88-2.88A9.65 9.65 0 0012 2a10 10 0 00-8.96 5.47l3.35 2.61C7.18 7.71 9.39 5.95 12 5.95z" />
+    </svg>
+  )
+}
+
 type LoginProps = {
   onLogin?: (email: string, password: string) => void
+  onGoogleLogin?: () => void
   error?: string
   loading?: boolean
 }
 
-export default function Login({ onLogin, error, loading = false }: LoginProps) {
+export default function Login({ onLogin, onGoogleLogin, error, loading = false }: LoginProps) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
 
@@ -168,24 +197,51 @@ export default function Login({ onLogin, error, loading = false }: LoginProps) {
             type="submit"
             disabled={!canSubmit}
             style={{
-              width: "100%",
-              background: "white",
-              border: `1.5px solid ${C.border}`,
-              borderRadius: 15,
-              padding: "14px 16px",
-              color: C.navy,
-              fontFamily: NUNITO,
-              fontSize: 15,
-              fontWeight: 800,
+              ...buttonStyle,
               cursor: canSubmit ? "pointer" : "not-allowed",
               opacity: canSubmit ? 1 : 0.7,
-              boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
               marginTop: 4,
             }}
           >
             {loading ? "Entrando..." : "Iniciar sesión"}
           </button>
         </form>
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            margin: "20px 0",
+          }}
+        >
+          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.3)" }} />
+          <span
+            style={{
+              color: "rgba(255,255,255,0.7)",
+              fontFamily: NUNITO,
+              fontSize: 13,
+              fontWeight: 700,
+            }}
+          >
+            o
+          </span>
+          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.3)" }} />
+        </div>
+
+        <button
+          type="button"
+          onClick={onGoogleLogin}
+          disabled={loading}
+          style={{
+            ...buttonStyle,
+            cursor: loading ? "not-allowed" : "pointer",
+            opacity: loading ? 0.7 : 1,
+          }}
+        >
+          <GoogleLogo />
+          Continuar con Google
+        </button>
       </div>
     </div>
   )
