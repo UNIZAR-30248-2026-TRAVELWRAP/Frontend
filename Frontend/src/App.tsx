@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import type { Session } from "@supabase/supabase-js"
-import Login from "./screens/Login"
 import { supabase } from "./lib/supabase"
+import AppRouter from "./router/AppRouter"
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -33,13 +33,12 @@ export default function App() {
 
   if (checking) return null
 
-  if (session) {
-    return (
-      <div style={{ padding: 24, fontFamily: "'Nunito', sans-serif" }}>
-        Sesión iniciada como {session.user.email}
-      </div>
-    )
-  }
-
-  return <Login onLogin={handleLogin} error={error} loading={loading} />
+  return (
+    <AppRouter 
+      session={session} 
+      handleLogin={handleLogin} 
+      error={error} 
+      loading={loading} 
+    />
+  )
 }
