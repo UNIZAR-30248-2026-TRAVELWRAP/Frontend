@@ -78,6 +78,46 @@ Given('que existe un usuario registrado con email {string} y contraseña {string
   );
 });
 
+const simularRespuestaGoogle = async (fragmento: string) => {
+  await pagina.route('**/api/auth/google', (route) =>
+    route.fulfill({ status: 302, headers: { Location: `${URL_APP}/auth/callback#${fragmento}` } }),
+  );
+  await pagina.route('**/api/auth/refresh', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ token: 'token-nuevo', refresh_token: 'refresco-nuevo' }),
+    }),
+  );
+};
+
+const sesionGoogle = (email: string, nombre: string) =>
+  Buffer.from(
+    JSON.stringify({
+      usuario: {
+        id: 'a1b2c3d4-0000-4000-8000-000000000001',
+        nombre,
+        email,
+        avatar_url: 'https://lh3.googleusercontent.com/a/foto',
+        creado_en: '2026-10-08T10:00:00Z',
+      },
+      token: 'token-acceso-google',
+      refresh_token: 'token-refresco-google',
+    }),
+  ).toString('base64url');
+
+Given('que mi cuenta de Google {string} con nombre {string} acepta iniciar sesión en TravelWrap', async (email: string, nombre: string) => {
+  await simularRespuestaGoogle(`sesion=${sesionGoogle(email, nombre)}`);
+});
+
+Given('que cancelo el inicio de sesión en la pantalla de Google', async () => {
+  await simularRespuestaGoogle('error=google_cancelado');
+});
+
+Given('que el servidor no puede completar el inicio de sesión con Google', async () => {
+  await simularRespuestaGoogle('error=google');
+});
+
 Given('que estoy en la pantalla de inicio de sesión', async () => {
   await pagina.goto(`${URL_APP}/login`);
   await expect(pagina.getByRole('button', { name: 'Iniciar sesión' })).toBeVisible();
