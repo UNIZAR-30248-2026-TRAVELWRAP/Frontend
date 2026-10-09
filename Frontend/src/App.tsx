@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import AppRouter from "./router/AppRouter"
-import { ApiError, login, refrescar, type Sesion } from "./services/authApi"
+import { ApiError, URL_LOGIN_GOOGLE, login, refrescar, type Sesion } from "./services/authApi"
 import { borrarSesion, guardarSesion, leerSesion } from "./services/sesionStorage"
 
 export default function App() {
@@ -38,12 +38,31 @@ export default function App() {
     }
   }
 
+  const handleGoogleLogin = () => {
+    setError("")
+    setCargando(true)
+    window.location.assign(URL_LOGIN_GOOGLE)
+  }
+
+  const handleSesionGoogle = useCallback((nueva: Sesion) => {
+    guardarSesion(nueva)
+    setError("")
+    setSesion(nueva)
+  }, [])
+
+  const handleErrorGoogle = useCallback((mensaje: string) => {
+    setError(mensaje)
+  }, [])
+
   if (comprobando) return null
 
   return (
     <AppRouter
       session={sesion}
       handleLogin={handleLogin}
+      handleGoogleLogin={handleGoogleLogin}
+      handleSesionGoogle={handleSesionGoogle}
+      handleErrorGoogle={handleErrorGoogle}
       error={error}
       loading={cargando}
     />

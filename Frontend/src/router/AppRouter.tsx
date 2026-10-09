@@ -2,15 +2,27 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import type { Sesion } from "../services/authApi";
 import Login from "../screens/Login";
 import InvitarViajeros from "../screens/InvitarViajeros";
+import AuthCallback from "../screens/AuthCallback";
 
 interface AppRouterProps {
   session: Sesion | null;
   handleLogin: (email: string, password: string) => Promise<void>;
+  handleGoogleLogin: () => void;
+  handleSesionGoogle: (sesion: Sesion) => void;
+  handleErrorGoogle: (mensaje: string) => void;
   error: string;
   loading: boolean;
 }
 
-export default function AppRouter({ session, handleLogin, error, loading }: AppRouterProps) {
+export default function AppRouter({
+  session,
+  handleLogin,
+  handleGoogleLogin,
+  handleSesionGoogle,
+  handleErrorGoogle,
+  error,
+  loading,
+}: AppRouterProps) {
   return (
     <BrowserRouter>
       <Routes>
@@ -19,7 +31,12 @@ export default function AppRouter({ session, handleLogin, error, loading }: AppR
           path="/login"
           element={
             !session ? (
-              <Login onLogin={handleLogin} error={error} loading={loading} />
+              <Login
+                onLogin={handleLogin}
+                onGoogleLogin={handleGoogleLogin}
+                error={error}
+                loading={loading}
+              />
             ) : (
               <Navigate to="/" replace />
             )
@@ -50,6 +67,10 @@ export default function AppRouter({ session, handleLogin, error, loading }: AppR
               <Navigate to="/login" replace />
             )
           }
+        />
+        <Route
+          path="/auth/callback"
+          element={<AuthCallback onSesion={handleSesionGoogle} onError={handleErrorGoogle} />}
         />
       </Routes>
     </BrowserRouter>
