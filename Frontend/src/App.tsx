@@ -4,13 +4,14 @@ import { ApiError, URL_LOGIN_GOOGLE, login, refrescar, type Sesion } from "./ser
 import { borrarSesion, guardarSesion, leerSesion } from "./services/sesionStorage"
 
 export default function App() {
+  const [guardadaAlAbrir] = useState(() => leerSesion())
   const [sesion, setSesion] = useState<Sesion | null>(null)
-  const [comprobando, setComprobando] = useState(() => leerSesion() !== null)
+  const [comprobando, setComprobando] = useState(guardadaAlAbrir !== null)
   const [error, setError] = useState("")
   const [cargando, setCargando] = useState(false)
 
   useEffect(() => {
-    const guardada = leerSesion()
+    const guardada = guardadaAlAbrir
     if (!guardada) return
     refrescar(guardada.refresh_token)
       .then((tokens) => {
@@ -22,7 +23,7 @@ export default function App() {
         if (e instanceof ApiError && e.estado === 401) borrarSesion()
       })
       .finally(() => setComprobando(false))
-  }, [])
+  }, [guardadaAlAbrir])
 
   const handleLogin = async (email: string, password: string) => {
     setCargando(true)
