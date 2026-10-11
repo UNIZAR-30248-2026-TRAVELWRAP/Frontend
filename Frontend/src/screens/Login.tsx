@@ -67,11 +67,12 @@ function GoogleLogo() {
 type LoginProps = {
   onLogin?: (email: string, password: string) => void
   onGoogleLogin?: () => void
+  onIrARegistro?: () => void
   error?: string
   loading?: boolean
 }
 
-export default function Login({ onLogin, onGoogleLogin, error, loading = false }: LoginProps) {
+export default function Login({ onLogin, onGoogleLogin, onIrARegistro, error, loading = false }: LoginProps) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
 
@@ -242,6 +243,37 @@ export default function Login({ onLogin, onGoogleLogin, error, loading = false }
           <GoogleLogo />
           Continuar con Google
         </button>
+
+        {onIrARegistro && (
+          <div
+            style={{
+              textAlign: "center",
+              marginTop: 22,
+              color: "rgba(255,255,255,0.75)",
+              fontFamily: NUNITO,
+              fontSize: 14,
+            }}
+          >
+            ¿No tienes cuenta?{" "}
+            <button
+              type="button"
+              onClick={onIrARegistro}
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                color: "white",
+                fontFamily: NUNITO,
+                fontSize: 14,
+                fontWeight: 800,
+                textDecoration: "underline",
+                cursor: "pointer",
+              }}
+            >
+              Regístrate
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

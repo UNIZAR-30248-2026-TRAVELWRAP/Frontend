@@ -1,8 +1,10 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import type { ComponentProps } from "react";
 import type { Sesion } from "../services/authApi";
 import Login from "../screens/Login";
 import InvitarViajeros from "../screens/InvitarViajeros";
 import AuthCallback from "../screens/AuthCallback";
+import Registro from "../screens/Registro";
 
 interface AppRouterProps {
   session: Sesion | null;
@@ -12,6 +14,16 @@ interface AppRouterProps {
   handleErrorGoogle: (mensaje: string) => void;
   error: string;
   loading: boolean;
+}
+
+function RutaLogin(props: Omit<ComponentProps<typeof Login>, "onIrARegistro">) {
+  const navigate = useNavigate();
+  return <Login {...props} onIrARegistro={() => navigate("/registro")} />;
+}
+
+function RutaRegistro(props: Omit<ComponentProps<typeof Registro>, "onIrALogin">) {
+  const navigate = useNavigate();
+  return <Registro {...props} onIrALogin={() => navigate("/login")} />;
 }
 
 export default function AppRouter({
@@ -31,7 +43,7 @@ export default function AppRouter({
           path="/login"
           element={
             !session ? (
-              <Login
+              <RutaLogin
                 onLogin={handleLogin}
                 onGoogleLogin={handleGoogleLogin}
                 error={error}
@@ -67,6 +79,10 @@ export default function AppRouter({
               <Navigate to="/login" replace />
             )
           }
+        />
+        <Route
+          path="/registro"
+          element={!session ? <RutaRegistro /> : <Navigate to="/" replace />}
         />
         <Route
           path="/auth/callback"
