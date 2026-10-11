@@ -9,6 +9,12 @@ import Registro from "../screens/Registro";
 interface AppRouterProps {
   session: Sesion | null;
   handleLogin: (email: string, password: string) => Promise<void>;
+  handleRegistro: (nombre: string, email: string, password: string) => Promise<void>;
+  errorRegistro: string;
+  avisoRegistro: string;
+  loadingRegistro: boolean;
+  handleReenviarConfirmacion?: () => void;
+  avisoLogin: string;
   handleGoogleLogin: () => void;
   handleSesionGoogle: (sesion: Sesion) => void;
   handleErrorGoogle: (mensaje: string) => void;
@@ -29,6 +35,12 @@ function RutaRegistro(props: Omit<ComponentProps<typeof Registro>, "onIrALogin">
 export default function AppRouter({
   session,
   handleLogin,
+  handleRegistro,
+  errorRegistro,
+  avisoRegistro,
+  loadingRegistro,
+  handleReenviarConfirmacion,
+  avisoLogin,
   handleGoogleLogin,
   handleSesionGoogle,
   handleErrorGoogle,
@@ -46,6 +58,8 @@ export default function AppRouter({
               <RutaLogin
                 onLogin={handleLogin}
                 onGoogleLogin={handleGoogleLogin}
+                onReenviarConfirmacion={handleReenviarConfirmacion}
+                aviso={avisoLogin}
                 error={error}
                 loading={loading}
               />
@@ -82,7 +96,18 @@ export default function AppRouter({
         />
         <Route
           path="/registro"
-          element={!session ? <RutaRegistro /> : <Navigate to="/" replace />}
+          element={
+            !session ? (
+              <RutaRegistro
+                onRegistro={handleRegistro}
+                error={errorRegistro}
+                aviso={avisoRegistro}
+                loading={loadingRegistro}
+              />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
         />
         <Route
           path="/auth/callback"

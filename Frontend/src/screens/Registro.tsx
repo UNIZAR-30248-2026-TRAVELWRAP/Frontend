@@ -41,10 +41,11 @@ type RegistroProps = {
   onRegistro?: (nombre: string, email: string, password: string) => void
   onIrALogin?: () => void
   error?: string
+  aviso?: string
   loading?: boolean
 }
 
-export default function Registro({ onRegistro, onIrALogin, error, loading = false }: RegistroProps) {
+export default function Registro({ onRegistro, onIrALogin, error, aviso, loading = false }: RegistroProps) {
   const [nombre, setNombre] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -226,6 +227,24 @@ export default function Registro({ onRegistro, onIrALogin, error, loading = fals
               }}
             >
               {error}
+            </div>
+          )}
+
+          {aviso && (
+            <div
+              role="status"
+              style={{
+                background: C.greenBg,
+                border: `1.5px solid ${C.green}55`,
+                borderRadius: 12,
+                padding: "10px 14px",
+                color: C.green,
+                fontFamily: NUNITO,
+                fontSize: 13,
+                fontWeight: 700,
+              }}
+            >
+              {aviso}
             </div>
           )}
 

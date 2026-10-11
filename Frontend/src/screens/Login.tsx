@@ -8,6 +8,8 @@ const C = {
   border: "#E2E8F0",
   red: "#C53030",
   redBg: "#FFF5F5",
+  green: "#276749",
+  greenBg: "#F0FFF4",
 }
 
 const NUNITO = "'Nunito', sans-serif"
@@ -68,11 +70,21 @@ type LoginProps = {
   onLogin?: (email: string, password: string) => void
   onGoogleLogin?: () => void
   onIrARegistro?: () => void
+  onReenviarConfirmacion?: () => void
   error?: string
+  aviso?: string
   loading?: boolean
 }
 
-export default function Login({ onLogin, onGoogleLogin, onIrARegistro, error, loading = false }: LoginProps) {
+export default function Login({
+  onLogin,
+  onGoogleLogin,
+  onIrARegistro,
+  onReenviarConfirmacion,
+  error,
+  aviso,
+  loading = false,
+}: LoginProps) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
 
@@ -191,6 +203,46 @@ export default function Login({ onLogin, onGoogleLogin, onIrARegistro, error, lo
               }}
             >
               {error}
+              {onReenviarConfirmacion && (
+                <div style={{ marginTop: 8 }}>
+                  <button
+                    type="button"
+                    onClick={onReenviarConfirmacion}
+                    disabled={loading}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      padding: 0,
+                      color: C.red,
+                      fontFamily: NUNITO,
+                      fontSize: 13,
+                      fontWeight: 800,
+                      textDecoration: "underline",
+                      cursor: loading ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    Reenviar correo de confirmación
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {aviso && (
+            <div
+              role="status"
+              style={{
+                background: C.greenBg,
+                border: `1.5px solid ${C.green}55`,
+                borderRadius: 12,
+                padding: "10px 14px",
+                color: C.green,
+                fontFamily: NUNITO,
+                fontSize: 13,
+                fontWeight: 700,
+              }}
+            >
+              {aviso}
             </div>
           )}
 

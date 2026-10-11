@@ -51,6 +51,16 @@ const post = async <T>(ruta: string, cuerpo: unknown): Promise<T> => {
 export const login = (email: string, password: string) =>
   post<Sesion>("/auth/login", { email, password })
 
+export const reenviarConfirmacion = (email: string) =>
+  post<{ mensaje: string }>("/auth/reenviar-confirmacion", { email })
+
+export type RespuestaRegistro =
+  | Sesion
+  | { usuario: Usuario; confirmacion_pendiente: true }
+
+export const registrar = (nombre: string, email: string, password: string) =>
+  post<RespuestaRegistro>("/auth/registro", { nombre, email, password })
+
 export const URL_LOGIN_GOOGLE = `${API_URL}/auth/google`
 
 const MENSAJES_GOOGLE: Record<string, string> = {
