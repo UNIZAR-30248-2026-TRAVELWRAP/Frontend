@@ -3,6 +3,7 @@ import type { ComponentProps } from "react";
 import type { Sesion } from "../services/authApi";
 import Login from "../screens/Login";
 import MisViajes from "../screens/MisViajes";
+import CrearViaje from "../screens/CrearViaje";
 import InvitarViajeros from "../screens/InvitarViajeros";
 import AuthCallback from "../screens/AuthCallback";
 import Registro from "../screens/Registro";
@@ -34,6 +35,17 @@ function RutaLogin(props: Omit<ComponentProps<typeof Login>, "onIrARegistro">) {
 function RutaRegistro(props: Omit<ComponentProps<typeof Registro>, "onIrALogin">) {
   const navigate = useNavigate();
   return <Registro {...props} onIrALogin={() => navigate("/login")} />;
+}
+
+function RutaMisViajes(props: Omit<ComponentProps<typeof MisViajes>, "onCreateTrip">) {
+  const navigate = useNavigate();
+  return <MisViajes {...props} onCreateTrip={() => navigate("/viajes/nuevo")} />;
+}
+
+// De momento el viaje no se guarda: al crearlo se vuelve a «Mis viajes»
+function RutaCrearViaje() {
+  const navigate = useNavigate();
+  return <CrearViaje onBack={() => navigate("/")} onCreate={() => navigate("/")} />;
 }
 
 export default function AppRouter({
@@ -78,7 +90,7 @@ export default function AppRouter({
           path="/"
           element={
             session ? (
-              <MisViajes
+              <RutaMisViajes
                 nombreUsuario={session.usuario.nombre ?? session.usuario.email.split("@")[0]}
                 emailUsuario={session.usuario.email}
               />
@@ -86,6 +98,12 @@ export default function AppRouter({
               <Navigate to="/login" replace />
             )
           }
+        />
+
+        {/* Formulario «Nuevo viaje» (privada) */}
+        <Route
+          path="/viajes/nuevo"
+          element={session ? <RutaCrearViaje /> : <Navigate to="/login" replace />}
         />
 
         {/* Ruta para invitar a otros viajeros (protegida) */}

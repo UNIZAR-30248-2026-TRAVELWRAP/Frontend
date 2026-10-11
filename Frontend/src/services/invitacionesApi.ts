@@ -9,7 +9,8 @@ export type ViajeUnido = {
   viaje: {
     id: string
     nombre: string
-    destino: string
+    // null mientras el destino está pendiente de votación
+    destino: string | null
     imagen_portada_url: string | null
   }
   miembro: {

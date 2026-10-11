@@ -80,6 +80,8 @@ export default function UnirseViaje({ sesion }: UnirseViajeProps) {
   }
 
   const irAlInicio = () => navigate("/", { replace: true })
+  // El viaje puede no tener destino todavía (pendiente de votación)
+  const aDestino = resultado?.viaje.destino ? ` a ${resultado.viaje.destino}` : ""
 
   return (
     <div
@@ -137,8 +139,8 @@ export default function UnirseViaje({ sesion }: UnirseViajeProps) {
             </div>
             <div style={textoStyle}>
               {resultado.ya_era_miembro
-                ? `Ya eras miembro de este viaje a ${resultado.viaje.destino}.`
-                : `Te has unido al viaje a ${resultado.viaje.destino}. Ya puedes ver el itinerario, los gastos y el chat del grupo.`}
+                ? `Ya eras miembro de este viaje${aDestino}.`
+                : `Te has unido al viaje${aDestino}. Ya puedes ver el itinerario, los gastos y el chat del grupo.`}
             </div>
             <button type="button" onClick={irAlInicio} style={botonStyle}>
               Entrar al viaje
