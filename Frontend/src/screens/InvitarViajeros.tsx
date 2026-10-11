@@ -1,4 +1,5 @@
-import { useState, type CSSProperties, type ReactNode } from "react"
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react"
+import { QRCodeSVG } from "qrcode.react"
 
 // ─── Tokens de diseño ──────────────────────────────────
 const C = {
@@ -27,7 +28,7 @@ const MIEMBROS_DEMO: Miembro[] = [
 ]
 
 // ─── Iconos (solo los que usa esta pantalla) ──────────────────────────────────
-type IconName = "arrow_left" | "qr"
+type IconName = "arrow_left" | "search" | "close" | "check"
 
 function Icon({
   name,
@@ -42,15 +43,17 @@ function Icon({
 }) {
   const paths: Record<IconName, ReactNode> = {
     arrow_left: <polyline points="15 18 9 12 15 6" />,
-    qr: (
+    search: (
       <>
-        <rect x="3" y="3" width="7" height="7" />
-        <rect x="14" y="3" width="7" height="7" />
-        <rect x="3" y="14" width="7" height="7" />
-        <rect x="5" y="5" width="3" height="3" fill={color} />
-        <rect x="16" y="5" width="3" height="3" fill={color} />
-        <rect x="5" y="16" width="3" height="3" fill={color} />
-        <path d="M14 14h3v3h-3zM17 17h3v3h-3zM14 20h3" />
+        <circle cx="11" cy="11" r="7" />
+        <line x1="21" y1="21" x2="16.5" y2="16.5" />
+      </>
+    ),
+    check: <polyline points="20 6 9 17 4 12" />,
+    close: (
+      <>
+        <line x1="18" y1="6" x2="6" y2="18" />
+        <line x1="6" y1="6" x2="18" y2="18" />
       </>
     ),
   }
@@ -168,10 +171,20 @@ type InvitarViajerosProps = {
 export default function InvitarViajeros({
   tripName = "Roma 2025",
   members = MIEMBROS_DEMO,
-  inviteLink = "travelwrap.app/join/roma2025",
+  inviteLink = "https://travelwrap.app/join/roma2025",
   onBack,
 }: InvitarViajerosProps) {
   const [copied, setCopied] = useState(false)
+  const [qrAmpliado, setQrAmpliado] = useState(false)
+
+  useEffect(() => {
+    if (!qrAmpliado) return
+    const cerrarConEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setQrAmpliado(false)
+    }
+    window.addEventListener("keydown", cerrarConEscape)
+    return () => window.removeEventListener("keydown", cerrarConEscape)
+  }, [qrAmpliado])
 
   const handleCopy = async () => {
     try {
@@ -289,20 +302,45 @@ export default function InvitarViajeros({
                 marginBottom: 14,
               }}
             >
-              <div
+              <button
+                type="button"
+                onClick={() => setQrAmpliado(true)}
+                aria-label="Ampliar codigo QR"
                 style={{
+                  position: "relative",
                   width: 80,
                   height: 80,
                   borderRadius: 12,
-                  background: C.bg,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
+                  background: "white",
+                  border: `1.5px solid ${C.border}`,
+                  padding: 6,
+                  cursor: "pointer",
                   flexShrink: 0,
                 }}
               >
-                <Icon name="qr" size={48} color={C.navy} strokeWidth={1.2} />
-              </div>
+                <QRCodeSVG
+                  value={inviteLink}
+                  fgColor={C.navy}
+                  style={{ display: "block", width: "100%", height: "100%" }}
+                />
+                <span
+                  style={{
+                    position: "absolute",
+                    right: -7,
+                    bottom: -7,
+                    width: 26,
+                    height: 26,
+                    borderRadius: "50%",
+                    background: C.blue,
+                    border: "2px solid white",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Icon name="search" size={13} color="white" strokeWidth={2.6} />
+                </span>
+              </button>
               <div>
                 <div
                   style={{
@@ -354,11 +392,17 @@ export default function InvitarViajeros({
               <button
                 type="button"
                 onClick={handleCopy}
+                aria-label={copied ? "Enlace copiado" : "Copiar enlace"}
                 style={{
-                  background: C.blue,
+                  background: copied ? C.greenBg : C.blue,
                   color: "white",
                   border: "none",
                   borderRadius: 9,
+                  minWidth: 60,
+                  height: 26,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                   padding: "5px 12px",
                   fontFamily: NUNITO,
                   fontWeight: 800,
@@ -367,7 +411,11 @@ export default function InvitarViajeros({
                   flexShrink: 0,
                 }}
               >
-                {copied ? "Copiado" : "Copiar"}
+                {copied ? (
+                  <Icon name="check" size={16} color={C.green} strokeWidth={3} />
+                ) : (
+                  "Copiar"
+                )}
               </button>
             </div>
           </div>
@@ -392,6 +440,91 @@ export default function InvitarViajeros({
           </button>
         </div>
       </div>
+
+      {/* Popup con el QR ampliado */}
+      {qrAmpliado && (
+        <div
+          onClick={() => setQrAmpliado(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(26,54,93,0.6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+            zIndex: 50,
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Codigo QR del viaje"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              ...cardStyle,
+              position: "relative",
+              width: "100%",
+              maxWidth: 340,
+              padding: "22px 24px 24px",
+              textAlign: "center",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setQrAmpliado(false)}
+              aria-label="Cerrar"
+              autoFocus
+              style={{
+                position: "absolute",
+                top: 12,
+                right: 12,
+                background: C.bg,
+                border: "none",
+                borderRadius: 10,
+                width: 32,
+                height: 32,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+              }}
+            >
+              <Icon name="close" size={16} color={C.navy} strokeWidth={2.5} />
+            </button>
+            <div
+              style={{
+                fontFamily: NUNITO,
+                color: C.navy,
+                fontSize: 17,
+                fontWeight: 800,
+                padding: "0 32px",
+                marginBottom: 16,
+              }}
+            >
+              {tripName}
+            </div>
+            <QRCodeSVG
+              value={inviteLink}
+              size={280}
+              fgColor={C.navy}
+              marginSize={2}
+              style={{ display: "block", width: "100%", height: "auto" }}
+            />
+            <div
+              style={{
+                fontFamily: NUNITO,
+                color: C.muted,
+                fontSize: 12,
+                lineHeight: 1.5,
+                marginTop: 14,
+              }}
+            >
+              Escanea el codigo para unirte al viaje.
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
