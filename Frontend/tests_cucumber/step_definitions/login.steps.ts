@@ -156,3 +156,101 @@ Then('veo el mensaje de error {string}', async (mensaje: string) => {
 Then('sigo en la pantalla de inicio de sesión', async () => {
   await expect(pagina).toHaveURL(/\/login$/);
 });
+
+const cuentasRegistradas = new Set<string>();
+
+Before(() => {
+  cuentasRegistradas.clear();
+});
+
+const simularBackendRegistro = async () => {
+  await pagina.route('**/api/auth/registro', (route) => {
+    const datos = route.request().postDataJSON();
+    if (cuentasRegistradas.has(datos.email)) {
+      return route.fulfill({
+        status: 409,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: { codigo: 'email_en_uso', mensaje: 'Ya existe una cuenta con ese email' } }),
+      });
+    }
+    cuentasRegistradas.add(datos.email);
+    return route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        usuario: {
+          id: 'b2c3d4e5-0000-4000-8000-000000000002',
+          nombre: datos.nombre,
+          email: datos.email,
+          avatar_url: null,
+          creado_en: '2026-10-11T18:00:00Z',
+        },
+        confirmacion_pendiente: true,
+      }),
+    });
+  });
+};
+
+Given('que no existe ninguna cuenta con el email {string}', async (email: string) => {
+  cuentasRegistradas.delete(email);
+  await simularBackendRegistro();
+});
+
+Given('que ya existe una cuenta con el email {string}', async (email: string) => {
+  cuentasRegistradas.add(email);
+  await simularBackendRegistro();
+});
+
+Given('que tengo una cuenta con el email {string} pendiente de confirmar', async (email: string) => {
+  await pagina.route('**/api/auth/login', (route) =>
+    route.fulfill({
+      status: 401,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: { codigo: 'email_no_confirmado', mensaje: 'El email no está confirmado' } }),
+    }),
+  );
+  await pagina.route('**/api/auth/reenviar-confirmacion', (route) => {
+    const datos = route.request().postDataJSON();
+    return route.fulfill({
+      status: datos.email === email ? 202 : 400,
+      contentType: 'application/json',
+      body: JSON.stringify({ mensaje: 'ok' }),
+    });
+  });
+});
+
+Given('que estoy en la pantalla de registro', async () => {
+  await pagina.goto(`${URL_APP}/registro`);
+  await expect(pagina.getByRole('button', { name: 'Crear cuenta' })).toBeVisible();
+});
+
+When('relleno el registro con nombre {string}, email {string} y contraseña {string}', async (nombre: string, email: string, password: string) => {
+  await pagina.getByLabel('Nombre', { exact: true }).fill(nombre);
+  await pagina.getByLabel('Email', { exact: true }).fill(email);
+  await pagina.getByLabel('Contraseña', { exact: true }).fill(password);
+  await pagina.getByLabel('Repite la contraseña', { exact: true }).fill(password);
+});
+
+When('repito la contraseña como {string}', async (confirmacion: string) => {
+  await pagina.getByLabel('Repite la contraseña', { exact: true }).fill(confirmacion);
+});
+
+Then('veo el aviso {string}', async (mensaje: string) => {
+  await expect(pagina.getByRole('status')).toHaveText(mensaje);
+});
+
+Then('veo un error que contiene {string}', async (mensaje: string) => {
+  await expect(pagina.getByRole('alert')).toContainText(mensaje);
+});
+
+Then('veo junto al campo el aviso {string}', async (mensaje: string) => {
+  await expect(pagina.getByText(mensaje, { exact: true })).toBeVisible();
+});
+
+Then('el botón {string} está desactivado', async (texto: string) => {
+  await expect(pagina.getByRole('button', { name: texto })).toBeDisabled();
+});
+
+Then('sigo en la pantalla de registro', async () => {
+  await expect(pagina).toHaveURL(/\/registro$/);
+});
