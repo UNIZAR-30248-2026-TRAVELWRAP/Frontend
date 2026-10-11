@@ -28,6 +28,7 @@ const renderizar = (fragmento: string, onSesion = vi.fn(), onError = vi.fn()) =>
           <Route path="/auth/callback" element={<AuthCallback onSesion={onSesion} onError={onError} />} />
           <Route path="/" element={<div>Pantalla de inicio</div>} />
           <Route path="/login" element={<div>Pantalla de login</div>} />
+          <Route path="/unirse/:token" element={<div>Pantalla de unirse</div>} />
         </Routes>
       </MemoryRouter>
     </StrictMode>,
@@ -38,6 +39,7 @@ const renderizar = (fragmento: string, onSesion = vi.fn(), onError = vi.fn()) =>
 afterEach(() => {
   cleanup()
   window.location.hash = ''
+  sessionStorage.clear()
 })
 
 describe('AuthCallback', () => {
@@ -47,6 +49,14 @@ describe('AuthCallback', () => {
     expect(await screen.findByText('Pantalla de inicio')).toBeTruthy()
     expect(onSesion).toHaveBeenCalledWith(sesion)
     expect(onError).not.toHaveBeenCalled()
+  })
+
+  it('vuelve a la invitación que se abrió sin sesión en lugar de ir al inicio', async () => {
+    sessionStorage.setItem('travelwrap.invitacionPendiente', 'abc123')
+    const { onSesion } = renderizar(`#sesion=${codificar(sesion)}`)
+
+    expect(await screen.findByText('Pantalla de unirse')).toBeTruthy()
+    expect(onSesion).toHaveBeenCalledWith(sesion)
   })
 
   it('procesa la respuesta una sola vez aunque React ejecute el efecto dos veces', async () => {
