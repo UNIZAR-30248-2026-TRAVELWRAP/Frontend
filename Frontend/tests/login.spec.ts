@@ -49,7 +49,7 @@ test.describe('PB-04 · Iniciar sesión con email y contraseña', () => {
     await simularLoginCorrecto(page);
     await iniciarSesion(page, EMAIL, PASSWORD);
 
-    await expect(page.getByText(`Sesión iniciada como ${EMAIL}`)).toBeVisible();
+    await expect(page.getByRole('button', { name: `Perfil de ${EMAIL}` })).toBeVisible();
     await expect(page).toHaveURL(/\/$/);
   });
 
@@ -81,11 +81,11 @@ test.describe('PB-04 · Iniciar sesión con email y contraseña', () => {
     });
 
     await iniciarSesion(page, EMAIL, PASSWORD);
-    await expect(page.getByText(`Sesión iniciada como ${EMAIL}`)).toBeVisible();
+    await expect(page.getByRole('button', { name: `Perfil de ${EMAIL}` })).toBeVisible();
 
     await page.reload();
 
-    await expect(page.getByText(`Sesión iniciada como ${EMAIL}`)).toBeVisible();
+    await expect(page.getByRole('button', { name: `Perfil de ${EMAIL}` })).toBeVisible();
     expect(refreshRecibido).toEqual({ refresh_token: 'token-refresco' });
   });
 

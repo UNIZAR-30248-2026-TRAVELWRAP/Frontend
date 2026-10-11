@@ -128,7 +128,7 @@ Given('que he iniciado sesión con el email {string} y la contraseña {string}',
   await pagina.getByLabel('Email').fill(email);
   await pagina.getByLabel('Contraseña').fill(password);
   await pagina.getByRole('button', { name: 'Iniciar sesión' }).click();
-  await expect(pagina.getByText(`Sesión iniciada como ${email}`)).toBeVisible();
+  await expect(pagina.getByRole('button', { name: `Perfil de ${email}` })).toBeVisible();
 });
 
 When('introduzco el email {string} y la contraseña {string}', async (email: string, password: string) => {
@@ -145,7 +145,7 @@ When('recargo la aplicación', async () => {
 });
 
 Then('accedo a la aplicación con la sesión de {string}', async (email: string) => {
-  await expect(pagina.getByText(`Sesión iniciada como ${email}`)).toBeVisible();
+  await expect(pagina.getByRole('button', { name: `Perfil de ${email}` })).toBeVisible();
   await expect(pagina).not.toHaveURL(/\/login$/);
 });
 

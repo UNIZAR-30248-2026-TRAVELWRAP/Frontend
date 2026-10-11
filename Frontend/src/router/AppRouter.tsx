@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-route
 import type { ComponentProps } from "react";
 import type { Sesion } from "../services/authApi";
 import Login from "../screens/Login";
+import MisViajes from "../screens/MisViajes";
 import InvitarViajeros from "../screens/InvitarViajeros";
 import AuthCallback from "../screens/AuthCallback";
 import Registro from "../screens/Registro";
@@ -72,14 +73,15 @@ export default function AppRouter({
           }
         />
 
-        {/* Ruta privada: si no hay sesión, redirige al login */}
+        {/* Pantalla principal «Mis viajes» (privada): si no hay sesión, redirige al login */}
         <Route
           path="/"
           element={
             session ? (
-              <div style={{ padding: 24, fontFamily: "'Nunito', sans-serif" }}>
-                Sesión iniciada como {session.usuario.email}
-              </div>
+              <MisViajes
+                nombreUsuario={session.usuario.nombre ?? session.usuario.email.split("@")[0]}
+                emailUsuario={session.usuario.email}
+              />
             ) : (
               <Navigate to="/login" replace />
             )

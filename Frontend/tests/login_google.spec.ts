@@ -47,7 +47,7 @@ test.describe('PB-05 · Iniciar sesión con Google (OAuth)', () => {
 
     await pulsarGoogle(page);
 
-    await expect(page.getByText(`Sesión iniciada como ${EMAIL}`)).toBeVisible();
+    await expect(page.getByRole('button', { name: `Perfil de ${EMAIL}` })).toBeVisible();
     await expect(page).toHaveURL(/\/$/);
   });
 
@@ -64,14 +64,14 @@ test.describe('PB-05 · Iniciar sesión con Google (OAuth)', () => {
     });
 
     await pulsarGoogle(page);
-    await expect(page.getByText(`Sesión iniciada como ${EMAIL}`)).toBeVisible();
+    await expect(page.getByRole('button', { name: `Perfil de ${EMAIL}` })).toBeVisible();
 
     const guardada = await page.evaluate(() => JSON.parse(localStorage.getItem('travelwrap.sesion') ?? 'null'));
     expect(guardada).toEqual(sesion);
 
     await page.reload();
 
-    await expect(page.getByText(`Sesión iniciada como ${EMAIL}`)).toBeVisible();
+    await expect(page.getByRole('button', { name: `Perfil de ${EMAIL}` })).toBeVisible();
     expect(refreshRecibido).toEqual({ refresh_token: 'token-refresco' });
   });
 

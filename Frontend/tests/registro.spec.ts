@@ -68,7 +68,7 @@ test.describe('PB-06 · Registrarse con email', () => {
     await rellenarRegistro(page, datosValidos);
     await page.getByRole('button', { name: 'Crear cuenta' }).click();
 
-    await expect(page.getByText(`Sesión iniciada como ${EMAIL}`)).toBeVisible();
+    await expect(page.getByRole('button', { name: `Perfil de ${EMAIL}` })).toBeVisible();
     await expect(page).toHaveURL(/\/$/);
   });
 
@@ -117,7 +117,7 @@ test.describe('PB-06 · Registrarse con email', () => {
     await page.goto('/registro');
 
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByText(`Sesión iniciada como ${EMAIL}`)).toBeVisible();
+    await expect(page.getByRole('button', { name: `Perfil de ${EMAIL}` })).toBeVisible();
   });
 });
 
