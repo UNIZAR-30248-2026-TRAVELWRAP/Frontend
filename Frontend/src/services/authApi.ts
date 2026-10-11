@@ -25,13 +25,26 @@ export class ApiError extends Error {
   }
 }
 
-const post = async <T>(ruta: string, cuerpo: unknown): Promise<T> => {
+type OpcionesPeticion = {
+  metodo?: "GET" | "POST"
+  cuerpo?: unknown
+  token?: string
+}
+
+export const peticion = async <T>(
+  ruta: string,
+  { metodo = "GET", cuerpo, token }: OpcionesPeticion = {},
+): Promise<T> => {
+  const headers: Record<string, string> = {}
+  if (cuerpo !== undefined) headers["Content-Type"] = "application/json"
+  if (token) headers.Authorization = `Bearer ${token}`
+
   let respuesta: Response
   try {
     respuesta = await fetch(`${API_URL}${ruta}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(cuerpo),
+      method: metodo,
+      headers,
+      body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo),
     })
   } catch {
     throw new ApiError(0, "sin_conexion", "No se puede conectar con el servidor")
@@ -47,6 +60,8 @@ const post = async <T>(ruta: string, cuerpo: unknown): Promise<T> => {
   }
   return datos as T
 }
+
+const post = <T>(ruta: string, cuerpo: unknown) => peticion<T>(ruta, { metodo: "POST", cuerpo })
 
 export const login = (email: string, password: string) =>
   post<Sesion>("/auth/login", { email, password })

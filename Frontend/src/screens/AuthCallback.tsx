@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import { leerResultadoGoogle, type Sesion } from "../services/authApi"
+import { rutaTrasLogin } from "../services/invitacionPendiente"
 
 type AuthCallbackProps = {
   onSesion: (sesion: Sesion) => void
@@ -18,7 +19,7 @@ export default function AuthCallback({ onSesion, onError }: AuthCallbackProps) {
     const resultado = leerResultadoGoogle(window.location.hash)
     if ("sesion" in resultado) {
       onSesion(resultado.sesion)
-      navigate("/", { replace: true })
+      navigate(rutaTrasLogin(), { replace: true })
     } else {
       onError(resultado.error)
       navigate("/login", { replace: true })

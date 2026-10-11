@@ -171,7 +171,7 @@ type InvitarViajerosProps = {
 export default function InvitarViajeros({
   tripName = "Roma 2025",
   members = MIEMBROS_DEMO,
-  inviteLink = "https://travelwrap.app/join/roma2025",
+  inviteLink = "https://travelwrap.app/unirse/roma2025",
   onBack,
 }: InvitarViajerosProps) {
   const [copied, setCopied] = useState(false)

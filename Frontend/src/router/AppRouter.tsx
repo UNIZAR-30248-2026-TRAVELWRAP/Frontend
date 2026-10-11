@@ -5,6 +5,9 @@ import Login from "../screens/Login";
 import InvitarViajeros from "../screens/InvitarViajeros";
 import AuthCallback from "../screens/AuthCallback";
 import Registro from "../screens/Registro";
+import UnirseViaje from "../screens/UnirseViaje";
+import InvitarViajerosDeViaje from "../screens/InvitarViajerosDeViaje";
+import { rutaTrasLogin } from "../services/invitacionPendiente";
 
 interface AppRouterProps {
   session: Sesion | null;
@@ -50,7 +53,7 @@ export default function AppRouter({
   return (
     <BrowserRouter>
       <Routes>
-        {/* Ruta pública: si ya hay sesión, redirige al inicio */}
+        {/* Ruta pública: si ya hay sesión, redirige al inicio (o a la invitación que se abrió sin sesión) */}
         <Route
           path="/login"
           element={
@@ -64,7 +67,7 @@ export default function AppRouter({
                 loading={loading}
               />
             ) : (
-              <Navigate to="/" replace />
+              <Navigate to={rutaTrasLogin()} replace />
             )
           }
         />
@@ -94,6 +97,17 @@ export default function AppRouter({
             )
           }
         />
+        {/* Invitar con el enlace real del viaje (protegida) */}
+        <Route
+          path="/viajes/:viajeId/invitar"
+          element={
+            session ? <InvitarViajerosDeViaje sesion={session} /> : <Navigate to="/login" replace />
+          }
+        />
+
+        {/* Enlace/QR de invitación: sin sesión pasa por el login y vuelve aquí */}
+        <Route path="/unirse/:token" element={<UnirseViaje sesion={session} />} />
+
         <Route
           path="/registro"
           element={
@@ -105,7 +119,7 @@ export default function AppRouter({
                 loading={loadingRegistro}
               />
             ) : (
-              <Navigate to="/" replace />
+              <Navigate to={rutaTrasLogin()} replace />
             )
           }
         />
