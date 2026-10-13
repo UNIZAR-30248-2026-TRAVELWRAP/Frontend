@@ -254,3 +254,57 @@ Then('el botón {string} está desactivado', async (texto: string) => {
 Then('sigo en la pantalla de registro', async () => {
   await expect(pagina).toHaveURL(/\/registro$/);
 });
+
+let cierresRecibidos = 0;
+
+Before(() => {
+  cierresRecibidos = 0;
+});
+
+Given('que el servidor cierra correctamente las sesiones', async () => {
+  await pagina.route('**/api/auth/logout', (route) => {
+    cierresRecibidos++;
+    return route.fulfill({ status: 204 });
+  });
+});
+
+Given('que el servidor no responde al cerrar la sesión', async () => {
+  await pagina.route('**/api/auth/logout', (route) => {
+    cierresRecibidos++;
+    return route.abort();
+  });
+});
+
+When('abro mi perfil', async () => {
+  await pagina.getByRole('button', { name: /^Perfil de / }).click();
+  await expect(pagina).toHaveURL(/\/perfil$/);
+});
+
+When('confirmo en el diálogo {string}', async (texto: string) => {
+  await pagina.getByRole('dialog').getByRole('button', { name: texto }).click();
+});
+
+Then('veo el diálogo de confirmación {string}', async (titulo: string) => {
+  await expect(pagina.getByRole('dialog')).toContainText(titulo);
+});
+
+Then('ya no veo el diálogo de confirmación', async () => {
+  await expect(pagina.getByRole('dialog')).toHaveCount(0);
+});
+
+Then('el servidor ha recibido {int} petición de cerrar sesión', async (cantidad: number) => {
+  expect(cierresRecibidos).toBe(cantidad);
+});
+
+Then('mi sesión ya no está guardada en el navegador', async () => {
+  expect(await pagina.evaluate(() => localStorage.getItem('travelwrap.sesion'))).toBeNull();
+});
+
+Then('mi sesión sigue guardada en el navegador', async () => {
+  expect(await pagina.evaluate(() => localStorage.getItem('travelwrap.sesion'))).not.toBeNull();
+});
+
+Then('al abrir la pantalla de mi perfil vuelvo al inicio de sesión', async () => {
+  await pagina.goto(`${URL_APP}/perfil`);
+  await expect(pagina).toHaveURL(/\/login$/);
+});
