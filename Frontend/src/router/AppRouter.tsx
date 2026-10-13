@@ -24,6 +24,7 @@ interface AppRouterProps {
   handleSesionGoogle: (sesion: Sesion) => void;
   handleErrorGoogle: (mensaje: string) => void;
   handleCerrarSesion: () => void;
+  cerrandoSesion: boolean;
   error: string;
   loading: boolean;
 }
@@ -74,6 +75,7 @@ export default function AppRouter({
   handleSesionGoogle,
   handleErrorGoogle,
   handleCerrarSesion,
+  cerrandoSesion,
   error,
   loading,
 }: AppRouterProps) {
@@ -123,6 +125,7 @@ export default function AppRouter({
                 nombre={session.usuario.nombre ?? session.usuario.email.split("@")[0]}
                 email={session.usuario.email}
                 onCerrarSesion={handleCerrarSesion}
+                cerrandoSesion={cerrandoSesion}
               />
             ) : (
               <Navigate to="/login" replace />

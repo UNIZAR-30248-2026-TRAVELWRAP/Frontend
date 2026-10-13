@@ -7,6 +7,7 @@ import {
   refrescar,
   registrar,
   reenviarConfirmacion,
+  cerrarSesion,
   type Sesion,
 } from "./services/authApi"
 import { borrarSesion, guardarSesion, leerSesion } from "./services/sesionStorage"
@@ -23,6 +24,7 @@ export default function App() {
   const [errorRegistro, setErrorRegistro] = useState("")
   const [avisoRegistro, setAvisoRegistro] = useState("")
   const [cargandoRegistro, setCargandoRegistro] = useState(false)
+  const [cerrandoSesion, setCerrandoSesion] = useState(false)
 
   useEffect(() => {
     const guardada = guardadaAlAbrir
@@ -107,9 +109,12 @@ export default function App() {
     setError(mensaje)
   }, [])
 
-  const handleCerrarSesion = () => {
+  const handleCerrarSesion = async () => {
+    setCerrandoSesion(true)
+    if (sesion) await cerrarSesion(sesion.token).catch(() => undefined)
     borrarSesion()
     setSesion(null)
+    setCerrandoSesion(false)
   }
 
   if (comprobando) return null
@@ -130,6 +135,7 @@ export default function App() {
       handleSesionGoogle={handleSesionGoogle}
       handleErrorGoogle={handleErrorGoogle}
       handleCerrarSesion={handleCerrarSesion}
+      cerrandoSesion={cerrandoSesion}
       error={error}
       loading={cargando}
     />

@@ -102,6 +102,9 @@ export const leerResultadoGoogle = (
   return { error: MENSAJES_GOOGLE[codigo] ?? MENSAJES_GOOGLE.google }
 }
 
+export const cerrarSesion = (token: string) =>
+  peticion<null>("/auth/logout", { metodo: "POST", token })
+
 export const refrescar = (refreshToken: string) =>
   post<Pick<Sesion, "token" | "refresh_token">>("/auth/refresh", {
     refresh_token: refreshToken,
