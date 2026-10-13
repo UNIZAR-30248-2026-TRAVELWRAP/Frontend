@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams } from "react-router-dom";
 import type { ComponentProps } from "react";
 import type { Sesion } from "../services/authApi";
 import Login from "../screens/Login";
@@ -8,7 +8,6 @@ import InvitarViajeros from "../screens/InvitarViajeros";
 import AuthCallback from "../screens/AuthCallback";
 import Registro from "../screens/Registro";
 import UnirseViaje from "../screens/UnirseViaje";
-import InvitarViajerosDeViaje from "../screens/InvitarViajerosDeViaje";
 import { rutaTrasLogin } from "../services/invitacionPendiente";
 
 interface AppRouterProps {
@@ -40,6 +39,13 @@ function RutaRegistro(props: Omit<ComponentProps<typeof Registro>, "onIrALogin">
 function RutaMisViajes(props: Omit<ComponentProps<typeof MisViajes>, "onCreateTrip">) {
   const navigate = useNavigate();
   return <MisViajes {...props} onCreateTrip={() => navigate("/viajes/nuevo")} />;
+}
+
+// El enlace de invitación lo pide la propia pantalla al backend con el viaje de la URL
+function RutaInvitarViajeros({ sesion }: { sesion: Sesion }) {
+  const { viajeId } = useParams();
+  const navigate = useNavigate();
+  return <InvitarViajeros viajeId={viajeId} tokenSesion={sesion.token} onBack={() => navigate(-1)} />;
 }
 
 // De momento el viaje no se guarda: al crearlo se vuelve a «Mis viajes»
@@ -121,7 +127,7 @@ export default function AppRouter({
         <Route
           path="/viajes/:viajeId/invitar"
           element={
-            session ? <InvitarViajerosDeViaje sesion={session} /> : <Navigate to="/login" replace />
+            session ? <RutaInvitarViajeros sesion={session} /> : <Navigate to="/login" replace />
           }
         />
 

@@ -1,5 +1,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react"
 import { QRCodeSVG } from "qrcode.react"
+import { ApiError } from "../services/authApi"
+import { obtenerEnlaceInvitacion } from "../services/invitacionesApi"
 
 // ─── Tokens de diseño ──────────────────────────────────
 const C = {
@@ -10,6 +12,7 @@ const C = {
   border: "#E2E8F0",
   green: "#276749",
   greenBg: "#F0FFF4",
+  red: "#C53030",
 }
 
 const NUNITO = "'Nunito', sans-serif"
@@ -164,6 +167,9 @@ const cardStyle: CSSProperties = {
 type InvitarViajerosProps = {
   tripName?: string
   members?: Miembro[]
+  // Con viajeId y tokenSesion el enlace se pide al backend; si no, se usa inviteLink (datos de ejemplo)
+  viajeId?: string
+  tokenSesion?: string
   inviteLink?: string
   onBack?: () => void
 }
@@ -171,11 +177,33 @@ type InvitarViajerosProps = {
 export default function InvitarViajeros({
   tripName = "Roma 2025",
   members = MIEMBROS_DEMO,
+  viajeId,
+  tokenSesion,
   inviteLink = "https://travelwrap.app/unirse/roma2025",
   onBack,
 }: InvitarViajerosProps) {
   const [copied, setCopied] = useState(false)
   const [qrAmpliado, setQrAmpliado] = useState(false)
+  const [enlaceDelViaje, setEnlaceDelViaje] = useState("")
+  const [errorEnlace, setErrorEnlace] = useState("")
+
+  const pideEnlaceAlBackend = Boolean(viajeId && tokenSesion)
+  const enlace = pideEnlaceAlBackend ? enlaceDelViaje : inviteLink
+
+  useEffect(() => {
+    if (!viajeId || !tokenSesion) return
+    let vigente = true
+    obtenerEnlaceInvitacion(viajeId, tokenSesion)
+      .then((invitacion) => {
+        if (vigente) setEnlaceDelViaje(invitacion.enlace)
+      })
+      .catch((e) => {
+        if (vigente) setErrorEnlace(e instanceof ApiError ? e.message : "Ha ocurrido un error")
+      })
+    return () => {
+      vigente = false
+    }
+  }, [viajeId, tokenSesion])
 
   useEffect(() => {
     if (!qrAmpliado) return
@@ -188,13 +216,22 @@ export default function InvitarViajeros({
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(inviteLink)
+      await navigator.clipboard.writeText(enlace)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
       setCopied(false)
     }
   }
+
+  if (errorEnlace) {
+    return (
+      <div role="alert" style={{ padding: 24, fontFamily: NUNITO, color: C.red, fontWeight: 700 }}>
+        {errorEnlace}
+      </div>
+    )
+  }
+  if (!enlace) return null
 
   return (
     <div style={{ background: C.bg, minHeight: "100vh" }}>
@@ -319,7 +356,7 @@ export default function InvitarViajeros({
                 }}
               >
                 <QRCodeSVG
-                  value={inviteLink}
+                  value={enlace}
                   fgColor={C.navy}
                   style={{ display: "block", width: "100%", height: "100%" }}
                 />
@@ -387,7 +424,7 @@ export default function InvitarViajeros({
                   whiteSpace: "nowrap",
                 }}
               >
-                {inviteLink}
+                {enlace}
               </span>
               <button
                 type="button"
@@ -505,7 +542,7 @@ export default function InvitarViajeros({
               {tripName}
             </div>
             <QRCodeSVG
-              value={inviteLink}
+              value={enlace}
               size={280}
               fgColor={C.navy}
               marginSize={2}
