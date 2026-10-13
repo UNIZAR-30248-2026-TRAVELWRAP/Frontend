@@ -8,6 +8,7 @@ import InvitarViajeros from "../screens/InvitarViajeros";
 import AuthCallback from "../screens/AuthCallback";
 import Registro from "../screens/Registro";
 import UnirseViaje from "../screens/UnirseViaje";
+import Perfil from "../screens/Perfil";
 import { rutaTrasLogin } from "../services/invitacionPendiente";
 
 interface AppRouterProps {
@@ -22,6 +23,7 @@ interface AppRouterProps {
   handleGoogleLogin: () => void;
   handleSesionGoogle: (sesion: Sesion) => void;
   handleErrorGoogle: (mensaje: string) => void;
+  handleCerrarSesion: () => void;
   error: string;
   loading: boolean;
 }
@@ -36,9 +38,14 @@ function RutaRegistro(props: Omit<ComponentProps<typeof Registro>, "onIrALogin">
   return <Registro {...props} onIrALogin={() => navigate("/login")} />;
 }
 
-function RutaMisViajes(props: Omit<ComponentProps<typeof MisViajes>, "onCreateTrip">) {
+function RutaMisViajes(props: Omit<ComponentProps<typeof MisViajes>, "onCreateTrip" | "onViewPerfil">) {
   const navigate = useNavigate();
-  return <MisViajes {...props} onCreateTrip={() => navigate("/viajes/nuevo")} />;
+  return <MisViajes {...props} onCreateTrip={() => navigate("/viajes/nuevo")} onViewPerfil={() => navigate("/perfil")} />;
+}
+
+function RutaPerfil(props: Omit<ComponentProps<typeof Perfil>, "onVolver">) {
+  const navigate = useNavigate();
+  return <Perfil {...props} onVolver={() => navigate("/")} />;
 }
 
 // El enlace de invitación lo pide la propia pantalla al backend con el viaje de la URL
@@ -66,6 +73,7 @@ export default function AppRouter({
   handleGoogleLogin,
   handleSesionGoogle,
   handleErrorGoogle,
+  handleCerrarSesion,
   error,
   loading,
 }: AppRouterProps) {
@@ -99,6 +107,22 @@ export default function AppRouter({
               <RutaMisViajes
                 nombreUsuario={session.usuario.nombre ?? session.usuario.email.split("@")[0]}
                 emailUsuario={session.usuario.email}
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+
+        {/* Mi Perfil y cierre de sesión (privada) */}
+        <Route
+          path="/perfil"
+          element={
+            session ? (
+              <RutaPerfil
+                nombre={session.usuario.nombre ?? session.usuario.email.split("@")[0]}
+                email={session.usuario.email}
+                onCerrarSesion={handleCerrarSesion}
               />
             ) : (
               <Navigate to="/login" replace />

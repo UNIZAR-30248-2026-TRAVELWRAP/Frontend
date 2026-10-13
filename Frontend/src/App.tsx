@@ -107,6 +107,11 @@ export default function App() {
     setError(mensaje)
   }, [])
 
+  const handleCerrarSesion = () => {
+    borrarSesion()
+    setSesion(null)
+  }
+
   if (comprobando) return null
 
   return (
@@ -124,6 +129,7 @@ export default function App() {
       handleGoogleLogin={handleGoogleLogin}
       handleSesionGoogle={handleSesionGoogle}
       handleErrorGoogle={handleErrorGoogle}
+      handleCerrarSesion={handleCerrarSesion}
       error={error}
       loading={cargando}
     />
