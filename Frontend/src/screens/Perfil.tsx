@@ -3,7 +3,7 @@ import Avatar from "../components/Avatar"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import SectionLabel from "../components/SectionLabel"
-import { C, NUNITO } from "../styles/tokens"
+import { C, NUNITO, RADIUS } from "../styles/tokens"
 
 type PerfilProps = {
   nombre: string
@@ -38,7 +38,7 @@ export default function Perfil({
           style={{
             background: `linear-gradient(160deg, ${C.navy} 0%, ${C.blue} 100%)`,
             padding: "20px 20px 32px",
-            borderRadius: 25,
+            borderRadius: RADIUS.header,
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
@@ -70,6 +70,7 @@ export default function Perfil({
               style={{
                 width: 88,
                 height: 88,
+                boxSizing: "border-box",
                 borderRadius: "50%",
                 border: "3px solid rgba(255,255,255,0.4)",
                 overflow: "hidden",
