@@ -13,6 +13,9 @@ let navegador: Browser;
 let pagina: Page;
 let usuario: { email: string; password: string } | null = null;
 
+// Página del escenario en curso, para los pasos definidos en otros ficheros
+export const paginaActual = () => pagina;
+
 BeforeAll(async () => {
   servidor = await createServer({
     configFile: fileURLToPath(new URL('../../vite.config.ts', import.meta.url)),
