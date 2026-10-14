@@ -2,23 +2,16 @@ import { useState, type CSSProperties, type FormEvent } from "react"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import SectionLabel from "../components/SectionLabel"
+import { ApiError } from "../services/authApi"
+import { crearViaje, type Viaje } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
-
-// ─── Tipos ────────────────────────────────────────────────────────────────────
-export type NuevoViaje = {
-  nombre: string
-  fechaInicio: string
-  fechaFin: string
-  presupuesto: number
-  // null: el destino se decidirá por votación
-  destino: string | null
-}
 
 type ModoDestino = "votar" | "elegido"
 
-const MODOS_DESTINO: { modo: ModoDestino; texto: string; icono: string }[] = [
-  { modo: "votar", texto: "Votar destino", icono: "vote" },
-  { modo: "elegido", texto: "Destino ya elegido", icono: "pin" },
+// «Votar destino» se habilitará al implementar las votaciones
+const MODOS_DESTINO: { modo: ModoDestino; texto: string; icono: string; disponible: boolean }[] = [
+  { modo: "votar", texto: "Votar destino", icono: "vote", disponible: false },
+  { modo: "elegido", texto: "Destino ya elegido", icono: "pin", disponible: true },
 ]
 
 const inputStyle: CSSProperties = {
@@ -47,17 +40,20 @@ const labelStyle: CSSProperties = {
 
 // ─── Pantalla: Nuevo viaje ────────────────────────────────────────────────────
 type CrearViajeProps = {
+  tokenSesion: string
   onBack?: () => void
-  onCreate?: (viaje: NuevoViaje) => void
+  onCreated?: (viaje: Viaje) => void
 }
 
-export default function CrearViaje({ onBack, onCreate }: CrearViajeProps) {
+export default function CrearViaje({ tokenSesion, onBack, onCreated }: CrearViajeProps) {
   const [nombre, setNombre] = useState("")
   const [fechaInicio, setFechaInicio] = useState("")
   const [fechaFin, setFechaFin] = useState("")
   const [presupuesto, setPresupuesto] = useState("")
-  const [modoDestino, setModoDestino] = useState<ModoDestino>("votar")
+  const [modoDestino, setModoDestino] = useState<ModoDestino>("elegido")
   const [destino, setDestino] = useState("")
+  const [enviando, setEnviando] = useState(false)
+  const [error, setError] = useState("")
 
   // Las fechas en formato AAAA-MM-DD se pueden comparar como texto
   const avisoFechas =
@@ -71,18 +67,30 @@ export default function CrearViaje({ onBack, onCreate }: CrearViajeProps) {
     nombre.trim() !== "" &&
     avisoFechas === "" &&
     presupuestoValido &&
-    (modoDestino === "votar" || destino.trim() !== "")
+    (modoDestino === "votar" || destino.trim() !== "") &&
+    !enviando
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
     if (!canSubmit) return
-    onCreate?.({
-      nombre: nombre.trim(),
-      fechaInicio,
-      fechaFin,
-      presupuesto: Number(presupuesto),
-      destino: modoDestino === "elegido" ? destino.trim() : null,
-    })
+    setEnviando(true)
+    setError("")
+    try {
+      const viaje = await crearViaje(
+        {
+          nombre: nombre.trim(),
+          presupuesto: Number(presupuesto),
+          destino: modoDestino === "elegido" ? destino.trim() : null,
+          fecha_inicio: fechaInicio || null,
+          fecha_fin: fechaFin || null,
+        },
+        tokenSesion,
+      )
+      onCreated?.(viaje)
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Ha ocurrido un error")
+      setEnviando(false)
+    }
   }
 
   return (
@@ -198,7 +206,7 @@ export default function CrearViaje({ onBack, onCreate }: CrearViajeProps) {
           {/* Destino */}
           <SectionLabel>Destino</SectionLabel>
           <div role="radiogroup" aria-label="Destino" style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-            {MODOS_DESTINO.map(({ modo, texto, icono }) => {
+            {MODOS_DESTINO.map(({ modo, texto, icono, disponible }) => {
               const activo = modoDestino === modo
               return (
                 <button
@@ -206,6 +214,8 @@ export default function CrearViaje({ onBack, onCreate }: CrearViajeProps) {
                   role="radio"
                   aria-checked={activo}
                   key={modo}
+                  disabled={!disponible}
+                  title={disponible ? undefined : "Disponible próximamente"}
                   onClick={() => setModoDestino(modo)}
                   style={{
                     flex: 1,
@@ -214,7 +224,8 @@ export default function CrearViaje({ onBack, onCreate }: CrearViajeProps) {
                     border: `1.5px solid ${activo ? C.blue : C.border}`,
                     borderRadius: RADIUS.md,
                     padding: "12px 10px",
-                    cursor: "pointer",
+                    cursor: disponible ? "pointer" : "not-allowed",
+                    opacity: disponible ? 1 : 0.5,
                     fontFamily: NUNITO,
                     fontWeight: 700,
                     fontSize: 13,
@@ -227,6 +238,7 @@ export default function CrearViaje({ onBack, onCreate }: CrearViajeProps) {
                 >
                   <Icon name={icono} size={20} color={activo ? "white" : C.muted} strokeWidth={1.8} />
                   {texto}
+                  {!disponible && <span style={{ fontSize: 10, fontWeight: 600 }}>Próximamente</span>}
                 </button>
               )
             })}
@@ -240,6 +252,25 @@ export default function CrearViaje({ onBack, onCreate }: CrearViajeProps) {
                 placeholder="Ciudad o país"
                 style={inputStyle}
               />
+            </div>
+          )}
+
+          {error && (
+            <div
+              role="alert"
+              style={{
+                background: C.redBg,
+                border: `1.5px solid ${C.red}55`,
+                borderRadius: 12,
+                padding: "10px 14px",
+                color: C.red,
+                fontFamily: NUNITO,
+                fontSize: 13,
+                fontWeight: 700,
+                marginBottom: 16,
+              }}
+            >
+              {error}
             </div>
           )}
 
@@ -261,7 +292,7 @@ export default function CrearViaje({ onBack, onCreate }: CrearViajeProps) {
               boxShadow: SHADOWS.button,
             }}
           >
-            {modoDestino === "elegido" ? "Crear viaje" : "Crear viaje y elegir destino"}
+            {enviando ? "Creando viaje..." : modoDestino === "elegido" ? "Crear viaje" : "Crear viaje y elegir destino"}
           </button>
         </form>
       </div>

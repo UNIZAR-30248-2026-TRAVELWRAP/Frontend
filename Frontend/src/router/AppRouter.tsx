@@ -56,10 +56,10 @@ function RutaInvitarViajeros({ sesion }: { sesion: Sesion }) {
   return <InvitarViajeros viajeId={viajeId} tokenSesion={sesion.token} onBack={() => navigate(-1)} />;
 }
 
-// De momento el viaje no se guarda: al crearlo se vuelve a «Mis viajes»
-function RutaCrearViaje() {
+// Al crear el viaje se vuelve a «Mis viajes», que lo muestra al recargar la lista
+function RutaCrearViaje({ sesion }: { sesion: Sesion }) {
   const navigate = useNavigate();
-  return <CrearViaje onBack={() => navigate("/")} onCreate={() => navigate("/")} />;
+  return <CrearViaje tokenSesion={sesion.token} onBack={() => navigate("/")} onCreated={() => navigate("/")} />;
 }
 
 export default function AppRouter({
@@ -109,6 +109,7 @@ export default function AppRouter({
               <RutaMisViajes
                 nombreUsuario={session.usuario.nombre ?? session.usuario.email.split("@")[0]}
                 emailUsuario={session.usuario.email}
+                tokenSesion={session.token}
               />
             ) : (
               <Navigate to="/login" replace />
@@ -136,7 +137,7 @@ export default function AppRouter({
         {/* Formulario «Nuevo viaje» (privada) */}
         <Route
           path="/viajes/nuevo"
-          element={session ? <RutaCrearViaje /> : <Navigate to="/login" replace />}
+          element={session ? <RutaCrearViaje sesion={session} /> : <Navigate to="/login" replace />}
         />
 
         {/* Ruta para invitar a otros viajeros (protegida) */}
