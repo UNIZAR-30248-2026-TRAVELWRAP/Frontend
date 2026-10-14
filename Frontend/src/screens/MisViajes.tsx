@@ -258,11 +258,31 @@ export default function MisViajes({
         </div>
 
         <div style={{ padding: "20px 16px 0" }}>
-          {cargando && (
-            <div role="status" style={{ fontFamily: NUNITO, color: C.muted, fontSize: 13, marginBottom: 14 }}>
-              Cargando tus viajes...
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={onCreateTrip}
+            style={{
+              width: "100%",
+              background: "white",
+              color: C.blue,
+              border: `2px dashed ${C.blue}`,
+              borderRadius: RADIUS.lg,
+              padding: 16,
+              fontFamily: NUNITO,
+              fontWeight: 800,
+              fontSize: 14,
+              cursor: "pointer",
+              marginBottom: 24,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+            }}
+          >
+            <Icon name="plus" size={18} color={C.blue} strokeWidth={2.5} />
+            Crear nuevo viaje
+          </button>
+
           {error && (
             <div
               role="alert"
@@ -447,31 +467,6 @@ export default function MisViajes({
               </button>
             ),
           )}
-
-          <button
-            type="button"
-            onClick={onCreateTrip}
-            style={{
-              width: "100%",
-              background: "white",
-              color: C.blue,
-              border: `2px dashed ${C.blue}`,
-              borderRadius: RADIUS.lg,
-              padding: 16,
-              fontFamily: NUNITO,
-              fontWeight: 800,
-              fontSize: 14,
-              cursor: "pointer",
-              marginBottom: 24,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-            }}
-          >
-            <Icon name="plus" size={18} color={C.blue} strokeWidth={2.5} />
-            Crear nuevo viaje
-          </button>
 
           {/* Viajes anteriores: los finalizados (los archivados no se muestran aquí) */}
           {anteriores.length > 0 && (
