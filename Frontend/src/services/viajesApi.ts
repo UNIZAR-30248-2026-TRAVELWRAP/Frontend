@@ -48,3 +48,31 @@ export const obtenerViaje = (viajeId: string, tokenSesion: string) =>
 
 export const crearViaje = (viaje: NuevoViaje, tokenSesion: string) =>
   peticion<Viaje>("/viajes", { metodo: "POST", cuerpo: viaje, token: tokenSesion })
+
+// Solo se envían los campos que cambian. El destino se puede cambiar, pero no quitar
+export type CambiosViaje = Partial<{
+  nombre: string
+  presupuesto: number
+  destino: string
+  fecha_inicio: string | null
+  fecha_fin: string | null
+}>
+
+// Solo el creador puede editar el viaje, y solo mientras está activo
+export const editarViaje = (viajeId: string, cambios: CambiosViaje, tokenSesion: string) =>
+  peticion<ViajeDelUsuario>(`/viajes/${encodeURIComponent(viajeId)}`, {
+    metodo: "PATCH",
+    cuerpo: cambios,
+    token: tokenSesion,
+  })
+
+// Cierra el viaje y lo deja archivado, de solo lectura (solo el creador)
+export const archivarViaje = (viajeId: string, tokenSesion: string) =>
+  peticion<ViajeDelUsuario>(`/viajes/${encodeURIComponent(viajeId)}/archivar`, {
+    metodo: "POST",
+    token: tokenSesion,
+  })
+
+// Solo el creador, y solo viajes archivados. Responde 204 sin cuerpo
+export const eliminarViaje = (viajeId: string, tokenSesion: string) =>
+  peticion<null>(`/viajes/${encodeURIComponent(viajeId)}`, { metodo: "DELETE", token: tokenSesion })
