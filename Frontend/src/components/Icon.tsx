@@ -162,6 +162,12 @@ export default function Icon({
         <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
       </>
     ),
+    close: (
+      <>
+        <line x1="18" y1="6" x2="6" y2="18" />
+        <line x1="6" y1="6" x2="18" y2="18" />
+      </>
+    ),
     check: (
       <>
         <polyline points="20 6 9 17 4 12" />

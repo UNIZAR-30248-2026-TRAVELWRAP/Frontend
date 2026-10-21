@@ -1,3 +1,5 @@
+import { avisarSinConexion } from "./avisosRed"
+
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000/api"
 
 export type Usuario = {
@@ -47,6 +49,7 @@ export const peticion = async <T>(
       body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo),
     })
   } catch {
+    avisarSinConexion()
     throw new ApiError(0, "sin_conexion", "No se puede conectar con el servidor")
   }
 
