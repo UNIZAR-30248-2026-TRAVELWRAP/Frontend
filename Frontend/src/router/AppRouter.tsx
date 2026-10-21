@@ -9,6 +9,9 @@ import AuthCallback from "../screens/AuthCallback";
 import Registro from "../screens/Registro";
 import UnirseViaje from "../screens/UnirseViaje";
 import Perfil from "../screens/Perfil";
+import InicioViaje from "../screens/InicioViaje";
+import EditarViaje from "../screens/EditarViaje";
+import ViajesArchivados from "../screens/ViajesArchivados";
 import { rutaTrasLogin } from "../services/invitacionPendiente";
 
 interface AppRouterProps {
@@ -39,14 +42,70 @@ function RutaRegistro(props: Omit<ComponentProps<typeof Registro>, "onIrALogin">
   return <Registro {...props} onIrALogin={() => navigate("/login")} />;
 }
 
-function RutaMisViajes(props: Omit<ComponentProps<typeof MisViajes>, "onCreateTrip" | "onViewPerfil">) {
+type NavegacionMisViajes = "onCreateTrip" | "onViewPerfil" | "onSelectTrip" | "onSelectPendingTrip" | "onViewPastTrip";
+
+// Cualquier tarjeta (activa, pendiente de destino o anterior) abre el inicio de ese viaje
+function RutaMisViajes(props: Omit<ComponentProps<typeof MisViajes>, NavegacionMisViajes>) {
   const navigate = useNavigate();
-  return <MisViajes {...props} onCreateTrip={() => navigate("/viajes/nuevo")} onViewPerfil={() => navigate("/perfil")} />;
+  const abrirViaje = (id: string) => navigate(`/viajes/${id}`);
+  return (
+    <MisViajes
+      {...props}
+      onCreateTrip={() => navigate("/viajes/nuevo")}
+      onViewPerfil={() => navigate("/perfil")}
+      onSelectTrip={abrirViaje}
+      onSelectPendingTrip={abrirViaje}
+      onViewPastTrip={abrirViaje}
+    />
+  );
 }
 
-function RutaPerfil(props: Omit<ComponentProps<typeof Perfil>, "onVolver">) {
+function RutaPerfil(props: Omit<ComponentProps<typeof Perfil>, "onVolver" | "onVerArchivados">) {
   const navigate = useNavigate();
-  return <Perfil {...props} onVolver={() => navigate("/")} />;
+  return <Perfil {...props} onVolver={() => navigate("/")} onVerArchivados={() => navigate("/viajes/archivados")} />;
+}
+
+// Inicio del viaje de la URL. Al cerrarlo queda archivado y se va a «Viajes archivados»
+function RutaInicioViaje({ sesion }: { sesion: Sesion }) {
+  const { viajeId = "" } = useParams();
+  const navigate = useNavigate();
+  return (
+    <InicioViaje
+      key={viajeId}
+      viajeId={viajeId}
+      tokenSesion={sesion.token}
+      onVolver={() => navigate("/")}
+      onEditar={() => navigate(`/viajes/${viajeId}/editar`)}
+      onInvitar={() => navigate(`/viajes/${viajeId}/invitar`)}
+      onArchivado={() => navigate("/viajes/archivados")}
+    />
+  );
+}
+
+// Al guardar se vuelve al inicio del viaje, que vuelve a pedir los datos ya actualizados
+function RutaEditarViaje({ sesion }: { sesion: Sesion }) {
+  const { viajeId = "" } = useParams();
+  const navigate = useNavigate();
+  return (
+    <EditarViaje
+      key={viajeId}
+      viajeId={viajeId}
+      tokenSesion={sesion.token}
+      onVolver={() => navigate(`/viajes/${viajeId}`)}
+      onGuardado={() => navigate(`/viajes/${viajeId}`, { replace: true })}
+    />
+  );
+}
+
+function RutaViajesArchivados({ sesion }: { sesion: Sesion }) {
+  const navigate = useNavigate();
+  return (
+    <ViajesArchivados
+      tokenSesion={sesion.token}
+      onVolver={() => navigate("/perfil")}
+      onVerViaje={(id) => navigate(`/viajes/${id}`)}
+    />
+  );
 }
 
 // El enlace de invitación lo pide la propia pantalla al backend con el viaje de la URL
@@ -110,6 +169,7 @@ export default function AppRouter({
                 nombreUsuario={session.usuario.nombre ?? session.usuario.email.split("@")[0]}
                 emailUsuario={session.usuario.email}
                 tokenSesion={session.token}
+                mostrarEjemplos={false}
               />
             ) : (
               <Navigate to="/login" replace />
@@ -138,6 +198,24 @@ export default function AppRouter({
         <Route
           path="/viajes/nuevo"
           element={session ? <RutaCrearViaje sesion={session} /> : <Navigate to="/login" replace />}
+        />
+
+        {/* Viajes archivados, de solo lectura, con la opción de eliminarlos (privada) */}
+        <Route
+          path="/viajes/archivados"
+          element={session ? <RutaViajesArchivados sesion={session} /> : <Navigate to="/login" replace />}
+        />
+
+        {/* Inicio del viaje con la barra inferior (privada) */}
+        <Route
+          path="/viajes/:viajeId"
+          element={session ? <RutaInicioViaje sesion={session} /> : <Navigate to="/login" replace />}
+        />
+
+        {/* Editar los datos del viaje: solo el creador y mientras está activo (privada) */}
+        <Route
+          path="/viajes/:viajeId/editar"
+          element={session ? <RutaEditarViaje sesion={session} /> : <Navigate to="/login" replace />}
         />
 
         {/* Ruta para invitar a otros viajeros (protegida) */}
