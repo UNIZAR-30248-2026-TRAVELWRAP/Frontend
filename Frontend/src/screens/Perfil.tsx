@@ -9,6 +9,7 @@ type PerfilProps = {
   nombre: string
   email: string
   onVolver?: () => void
+  onVerArchivados?: () => void
   onCerrarSesion?: () => void
   cerrandoSesion?: boolean
   error?: string
@@ -18,6 +19,7 @@ export default function Perfil({
   nombre,
   email,
   onVolver,
+  onVerArchivados,
   onCerrarSesion,
   cerrandoSesion = false,
   error,
@@ -88,6 +90,47 @@ export default function Perfil({
         </div>
 
         <div style={{ padding: "24px 16px 32px" }}>
+          <SectionLabel>Mis viajes</SectionLabel>
+          <button
+            type="button"
+            onClick={onVerArchivados}
+            style={{
+              width: "100%",
+              background: "white",
+              border: `1.5px solid ${C.border}`,
+              borderRadius: 18,
+              padding: "16px 20px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 14,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+              marginBottom: 24,
+            }}
+          >
+            <div
+              style={{
+                width: 46,
+                height: 46,
+                borderRadius: 13,
+                background: C.lightBlue,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <Icon name="folder" size={22} color={C.blue} strokeWidth={1.8} />
+            </div>
+            <div style={{ flex: 1, textAlign: "left" }}>
+              <div style={{ fontFamily: NUNITO, fontWeight: 800, color: C.navy, fontSize: 14 }}>Viajes archivados</div>
+              <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, marginTop: 2 }}>
+                Consulta o elimina los viajes que ya cerraste
+              </div>
+            </div>
+            <Icon name="arrow_right" size={18} color={C.muted} strokeWidth={2} />
+          </button>
+
           <SectionLabel>Cuenta y seguridad</SectionLabel>
 
           {error && (
