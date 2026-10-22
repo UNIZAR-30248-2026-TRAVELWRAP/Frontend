@@ -88,35 +88,6 @@ function SectionLabel({ children }: { children: ReactNode }) {
   )
 }
 
-function Badge({
-  children,
-  bg,
-  color,
-}: {
-  children: ReactNode
-  bg: string
-  color: string
-}) {
-  return (
-    <div
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 4,
-        background: bg,
-        color,
-        borderRadius: 7,
-        padding: "3px 9px",
-        fontSize: 10,
-        fontWeight: 700,
-        fontFamily: NUNITO,
-      }}
-    >
-      {children}
-    </div>
-  )
-}
-
 function Avatar({ member, size = 38 }: { member: Miembro; size?: number }) {
   return (
     <div
@@ -311,9 +282,6 @@ export default function InvitarViajeros({ viajeId, tokenSesion, onBack }: Invita
                     Miembro activo
                   </div>
                 </div>
-                <Badge bg={C.greenBg} color={C.green}>
-                  Unido
-                </Badge>
               </div>
             ))}
           </div>
