@@ -1,7 +1,10 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react"
 import { QRCodeSVG } from "qrcode.react"
+import type { Miembro } from "../components/Avatar"
 import { ApiError } from "../services/authApi"
 import { obtenerEnlaceInvitacion } from "../services/invitacionesApi"
+import { obtenerViaje } from "../services/viajesApi"
+import { aMiembro } from "../utils/formatoViaje"
 
 // ─── Tokens de diseño ──────────────────────────────────
 const C = {
@@ -16,19 +19,6 @@ const C = {
 }
 
 const NUNITO = "'Nunito', sans-serif"
-
-// ─── Tipos y datos de ejemplo ─────────────────────────────────────────────────
-export type Miembro = {
-  name: string
-  initial: string
-  color: string
-}
-
-const MIEMBROS_DEMO: Miembro[] = [
-  { name: "Daniel", initial: "D", color: "#2B6CB0" },
-  { name: "Berta", initial: "B", color: "#276749" },
-  { name: "Adriana", initial: "A", color: "#DD6B20" },
-]
 
 // ─── Iconos (solo los que usa esta pantalla) ──────────────────────────────────
 type IconName = "arrow_left" | "search" | "close" | "check"
@@ -164,38 +154,36 @@ const cardStyle: CSSProperties = {
 }
 
 // ─── Pantalla: Invitar viajeros ───────────────────────────────────────────────
+// El enlace de invitación, el nombre del viaje y sus miembros se piden al backend
 type InvitarViajerosProps = {
-  tripName?: string
-  members?: Miembro[]
-  // Con viajeId y tokenSesion el enlace se pide al backend; si no, se usa inviteLink (datos de ejemplo)
-  viajeId?: string
-  tokenSesion?: string
-  inviteLink?: string
+  viajeId: string
+  tokenSesion: string
   onBack?: () => void
 }
 
-export default function InvitarViajeros({
-  tripName = "Roma 2025",
-  members = MIEMBROS_DEMO,
-  viajeId,
-  tokenSesion,
-  inviteLink = "https://travelwrap.app/unirse/roma2025",
-  onBack,
-}: InvitarViajerosProps) {
+type DatosInvitacion = {
+  enlace: string
+  nombreViaje: string
+  miembros: Miembro[]
+}
+
+export default function InvitarViajeros({ viajeId, tokenSesion, onBack }: InvitarViajerosProps) {
   const [copied, setCopied] = useState(false)
   const [qrAmpliado, setQrAmpliado] = useState(false)
-  const [enlaceDelViaje, setEnlaceDelViaje] = useState("")
+  const [datos, setDatos] = useState<DatosInvitacion | null>(null)
   const [errorEnlace, setErrorEnlace] = useState("")
-
-  const pideEnlaceAlBackend = Boolean(viajeId && tokenSesion)
-  const enlace = pideEnlaceAlBackend ? enlaceDelViaje : inviteLink
 
   useEffect(() => {
     if (!viajeId || !tokenSesion) return
     let vigente = true
-    obtenerEnlaceInvitacion(viajeId, tokenSesion)
-      .then((invitacion) => {
-        if (vigente) setEnlaceDelViaje(invitacion.enlace)
+    Promise.all([obtenerEnlaceInvitacion(viajeId, tokenSesion), obtenerViaje(viajeId, tokenSesion)])
+      .then(([invitacion, viaje]) => {
+        if (!vigente) return
+        setDatos({
+          enlace: invitacion.enlace,
+          nombreViaje: viaje.nombre,
+          miembros: viaje.miembros.map((m, i) => aMiembro(m.nombre, i)),
+        })
       })
       .catch((e) => {
         if (vigente) setErrorEnlace(e instanceof ApiError ? e.message : "Ha ocurrido un error")
@@ -215,8 +203,9 @@ export default function InvitarViajeros({
   }, [qrAmpliado])
 
   const handleCopy = async () => {
+    if (!datos) return
     try {
-      await navigator.clipboard.writeText(enlace)
+      await navigator.clipboard.writeText(datos.enlace)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
@@ -231,7 +220,8 @@ export default function InvitarViajeros({
       </div>
     )
   }
-  if (!enlace) return null
+  if (!datos) return null
+  const { enlace, nombreViaje, miembros } = datos
 
   return (
     <div style={{ background: C.bg, minHeight: "100vh" }}>
@@ -265,7 +255,7 @@ export default function InvitarViajeros({
             </button>
             <div>
               <SectionLabel>
-                <span style={{ color: "rgba(255,255,255,0.55)" }}>{tripName}</span>
+                <span style={{ color: "rgba(255,255,255,0.55)" }}>{nombreViaje}</span>
               </SectionLabel>
               <div
                 style={{
@@ -286,16 +276,16 @@ export default function InvitarViajeros({
           {/* Miembros actuales */}
           <SectionLabel>Miembros actuales</SectionLabel>
           <div style={{ ...cardStyle, overflow: "hidden", marginBottom: 22 }}>
-            {members.map((m, i) => (
+            {miembros.map((m, i) => (
               <div
-                key={m.name}
+                key={`${m.name}-${i}`}
                 style={{
                   display: "flex",
                   alignItems: "center",
                   gap: 12,
                   padding: "13px 16px",
                   borderBottom:
-                    i < members.length - 1 ? `1px solid ${C.border}` : "none",
+                    i < miembros.length - 1 ? `1px solid ${C.border}` : "none",
                 }}
               >
                 <Avatar member={m} />
@@ -330,7 +320,7 @@ export default function InvitarViajeros({
 
           {/* Compartir enlace */}
           <SectionLabel>Compartir enlace de invitacion</SectionLabel>
-          <div style={{ ...cardStyle, padding: 16, marginBottom: 24 }}>
+          <div style={{ ...cardStyle, padding: 16 }}>
             <div
               style={{
                 display: "flex",
@@ -398,7 +388,7 @@ export default function InvitarViajeros({
                     lineHeight: 1.5,
                   }}
                 >
-                  Escanea el codigo para unirte directamente al viaje {tripName}.
+                  Escanea el codigo para unirte directamente al viaje {nombreViaje}.
                 </div>
               </div>
             </div>
@@ -456,25 +446,6 @@ export default function InvitarViajeros({
               </button>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={onBack}
-            style={{
-              width: "100%",
-              background: C.navy,
-              color: "white",
-              border: "none",
-              borderRadius: 16,
-              padding: 15,
-              fontFamily: NUNITO,
-              fontWeight: 800,
-              fontSize: 15,
-              cursor: "pointer",
-            }}
-          >
-            Listo
-          </button>
         </div>
       </div>
 
@@ -539,7 +510,7 @@ export default function InvitarViajeros({
                 marginBottom: 16,
               }}
             >
-              {tripName}
+              {nombreViaje}
             </div>
             <QRCodeSVG
               value={enlace}

@@ -112,7 +112,7 @@ function RutaViajesArchivados({ sesion }: { sesion: Sesion }) {
 function RutaInvitarViajeros({ sesion }: { sesion: Sesion }) {
   const { viajeId } = useParams();
   const navigate = useNavigate();
-  return <InvitarViajeros viajeId={viajeId} tokenSesion={sesion.token} onBack={() => navigate(-1)} />;
+  return <InvitarViajeros viajeId={viajeId ?? ""} tokenSesion={sesion.token} onBack={() => navigate(-1)} />;
 }
 
 // Al crear el viaje se vuelve a «Mis viajes», que lo muestra al recargar la lista
@@ -218,17 +218,6 @@ export default function AppRouter({
           element={session ? <RutaEditarViaje sesion={session} /> : <Navigate to="/login" replace />}
         />
 
-        {/* Ruta para invitar a otros viajeros (protegida) */}
-        <Route
-          path="/invitar-viajeros"
-          element={
-            session ? (
-              <InvitarViajeros />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
         {/* Invitar con el enlace real del viaje (protegida) */}
         <Route
           path="/viajes/:viajeId/invitar"

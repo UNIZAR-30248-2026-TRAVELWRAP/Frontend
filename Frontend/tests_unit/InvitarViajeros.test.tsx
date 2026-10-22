@@ -13,31 +13,54 @@ const respuesta = (estado: number, cuerpo: unknown) =>
     }),
   )
 
+const viaje = {
+  id: VIAJE_ID,
+  nombre: 'Lisboa 2027',
+  destino: 'Lisboa',
+  rol: 'creador',
+  miembros: [
+    { usuario_id: 'u1', nombre: 'Lucía', avatar_url: null, rol: 'creador' },
+    { usuario_id: 'u2', nombre: 'Marcos', avatar_url: null, rol: 'miembro' },
+  ],
+}
+
+// Backend simulado: responde al enlace de invitación y al detalle del viaje según la URL
+const backend = (enlace = respuesta(200, { token: 'x', enlace: ENLACE })) =>
+  vi.fn((url: string) => (url.endsWith('/invitacion') ? enlace : respuesta(200, viaje)))
+
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
 })
 
 describe('InvitarViajeros', () => {
-  it('con viaje y sesión pide el enlace al backend y lo muestra con su QR', async () => {
-    const fetchMock = vi.fn(() => respuesta(200, { token: 'x', enlace: ENLACE }))
+  it('con viaje y sesión pide al backend el enlace y los datos del viaje', async () => {
+    const fetchMock = backend()
     vi.stubGlobal('fetch', fetchMock)
 
     render(<InvitarViajeros viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
 
     expect(await screen.findByText(ENLACE)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Ampliar codigo QR' })).toBeTruthy()
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    const [url, opciones] = fetchMock.mock.calls[0] as unknown as [
-      string,
-      RequestInit & { headers: Record<string, string> },
-    ]
-    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/invitacion$`))
-    expect(opciones.method).toBe('GET')
-    expect(opciones.headers.Authorization).toBe('Bearer token-acceso')
+    const urls = fetchMock.mock.calls.map((llamada) => llamada[0] as string)
+    expect(urls.some((url) => url.endsWith(`/viajes/${VIAJE_ID}/invitacion`))).toBe(true)
+    expect(urls.some((url) => url.endsWith(`/viajes/${VIAJE_ID}`))).toBe(true)
+    for (const [, opciones] of fetchMock.mock.calls as unknown as [string, RequestInit & { headers: Record<string, string> }][]) {
+      expect(opciones.headers.Authorization).toBe('Bearer token-acceso')
+    }
   })
 
-  it('no pinta la pantalla hasta tener el enlace', () => {
+  it('muestra el nombre y los miembros del viaje', async () => {
+    vi.stubGlobal('fetch', backend())
+
+    render(<InvitarViajeros viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
+
+    expect(await screen.findByText('Lucía')).toBeTruthy()
+    expect(screen.getByText('Marcos')).toBeTruthy()
+    expect(screen.getAllByText(/Lisboa 2027/).length).toBeGreaterThan(0)
+  })
+
+  it('no pinta la pantalla hasta tener los datos', () => {
     vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})))
 
     const { container } = render(<InvitarViajeros viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
@@ -46,7 +69,7 @@ describe('InvitarViajeros', () => {
   })
 
   it('muestra el error del backend si no se puede obtener el enlace', async () => {
-    vi.stubGlobal('fetch', vi.fn(() =>
+    vi.stubGlobal('fetch', backend(
       respuesta(404, {
         error: { codigo: 'viaje_no_encontrado', mensaje: 'El viaje no existe o no perteneces a él' },
       }),
@@ -65,15 +88,5 @@ describe('InvitarViajeros', () => {
     render(<InvitarViajeros viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
 
     expect((await screen.findByRole('alert')).textContent).toBe('No se puede conectar con el servidor')
-  })
-
-  it('sin viaje usa el enlace recibido por props y no llama al backend', () => {
-    const fetchMock = vi.fn()
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<InvitarViajeros inviteLink="https://travelwrap.app/unirse/abc123" />)
-
-    expect(screen.getByText('https://travelwrap.app/unirse/abc123')).toBeTruthy()
-    expect(fetchMock).not.toHaveBeenCalled()
   })
 })
