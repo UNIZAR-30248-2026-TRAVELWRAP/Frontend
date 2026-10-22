@@ -162,6 +162,13 @@ export default function Icon({
         <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
       </>
     ),
+    info: (
+      <>
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="16" x2="12" y2="12" />
+        <line x1="12" y1="8" x2="12.01" y2="8" />
+      </>
+    ),
     close: (
       <>
         <line x1="18" y1="6" x2="6" y2="18" />
