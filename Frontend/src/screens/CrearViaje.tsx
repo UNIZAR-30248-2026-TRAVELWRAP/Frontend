@@ -8,10 +8,10 @@ import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 
 type ModoDestino = "votar" | "elegido"
 
-// «Votar destino» se habilitará al implementar las votaciones
-const MODOS_DESTINO: { modo: ModoDestino; texto: string; icono: string; disponible: boolean }[] = [
-  { modo: "votar", texto: "Votar destino", icono: "vote", disponible: false },
-  { modo: "elegido", texto: "Destino ya elegido", icono: "pin", disponible: true },
+// Con «Votar destino» el viaje se crea sin destino y se decide después por votación
+const MODOS_DESTINO: { modo: ModoDestino; texto: string; icono: string }[] = [
+  { modo: "votar", texto: "Votar destino", icono: "vote" },
+  { modo: "elegido", texto: "Destino ya elegido", icono: "pin" },
 ]
 
 const inputStyle: CSSProperties = {
@@ -206,7 +206,7 @@ export default function CrearViaje({ tokenSesion, onBack, onCreated }: CrearViaj
           {/* Destino */}
           <SectionLabel>Destino</SectionLabel>
           <div role="radiogroup" aria-label="Destino" style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-            {MODOS_DESTINO.map(({ modo, texto, icono, disponible }) => {
+            {MODOS_DESTINO.map(({ modo, texto, icono }) => {
               const activo = modoDestino === modo
               return (
                 <button
@@ -214,8 +214,6 @@ export default function CrearViaje({ tokenSesion, onBack, onCreated }: CrearViaj
                   role="radio"
                   aria-checked={activo}
                   key={modo}
-                  disabled={!disponible}
-                  title={disponible ? undefined : "Disponible próximamente"}
                   onClick={() => setModoDestino(modo)}
                   style={{
                     flex: 1,
@@ -224,8 +222,7 @@ export default function CrearViaje({ tokenSesion, onBack, onCreated }: CrearViaj
                     border: `1.5px solid ${activo ? C.blue : C.border}`,
                     borderRadius: RADIUS.md,
                     padding: "12px 10px",
-                    cursor: disponible ? "pointer" : "not-allowed",
-                    opacity: disponible ? 1 : 0.5,
+                    cursor: "pointer",
                     fontFamily: NUNITO,
                     fontWeight: 700,
                     fontSize: 13,
@@ -238,7 +235,6 @@ export default function CrearViaje({ tokenSesion, onBack, onCreated }: CrearViaj
                 >
                   <Icon name={icono} size={20} color={activo ? "white" : C.muted} strokeWidth={1.8} />
                   {texto}
-                  {!disponible && <span style={{ fontSize: 10, fontWeight: 600 }}>Próximamente</span>}
                 </button>
               )
             })}

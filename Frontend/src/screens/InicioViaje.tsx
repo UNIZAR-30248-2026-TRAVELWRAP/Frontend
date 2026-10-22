@@ -5,7 +5,6 @@ import Badge from "../components/Badge"
 import DialogoConfirmacion from "../components/DialogoConfirmacion"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
-import SectionLabel from "../components/SectionLabel"
 import { ApiError } from "../services/authApi"
 import { archivarViaje, obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
@@ -42,6 +41,9 @@ type InicioViajeProps = {
   onVolver?: () => void
   onEditar?: () => void
   onInvitar?: () => void
+  onVotaciones?: () => void
+  // Un viaje sin destino solo muestra la votación del destino
+  onPendienteDestino?: () => void
   // Tras cerrar el viaje (queda archivado)
   onArchivado?: (viaje: ViajeDelUsuario) => void
   onCambiarSeccion?: (seccion: SeccionViaje) => void
@@ -53,6 +55,8 @@ export default function InicioViaje({
   onVolver,
   onEditar,
   onInvitar,
+  onVotaciones,
+  onPendienteDestino,
   onArchivado,
   onCambiarSeccion,
 }: InicioViajeProps) {
@@ -76,6 +80,12 @@ export default function InicioViaje({
     }
   }, [viajeId, tokenSesion])
 
+  // Un viaje pendiente de destino solo muestra la votación del destino
+  const pendiente = viaje?.pendiente_destino === true
+  useEffect(() => {
+    if (pendiente) onPendienteDestino?.()
+  }, [pendiente, onPendienteDestino])
+
   const handleCerrarViaje = async () => {
     setCerrando(true)
     setErrorCierre("")
@@ -94,6 +104,8 @@ export default function InicioViaje({
   const activo = viaje?.estado === "activo"
   const esCreador = viaje?.rol === "creador"
   const miembros = (viaje?.miembros ?? []).map((m, i) => aMiembro(m.nombre, i))
+
+  if (pendiente) return null
 
   return (
     <div style={{ background: C.bg, minHeight: "100vh" }}>
@@ -267,20 +279,13 @@ export default function InicioViaje({
             </div>
           )}
 
-          {viaje?.pendiente_destino && (
-            <div style={avisoStyle(C.greenBg, `${C.greenMid}40`)}>
-              <Icon name="vote" size={18} color={C.green} strokeWidth={2} />
-              <span>El destino se decidirá por votación entre los viajeros (disponible próximamente).</span>
-            </div>
-          )}
-
+          {/* Viajeros con «Invitar» debajo y, a la derecha, acceso a las votaciones (como en el prototipo) */}
           {viaje && (
-            <div style={tarjetaStyle}>
-              <SectionLabel>
-                {miembros.length} {miembros.length === 1 ? "viajero" : "viajeros"}
-              </SectionLabel>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-                <AvatarStack members={miembros} size={36} max={5} />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "4px 0" }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
+                <div role="group" aria-label={`${miembros.length} ${miembros.length === 1 ? "viajero" : "viajeros"}`}>
+                  <AvatarStack members={miembros} size={36} max={5} />
+                </div>
                 {activo && (
                   <button
                     type="button"
@@ -288,23 +293,47 @@ export default function InicioViaje({
                     style={{
                       background: C.lightBlue,
                       border: "none",
-                      borderRadius: 10,
-                      padding: "8px 12px",
+                      borderRadius: 8,
+                      padding: "4px 11px",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
-                      gap: 5,
+                      gap: 4,
                       color: C.blue,
-                      fontSize: 12,
+                      fontSize: 10,
                       fontFamily: NUNITO,
-                      fontWeight: 800,
+                      fontWeight: 700,
                     }}
                   >
-                    <Icon name="plus" size={13} color={C.blue} strokeWidth={2.5} />
+                    <Icon name="plus" size={11} color={C.blue} strokeWidth={2.5} />
                     Invitar
                   </button>
                 )}
               </div>
+              {activo && (
+                <button
+                  type="button"
+                  onClick={onVotaciones}
+                  style={{
+                    width: 80,
+                    height: 80,
+                    background: "white",
+                    border: `1.5px solid ${C.border}`,
+                    borderRadius: RADIUS.lg,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    cursor: "pointer",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Icon name="vote" size={26} color={C.blue} strokeWidth={1.8} />
+                  <span style={{ fontFamily: NUNITO, fontWeight: 800, fontSize: 11, color: C.navy }}>Votaciones</span>
+                </button>
+              )}
             </div>
           )}
 

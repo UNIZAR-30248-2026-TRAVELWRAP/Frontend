@@ -61,7 +61,7 @@ describe('InicioViaje', () => {
     expect(screen.getByText('Roma 2027')).toBeTruthy()
     expect(screen.getByText('12 – 15 may · 4 días')).toBeTruthy()
     expect(screen.getByText('1.240 €')).toBeTruthy()
-    expect(screen.getByText('2 viajeros')).toBeTruthy()
+    expect(screen.getByRole('group', { name: '2 viajeros' })).toBeTruthy()
     const [url, opciones] = fetchMock.mock.calls[0] as unknown as [string, RequestInit & { headers: Record<string, string> }]
     expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}$`))
     expect(opciones.headers.Authorization).toBe('Bearer token-acceso')
@@ -130,12 +130,24 @@ describe('InicioViaje', () => {
     expect(screen.queryByRole('button', { name: 'Invitar' })).toBeNull()
   })
 
-  it('un viaje pendiente de destino lo indica', async () => {
+  it('un viaje pendiente de destino lleva a la votación del destino sin mostrar el inicio', async () => {
     simularBackend({ destino: null, pendiente_destino: true })
-    renderizar()
+    const onPendienteDestino = vi.fn()
+    const { container } = renderizar({ onPendienteDestino })
 
-    expect(await screen.findByText('Destino por decidir')).toBeTruthy()
-    expect(screen.getByText(/El destino se decidirá por votación/)).toBeTruthy()
+    await vi.waitFor(() => expect(onPendienteDestino).toHaveBeenCalled())
+    expect(container.textContent).toBe('')
+  })
+
+  it('cualquier miembro puede abrir las votaciones', async () => {
+    const user = userEvent.setup()
+    simularBackend({ rol: 'miembro' })
+    const onVotaciones = vi.fn()
+    renderizar({ onVotaciones })
+
+    await user.click(await screen.findByRole('button', { name: /Votaciones/ }))
+
+    expect(onVotaciones).toHaveBeenCalledTimes(1)
   })
 
   it('avisa si no se puede cargar el viaje', async () => {

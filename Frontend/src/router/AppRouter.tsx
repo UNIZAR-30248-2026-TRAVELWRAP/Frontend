@@ -12,6 +12,8 @@ import Perfil from "../screens/Perfil";
 import InicioViaje from "../screens/InicioViaje";
 import EditarViaje from "../screens/EditarViaje";
 import ViajesArchivados from "../screens/ViajesArchivados";
+import Votaciones from "../screens/Votaciones";
+import ElegirDestino from "../screens/ElegirDestino";
 import { rutaTrasLogin } from "../services/invitacionPendiente";
 
 interface AppRouterProps {
@@ -54,7 +56,7 @@ function RutaMisViajes(props: Omit<ComponentProps<typeof MisViajes>, NavegacionM
       onCreateTrip={() => navigate("/viajes/nuevo")}
       onViewPerfil={() => navigate("/perfil")}
       onSelectTrip={abrirViaje}
-      onSelectPendingTrip={abrirViaje}
+      onSelectPendingTrip={(id) => navigate(`/viajes/${id}/destino`)}
       onViewPastTrip={abrirViaje}
     />
   );
@@ -77,6 +79,8 @@ function RutaInicioViaje({ sesion }: { sesion: Sesion }) {
       onVolver={() => navigate("/")}
       onEditar={() => navigate(`/viajes/${viajeId}/editar`)}
       onInvitar={() => navigate(`/viajes/${viajeId}/invitar`)}
+      onVotaciones={() => navigate(`/viajes/${viajeId}/votaciones`)}
+      onPendienteDestino={() => navigate(`/viajes/${viajeId}/destino`, { replace: true })}
       onArchivado={() => navigate("/viajes/archivados")}
     />
   );
@@ -115,10 +119,38 @@ function RutaInvitarViajeros({ sesion }: { sesion: Sesion }) {
   return <InvitarViajeros viajeId={viajeId ?? ""} tokenSesion={sesion.token} onBack={() => navigate(-1)} />;
 }
 
-// Al crear el viaje se vuelve a «Mis viajes», que lo muestra al recargar la lista
+// Al crear el viaje se vuelve a «Mis viajes»; si el destino se va a votar, se abre la votación
 function RutaCrearViaje({ sesion }: { sesion: Sesion }) {
   const navigate = useNavigate();
-  return <CrearViaje tokenSesion={sesion.token} onBack={() => navigate("/")} onCreated={() => navigate("/")} />;
+  return (
+    <CrearViaje
+      tokenSesion={sesion.token}
+      onBack={() => navigate("/")}
+      onCreated={(viaje) => navigate(viaje.pendiente_destino ? `/viajes/${viaje.id}/destino` : "/")}
+    />
+  );
+}
+
+function RutaVotaciones() {
+  const { viajeId = "" } = useParams();
+  const navigate = useNavigate();
+  return <Votaciones onVolver={() => navigate(`/viajes/${viajeId}`)} />;
+}
+
+// Viaje pendiente de destino. Al fijarlo (o si ya lo tenía) se pasa al inicio del viaje
+function RutaElegirDestino({ sesion }: { sesion: Sesion }) {
+  const { viajeId = "" } = useParams();
+  const navigate = useNavigate();
+  return (
+    <ElegirDestino
+      key={viajeId}
+      viajeId={viajeId}
+      tokenSesion={sesion.token}
+      onVolver={() => navigate("/")}
+      onInvitar={() => navigate(`/viajes/${viajeId}/invitar`)}
+      onDestinoFijado={() => navigate(`/viajes/${viajeId}`, { replace: true })}
+    />
+  );
 }
 
 export default function AppRouter({
@@ -210,6 +242,18 @@ export default function AppRouter({
         <Route
           path="/viajes/:viajeId"
           element={session ? <RutaInicioViaje sesion={session} /> : <Navigate to="/login" replace />}
+        />
+
+        {/* Votaciones del viaje (privada) */}
+        <Route
+          path="/viajes/:viajeId/votaciones"
+          element={session ? <RutaVotaciones /> : <Navigate to="/login" replace />}
+        />
+
+        {/* Votación del destino de un viaje que aún no lo tiene (privada) */}
+        <Route
+          path="/viajes/:viajeId/destino"
+          element={session ? <RutaElegirDestino sesion={session} /> : <Navigate to="/login" replace />}
         />
 
         {/* Editar los datos del viaje: solo el creador y mientras está activo (privada) */}

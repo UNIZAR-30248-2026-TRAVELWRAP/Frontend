@@ -25,13 +25,23 @@ afterEach(() => {
 })
 
 describe('CrearViaje', () => {
-  it('de momento solo permite crear el viaje con el destino ya elegido', () => {
-    render(<CrearViaje tokenSesion="token-acceso" />)
+  it('permite crear el viaje sin destino para decidirlo por votación', async () => {
+    const user = userEvent.setup()
+    const creado = { id: 'v1', nombre: 'Verano 2027', destino: null, pendiente_destino: true }
+    const fetchMock = vi.fn(() => respuesta(201, creado))
+    vi.stubGlobal('fetch', fetchMock)
+    const onCreated = vi.fn()
+    render(<CrearViaje tokenSesion="token-acceso" onCreated={onCreated} />)
 
-    expect(screen.getByRole('radio', { name: /Destino ya elegido/ }).getAttribute('aria-checked')).toBe('true')
-    const votar = screen.getByRole('radio', { name: /Votar destino/ })
-    expect(votar).toHaveProperty('disabled', true)
-    expect(votar.textContent).toContain('Próximamente')
+    await user.type(screen.getByLabelText('Nombre del viaje'), 'Verano 2027')
+    await user.type(screen.getByLabelText('Presupuesto estimado (€)'), '900')
+    await user.click(screen.getByRole('radio', { name: /Votar destino/ }))
+    expect(screen.queryByPlaceholderText('Ciudad o país')).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Crear viaje y elegir destino' }))
+
+    await vi.waitFor(() => expect(onCreated).toHaveBeenCalledWith(creado))
+    const [, opciones] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    expect(JSON.parse(opciones.body as string)).toMatchObject({ nombre: 'Verano 2027', presupuesto: 900, destino: null })
   })
 
   it('no deja crear hasta tener nombre, presupuesto y destino', async () => {
