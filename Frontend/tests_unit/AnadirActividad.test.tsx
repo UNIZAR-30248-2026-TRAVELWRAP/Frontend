@@ -64,6 +64,45 @@ describe('AnadirActividad', () => {
     expect(screen.queryByLabelText('Fecha')).toBeNull()
   })
 
+  it('se abre en el día indicado si es un día del viaje', async () => {
+    simularBackend()
+    renderizar({ fechaInicial: '2027-05-13' })
+
+    await screen.findByRole('button', { name: 'Día 2 · 13 may' })
+
+    expect(screen.getByRole('button', { name: 'Día 2 · 13 may' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: 'Día 1 · 12 may' }).getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('si el día indicado no es del viaje se abre en el primero', async () => {
+    simularBackend()
+    renderizar({ fechaInicial: '2030-01-01' })
+
+    await screen.findByRole('button', { name: 'Día 1 · 12 may' })
+
+    expect(screen.getByRole('button', { name: 'Día 1 · 12 may' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('en un viaje sin fechas rellena el campo con el día indicado', async () => {
+    simularBackend({ fecha_inicio: null, fecha_fin: null })
+    renderizar({ fechaInicial: '2027-06-01' })
+
+    const campo = (await screen.findByLabelText('Fecha')) as HTMLInputElement
+    await waitFor(() => expect(campo.value).toBe('2027-06-01'))
+  })
+
+  it('al guardar avisa con la fecha de la actividad', async () => {
+    const user = userEvent.setup()
+    const onGuardada = vi.fn()
+    simularBackend()
+    renderizar({ onGuardada, fechaInicial: '2027-05-14' })
+
+    await user.type(await screen.findByLabelText('Nombre de la actividad'), 'Vuelta')
+    await user.click(botonAnadir())
+
+    await waitFor(() => expect(onGuardada).toHaveBeenCalledWith('2027-05-14'))
+  })
+
   it('pide la fecha con un campo si el viaje no tiene fechas', async () => {
     simularBackend({ fecha_inicio: null, fecha_fin: null })
     renderizar()

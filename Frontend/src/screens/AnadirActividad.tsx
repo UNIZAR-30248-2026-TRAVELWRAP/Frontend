@@ -49,10 +49,11 @@ type AnadirActividadProps = {
   viajeId: string
   tokenSesion: string
   onVolver?: () => void
-  onGuardada?: () => void
+  fechaInicial?: string
+  onGuardada?: (fecha: string) => void
 }
 
-export default function AnadirActividad({ viajeId, tokenSesion, onVolver, onGuardada }: AnadirActividadProps) {
+export default function AnadirActividad({ viajeId, tokenSesion, fechaInicial = "", onVolver, onGuardada }: AnadirActividadProps) {
   const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
   const [errorCarga, setErrorCarga] = useState("")
   const [titulo, setTitulo] = useState("")
@@ -70,7 +71,12 @@ export default function AnadirActividad({ viajeId, tokenSesion, onVolver, onGuar
       .then((datos) => {
         if (!vigente) return
         setViaje(datos)
-        if (datos.fecha_inicio && datos.fecha_fin) setFecha(datos.fecha_inicio)
+        if (datos.fecha_inicio && datos.fecha_fin) {
+          const enElViaje = diasDelViaje(datos.fecha_inicio, datos.fecha_fin).some((d) => d.fecha === fechaInicial)
+          setFecha(enElViaje ? fechaInicial : datos.fecha_inicio)
+        } else {
+          setFecha(fechaInicial)
+        }
       })
       .catch((e) => {
         if (vigente) setErrorCarga(mensajeDeError(e))
@@ -78,7 +84,7 @@ export default function AnadirActividad({ viajeId, tokenSesion, onVolver, onGuar
     return () => {
       vigente = false
     }
-  }, [viajeId, tokenSesion])
+  }, [viajeId, tokenSesion, fechaInicial])
 
   const dias = viaje?.fecha_inicio && viaje.fecha_fin ? diasDelViaje(viaje.fecha_inicio, viaje.fecha_fin) : []
   const editable = viaje?.estado === "activo"
@@ -104,7 +110,7 @@ export default function AnadirActividad({ viajeId, tokenSesion, onVolver, onGuar
         },
         tokenSesion,
       )
-      onGuardada?.()
+      onGuardada?.(fecha)
     } catch (e) {
       setError(mensajeDeError(e))
       setGuardando(false)

@@ -23,6 +23,12 @@ const fechaCorta = (texto: string, conAnio = false) => {
   return `${dia} ${MESES[mes]}${conAnio ? ` ${anio}` : ""}`
 }
 
+export const fechaDeHoy = () => {
+  const ahora = new Date()
+  const dos = (numero: number) => String(numero).padStart(2, "0")
+  return `${ahora.getFullYear()}-${dos(ahora.getMonth() + 1)}-${dos(ahora.getDate())}`
+}
+
 export const diasDelViaje = (inicio: string, fin: string) => {
   const a = leerFecha(inicio)
   const total = Math.max(diasEntre(inicio, fin), 0)

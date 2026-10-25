@@ -107,7 +107,7 @@ Then('el servidor ha guardado la actividad {string} el {string} a las {string} e
 });
 
 Then('estoy en el itinerario del viaje', async () => {
-  await expect(paginaActual()).toHaveURL(/\/viajes\/viaje-\d+\/itinerario$/);
+  await expect(paginaActual()).toHaveURL(/\/viajes\/viaje-\d+\/itinerario(\?fecha=[0-9-]+)?$/);
 });
 
 Then('sigo en la pantalla de añadir actividad', async () => {

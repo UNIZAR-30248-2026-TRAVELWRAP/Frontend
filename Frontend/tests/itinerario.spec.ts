@@ -158,6 +158,59 @@ test.describe('Itinerario · agenda del día', () => {
     await expect(page.getByRole('img', { name: 'Añadida por Adriana' })).toHaveText('A');
   });
 
+  test('si hoy es un día del viaje, el itinerario se abre en ese día', async ({ page }) => {
+    await page.clock.install({ time: new Date(2027, 4, 13, 10, 0, 0) });
+    await entrarConSesion(page);
+    await simularBackend(page);
+
+    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
+
+    await expect(page.getByRole('button', { name: 'Día 2 · 13 may' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(agenda(page)).toHaveText(['Vaticano09:30 h']);
+  });
+
+  test('añadir desde un día abre el formulario en ese día y al guardar se vuelve a él', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularBackend(page);
+
+    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
+    await page.getByRole('button', { name: 'Día 2 · 13 may' }).click();
+    await page.getByRole('button', { name: 'Añadir Actividad' }).click();
+
+    await expect(page).toHaveURL(/\/viajes\/roma\/actividades\/nueva\?fecha=2027-05-13$/);
+    await expect(page.getByRole('button', { name: 'Día 2 · 13 may' })).toHaveAttribute('aria-pressed', 'true');
+    await page.getByLabel('Nombre de la actividad').fill('Cena en el Trastevere');
+    await page.getByRole('button', { name: 'Añadir al itinerario' }).click();
+
+    await expect(page).toHaveURL(/\/viajes\/roma\/itinerario\?fecha=2027-05-13$/);
+    await expect(page.getByRole('button', { name: 'Día 2 · 13 may' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(agenda(page)).toHaveText(['Vaticano09:30 h', 'Cena en el Trastevere']);
+  });
+
+  test('la flecha de volver del formulario regresa al mismo día', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularBackend(page);
+
+    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
+    await page.getByRole('button', { name: 'Día 3 · 14 may' }).click();
+    await page.getByRole('button', { name: 'Añadir Actividad' }).click();
+    await page.getByRole('button', { name: 'Volver' }).click();
+
+    await expect(page).toHaveURL(/\/viajes\/roma\/itinerario\?fecha=2027-05-14$/);
+    await expect(page.getByRole('button', { name: 'Día 3 · 14 may' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('un día fuera de las fechas del viaje lo avisa', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularBackend(page, {}, [actividad('antes', { titulo: 'Antes de salir', fecha: '2027-05-10' })]);
+
+    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
+    await page.getByRole('button', { name: '10 may' }).click();
+
+    await expect(page.getByRole('status')).toContainText('Este día queda fuera de las fechas del viaje');
+    await expect(agenda(page)).toHaveText(['Antes de salir']);
+  });
+
   test('al elegir otro día se muestran solo sus actividades', async ({ page }) => {
     await entrarConSesion(page);
     await simularBackend(page);
@@ -177,14 +230,14 @@ test.describe('Itinerario · agenda del día', () => {
 
     await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
     await page.getByRole('button', { name: 'Añadir Actividad' }).click();
-    await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}/actividades/nueva$`));
+    await expect(page).toHaveURL(/\/viajes\/roma\/actividades\/nueva\?fecha=2027-05-12$/);
     await page.getByRole('button', { name: 'Día 3 · 14 may' }).click();
     await page.getByLabel('Nombre de la actividad').fill('Vuelta a casa');
     await page.getByLabel('Hora').fill('18:00');
     await page.getByRole('button', { name: 'Añadir al itinerario' }).click();
 
-    await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}/itinerario$`));
-    await page.getByRole('button', { name: 'Día 3 · 14 may' }).click();
+    await expect(page).toHaveURL(/\/viajes\/roma\/itinerario\?fecha=2027-05-14$/);
+    await expect(page.getByRole('button', { name: 'Día 3 · 14 may' })).toHaveAttribute('aria-pressed', 'true');
     await expect(agenda(page)).toHaveText(['Vuelta a casa18:00 h']);
   });
 

@@ -73,6 +73,7 @@ const titulosDeLaAgenda = () =>
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
+  vi.useRealTimers()
 })
 
 describe('Itinerario', () => {
@@ -104,6 +105,83 @@ describe('Itinerario', () => {
       'Visita al ColiseoPiazza del Colosseo10:00 h',
       'Paseo sin hora',
     ])
+  })
+
+  it('se abre en el día de hoy si está dentro de los días del viaje', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2027, 4, 13, 10, 0, 0))
+    simularBackend()
+    renderizar()
+
+    await screen.findByText('Vaticano')
+
+    expect(screen.getByRole('button', { name: 'Día 2 · 13 may' }).getAttribute('aria-pressed')).toBe('true')
+    expect(titulosDeLaAgenda()).toEqual(['Vaticano09:30 h'])
+  })
+
+  it('si hoy no está en el viaje se abre en el primer día', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2027, 6, 1, 10, 0, 0))
+    simularBackend()
+    renderizar()
+
+    await screen.findByText('Visita al Coliseo')
+
+    expect(screen.getByRole('button', { name: 'Día 1 · 12 may' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('el día indicado al abrir manda sobre el de hoy', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2027, 4, 13, 10, 0, 0))
+    simularBackend()
+    renderizar({ diaInicial: '2027-05-12' })
+
+    await screen.findByText('Visita al Coliseo')
+
+    expect(screen.getByRole('button', { name: 'Día 1 · 12 may' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('ignora un día indicado que no existe en el itinerario', async () => {
+    simularBackend()
+    renderizar({ diaInicial: '2030-01-01' })
+
+    await screen.findByText('Visita al Coliseo')
+
+    expect(screen.getByRole('button', { name: 'Día 1 · 12 may' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('al pulsar añadir avisa con el día que se está viendo', async () => {
+    const user = userEvent.setup()
+    const onAnadirActividad = vi.fn()
+    simularBackend()
+    renderizar({ onAnadirActividad })
+
+    await user.click(await screen.findByRole('button', { name: 'Día 2 · 13 may' }))
+    await user.click(screen.getByRole('button', { name: 'Añadir Actividad' }))
+
+    expect(onAnadirActividad).toHaveBeenCalledWith('2027-05-13')
+  })
+
+  it('avisa en un día que queda fuera de las fechas del viaje', async () => {
+    const user = userEvent.setup()
+    simularBackend({}, [actividad('a1', { titulo: 'Antes de salir', fecha: '2027-05-10' })])
+    renderizar()
+
+    expect(screen.queryByRole('status')).toBeNull()
+    await user.click(await screen.findByRole('button', { name: '10 may' }))
+
+    expect((await screen.findByRole('status')).textContent).toContain('Este día queda fuera de las fechas del viaje')
+    await user.click(screen.getByRole('button', { name: 'Día 1 · 12 may' }))
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('no avisa de días fuera de fechas si el viaje no tiene fechas', async () => {
+    simularBackend({ fecha_inicio: null, fecha_fin: null }, [actividad('a1', { titulo: 'Playa', fecha: '2027-06-02' })])
+    renderizar()
+
+    await screen.findByText('Playa')
+
+    expect(screen.queryByRole('status')).toBeNull()
   })
 
   it('al elegir otro día muestra solo sus actividades', async () => {

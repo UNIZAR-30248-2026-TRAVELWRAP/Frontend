@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { diasDelItinerario } from '../src/utils/formatoViaje'
+import { describe, expect, it, vi } from 'vitest'
+import { diasDelItinerario, fechaDeHoy } from '../src/utils/formatoViaje'
 
 describe('diasDelItinerario', () => {
   it('con las fechas del viaje lista sus días numerados', () => {
@@ -39,5 +39,15 @@ describe('diasDelItinerario', () => {
 
   it('sin fechas ni actividades no hay días', () => {
     expect(diasDelItinerario(null, null, [])).toEqual([])
+  })
+})
+
+describe('fechaDeHoy', () => {
+  it('devuelve la fecha local como AAAA-MM-DD con ceros a la izquierda', () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2027, 0, 5, 23, 59, 0))
+
+    expect(fechaDeHoy()).toBe('2027-01-05')
+    vi.useRealTimers()
   })
 })

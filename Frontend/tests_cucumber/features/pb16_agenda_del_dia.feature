@@ -43,3 +43,13 @@ Característica: Ver la agenda del día en el itinerario (PB-16)
     Cuando abro el itinerario del viaje "Lisboa 2026"
     Entonces veo en la agenda, por este orden, "Tranvía 28"
     Y no veo el botón "Añadir Actividad"
+
+  Escenario: Añadir una actividad desde otro día vuelve a ese mismo día
+    Dado que el servidor devuelve en "Roma 2027" la actividad "Vaticano" el "2027-05-13" a las "09:30"
+    Cuando abro el itinerario del viaje "Roma 2027"
+    Y elijo el día "Día 2 · 13 may"
+    Y pulso el botón "Añadir Actividad"
+    Y relleno la actividad con título "Cena en Trastevere", lugar "" y hora "21:00"
+    Y pulso el botón "Añadir al itinerario"
+    Entonces estoy en el itinerario del viaje
+    Y veo en la agenda, por este orden, "Vaticano" y "Cena en Trastevere"

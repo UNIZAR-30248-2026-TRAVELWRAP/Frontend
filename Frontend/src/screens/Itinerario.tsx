@@ -9,7 +9,7 @@ import { CATEGORIAS, iconoDeCategoria, listarActividades, type Actividad } from 
 import { ApiError } from "../services/authApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
-import { aMiembro, diasDelItinerario } from "../utils/formatoViaje"
+import { aMiembro, diasDelItinerario, fechaDeHoy, formatearFechasActivo } from "../utils/formatoViaje"
 
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
 
@@ -35,14 +35,16 @@ const avisoVacioStyle: CSSProperties = {
 type ItinerarioProps = {
   viajeId: string
   tokenSesion: string
+  diaInicial?: string
   onVolver?: () => void
-  onAnadirActividad?: () => void
+  onAnadirActividad?: (fecha: string) => void
   onCambiarSeccion?: (seccion: SeccionViaje) => void
 }
 
 export default function Itinerario({
   viajeId,
   tokenSesion,
+  diaInicial = "",
   onVolver,
   onAnadirActividad,
   onCambiarSeccion,
@@ -50,7 +52,7 @@ export default function Itinerario({
   const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
   const [actividades, setActividades] = useState<Actividad[]>([])
   const [error, setError] = useState("")
-  const [diaElegido, setDiaElegido] = useState("")
+  const [diaElegido, setDiaElegido] = useState(diaInicial)
 
   useEffect(() => {
     let vigente = true
@@ -71,7 +73,11 @@ export default function Itinerario({
   const dias = viaje
     ? diasDelItinerario(viaje.fecha_inicio, viaje.fecha_fin, actividades.map((actividad) => actividad.fecha))
     : []
-  const dia = dias.some((d) => d.fecha === diaElegido) ? diaElegido : (dias[0]?.fecha ?? "")
+  const hoy = fechaDeHoy()
+  const diaPorDefecto = dias.find((d) => d.fecha === hoy)?.fecha ?? dias[0]?.fecha ?? ""
+  const dia = dias.some((d) => d.fecha === diaElegido) ? diaElegido : diaPorDefecto
+  const fueraDeLasFechas =
+    viaje?.fecha_inicio && viaje.fecha_fin && dia !== "" ? dia < viaje.fecha_inicio || dia > viaje.fecha_fin : false
   const delDia = actividades.filter((actividad) => actividad.fecha === dia)
   const activo = viaje?.estado === "activo"
   const indiceDeMiembro = (usuarioId: string | null) =>
@@ -159,7 +165,7 @@ export default function Itinerario({
           {viaje && activo && (
             <button
               type="button"
-              onClick={onAnadirActividad}
+              onClick={() => onAnadirActividad?.(dia)}
               style={{
                 width: "100%",
                 background: "white",
@@ -192,6 +198,30 @@ export default function Itinerario({
           {dias.length > 0 && (
             <>
               <SectionLabel>Agenda del día</SectionLabel>
+              {fueraDeLasFechas && (
+                <div
+                  role="status"
+                  style={{
+                    background: C.lightAccent,
+                    border: `1.5px solid ${C.accent}40`,
+                    borderRadius: RADIUS.md,
+                    padding: "10px 12px",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 8,
+                    fontFamily: NUNITO,
+                    fontSize: 12,
+                    lineHeight: 1.5,
+                    color: C.navy,
+                    marginBottom: 14,
+                  }}
+                >
+                  <Icon name="info" size={16} color={C.accent} strokeWidth={2} />
+                  <span>
+                    Este día queda fuera de las fechas del viaje ({formatearFechasActivo(viaje?.fecha_inicio ?? null, viaje?.fecha_fin ?? null)}).
+                  </span>
+                </div>
+              )}
               {delDia.length === 0 ? (
                 <div style={avisoVacioStyle}>No hay actividades este día.</div>
               ) : (

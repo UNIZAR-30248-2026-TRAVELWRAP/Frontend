@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { ComponentProps } from "react";
 import type { Sesion } from "../services/authApi";
 import Login from "../screens/Login";
@@ -144,16 +144,21 @@ function RutaVotaciones() {
   return <Votaciones onVolver={() => navigate(`/viajes/${viajeId}`)} />;
 }
 
+const rutaItinerario = (viajeId: string, fecha: string) =>
+  `/viajes/${viajeId}/itinerario${fecha ? `?fecha=${fecha}` : ""}`;
+
 function RutaItinerario({ sesion }: { sesion: Sesion }) {
   const { viajeId = "" } = useParams();
+  const [parametros] = useSearchParams();
   const navigate = useNavigate();
   return (
     <Itinerario
       key={viajeId}
       viajeId={viajeId}
       tokenSesion={sesion.token}
+      diaInicial={parametros.get("fecha") ?? ""}
       onVolver={() => navigate("/")}
-      onAnadirActividad={() => navigate(`/viajes/${viajeId}/actividades/nueva`)}
+      onAnadirActividad={(fecha) => navigate(`/viajes/${viajeId}/actividades/nueva${fecha ? `?fecha=${fecha}` : ""}`)}
       onCambiarSeccion={(seccion) => navigate(rutaDeSeccion(viajeId, seccion))}
     />
   );
@@ -161,14 +166,17 @@ function RutaItinerario({ sesion }: { sesion: Sesion }) {
 
 function RutaAnadirActividad({ sesion }: { sesion: Sesion }) {
   const { viajeId = "" } = useParams();
+  const [parametros] = useSearchParams();
   const navigate = useNavigate();
+  const fechaInicial = parametros.get("fecha") ?? "";
   return (
     <AnadirActividad
       key={viajeId}
       viajeId={viajeId}
       tokenSesion={sesion.token}
-      onVolver={() => navigate(`/viajes/${viajeId}/itinerario`)}
-      onGuardada={() => navigate(`/viajes/${viajeId}/itinerario`, { replace: true })}
+      fechaInicial={fechaInicial}
+      onVolver={() => navigate(rutaItinerario(viajeId, fechaInicial))}
+      onGuardada={(fecha) => navigate(rutaItinerario(viajeId, fecha), { replace: true })}
     />
   );
 }
