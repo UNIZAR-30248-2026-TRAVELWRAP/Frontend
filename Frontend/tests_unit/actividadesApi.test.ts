@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../src/services/authApi'
-import { crearActividad } from '../src/services/actividadesApi'
+import { crearActividad, listarActividades } from '../src/services/actividadesApi'
 
 const VIAJE_ID = '123e4567-e89b-12d3-a456-426614174000'
 
@@ -55,5 +55,44 @@ describe('actividadesApi · crear actividad', () => {
     expect(error.estado).toBe(409)
     expect(error.codigo).toBe('viaje_no_activo')
     expect(error.message).toBe('El viaje está cerrado y ya no se puede modificar')
+  })
+})
+
+describe('actividadesApi · listar actividades', () => {
+  it('pide todas las actividades del viaje con GET', async () => {
+    const fetchMock = vi.fn(() => respuesta(200, { actividades: [{ id: 'a1' }, { id: 'a2' }] }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const lista = await listarActividades(VIAJE_ID, 'token-acceso')
+
+    expect(lista.actividades).toHaveLength(2)
+    const [url, opciones] = llamada(fetchMock)
+    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/actividades$`))
+    expect(opciones.method ?? 'GET').toBe('GET')
+    expect(opciones.headers.Authorization).toBe('Bearer token-acceso')
+  })
+
+  it('añade la fecha a la consulta para pedir un solo día', async () => {
+    const fetchMock = vi.fn(() => respuesta(200, { actividades: [] }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await listarActividades(VIAJE_ID, 'token-acceso', '2027-05-12')
+
+    expect(llamada(fetchMock)[0]).toMatch(new RegExp(`/viajes/${VIAJE_ID}/actividades\\?fecha=2027-05-12$`))
+  })
+
+  it('propaga los rechazos del backend como ApiError', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        respuesta(404, { error: { codigo: 'viaje_no_encontrado', mensaje: 'El viaje no existe o no perteneces a él' } }),
+      ),
+    )
+
+    const error = await listarActividades(VIAJE_ID, 'token-acceso').catch((e) => e)
+
+    expect(error).toBeInstanceOf(ApiError)
+    expect(error.estado).toBe(404)
+    expect(error.codigo).toBe('viaje_no_encontrado')
   })
 })

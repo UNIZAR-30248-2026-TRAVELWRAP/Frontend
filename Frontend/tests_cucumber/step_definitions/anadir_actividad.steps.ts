@@ -3,29 +3,54 @@ import { expect } from '@playwright/test';
 import { idDelViaje } from './gestion_viajes.steps';
 import { paginaActual } from './login.steps';
 
-type ActividadGuardada = {
+type ActividadSimulada = {
+  id: string;
+  viaje_id: string;
   titulo: string;
   fecha: string;
   hora_inicio: string | null;
   ubicacion_nombre: string | null;
 };
 
-let guardadas: ActividadGuardada[] = [];
+type DatosActividad = Pick<ActividadSimulada, 'titulo' | 'fecha' | 'hora_inicio' | 'ubicacion_nombre'>;
+
+let actividades: ActividadSimulada[] = [];
 let rechazaPorViajeCerrado = false;
 
 Before(() => {
-  guardadas = [];
+  actividades = [];
   rechazaPorViajeCerrado = false;
 });
 
-const simularActividades = async () => {
+const idDeLaUrl = (url: string) => new URL(url).pathname.split('/')[3];
+
+export const sembrarActividad = (
+  viajeId: string,
+  titulo: string,
+  fecha: string,
+  hora: string | null,
+  ubicacion: string | null = null,
+) => {
+  actividades.push({
+    id: `actividad-${actividades.length + 1}`,
+    viaje_id: viajeId,
+    titulo,
+    fecha,
+    hora_inicio: hora,
+    ubicacion_nombre: ubicacion,
+  });
+};
+
+export const simularActividades = async () => {
   await paginaActual().route('**/api/viajes/*/actividades', (route) => {
     const peticion = route.request();
+    const viajeId = idDeLaUrl(peticion.url());
+
     if (peticion.method() === 'GET') {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ actividades: guardadas }),
+        body: JSON.stringify({ actividades: actividades.filter((a) => a.viaje_id === viajeId) }),
       });
     }
     if (peticion.method() !== 'POST') return route.fallback();
@@ -39,12 +64,12 @@ const simularActividades = async () => {
         }),
       });
     }
-    const actividad = peticion.postDataJSON() as ActividadGuardada;
-    guardadas.push(actividad);
+    const datos = peticion.postDataJSON() as DatosActividad;
+    sembrarActividad(viajeId, datos.titulo, datos.fecha, datos.hora_inicio, datos.ubicacion_nombre);
     return route.fulfill({
       status: 201,
       contentType: 'application/json',
-      body: JSON.stringify({ id: `actividad-${guardadas.length}`, ...actividad, orden: guardadas.length - 1 }),
+      body: JSON.stringify(actividades[actividades.length - 1]),
     });
   });
 };
@@ -72,6 +97,12 @@ When('relleno la actividad con título {string}, lugar {string} y hora {string}'
 });
 
 Then('el servidor ha guardado la actividad {string} el {string} a las {string} en {string}', (titulo: string, fecha: string, hora: string, lugar: string) => {
+  const guardadas: DatosActividad[] = actividades.map((a) => ({
+    titulo: a.titulo,
+    fecha: a.fecha,
+    hora_inicio: a.hora_inicio,
+    ubicacion_nombre: a.ubicacion_nombre,
+  }));
   expect(guardadas).toEqual([{ titulo, fecha, hora_inicio: hora, ubicacion_nombre: lugar }]);
 });
 
