@@ -32,25 +32,35 @@ const entrarConSesion = async (page: Page) => {
 
 const simularBackend = async (page: Page) => {
   const creados: Record<string, unknown>[] = [];
+  const guardados: Record<string, unknown>[] = [];
+  await page.route('**/api/viajes/*', (route) => {
+    const id = new URL(route.request().url()).pathname.split('/').pop();
+    const encontrado = guardados.find((v) => v.id === id);
+    return route.fulfill({
+      status: encontrado ? 200 : 404,
+      contentType: 'application/json',
+      body: JSON.stringify(encontrado ?? { error: { codigo: 'viaje_no_encontrado', mensaje: 'El viaje no existe' } }),
+    });
+  });
   await page.route('**/api/viajes', (route) => {
     if (route.request().method() !== 'POST') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ viajes: [] }) });
     }
     const datos = route.request().postDataJSON();
     creados.push(datos);
-    return route.fulfill({
-      status: 201,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        id: 'viaje-1',
-        descripcion: null,
-        moneda: 'EUR',
-        estado: 'activo',
-        creado_en: '2026-10-25T10:00:00Z',
-        pendiente_destino: datos.destino === null,
-        ...datos,
-      }),
-    });
+    const nuevo = {
+      id: 'viaje-1',
+      descripcion: null,
+      moneda: 'EUR',
+      estado: 'activo',
+      creado_en: '2026-10-25T10:00:00Z',
+      pendiente_destino: datos.destino === null,
+      rol: 'creador',
+      miembros: [{ usuario_id: USUARIO_ID, nombre: 'Adriana', avatar_url: null, rol: 'creador' }],
+      ...datos,
+    };
+    guardados.push(nuevo);
+    return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(nuevo) });
   });
   return { creados };
 };
@@ -69,7 +79,7 @@ test.describe('Nuevo viaje · nombre por defecto', () => {
     await expect(page.getByLabel('Nombre del viaje')).toHaveValue('');
     await page.getByRole('button', { name: 'Crear viaje', exact: true }).click();
 
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/viajes\/viaje-1$/);
     expect(creados).toEqual([
       { nombre: 'Roma 2027', presupuesto: 850, destino: 'Roma', fecha_inicio: '2027-05-12', fecha_fin: '2027-05-15' },
     ]);
@@ -86,7 +96,7 @@ test.describe('Nuevo viaje · nombre por defecto', () => {
     await page.getByLabel('Presupuesto estimado (€)').fill('600');
     await page.getByRole('button', { name: 'Crear viaje', exact: true }).click();
 
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/viajes\/viaje-1$/);
     expect(creados[0].nombre).toBe('Praga 2027-2028');
   });
 
@@ -101,7 +111,7 @@ test.describe('Nuevo viaje · nombre por defecto', () => {
     await page.getByLabel('Presupuesto estimado (€)').fill('850');
     await page.getByRole('button', { name: 'Crear viaje', exact: true }).click();
 
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/viajes\/viaje-1$/);
     expect(creados[0].nombre).toBe('Escapada con los primos');
   });
 
@@ -116,5 +126,19 @@ test.describe('Nuevo viaje · nombre por defecto', () => {
 
     await page.getByLabel('Nombre del viaje').fill('Verano 2027');
     await expect(page.getByRole('button', { name: 'Crear viaje y elegir destino' })).toBeEnabled();
+  });
+
+  test('con «Votar destino» al crear el viaje se abre la votación del destino', async ({ page }) => {
+    await entrarConSesion(page);
+    const { creados } = await simularBackend(page);
+
+    await page.goto('/viajes/nuevo');
+    await page.getByRole('radio', { name: /Votar destino/ }).click();
+    await page.getByLabel('Nombre del viaje').fill('Verano 2027');
+    await page.getByLabel('Presupuesto estimado (€)').fill('900');
+    await page.getByRole('button', { name: 'Crear viaje y elegir destino' }).click();
+
+    await expect(page).toHaveURL(/\/viajes\/viaje-1\/destino$/);
+    expect(creados[0]).toMatchObject({ nombre: 'Verano 2027', destino: null });
   });
 });

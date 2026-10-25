@@ -11,8 +11,9 @@ Característica: Crear un viaje y verlo en Mis viajes (RF8)
 
   Escenario: Crear un viaje con el destino ya elegido
     Cuando creo el viaje "Escapada a París" con destino "París" y presupuesto "900"
-    Entonces vuelvo a la pantalla de mis viajes
-    Y veo el viaje "Escapada a París" en curso con presupuesto "900 €"
+    Entonces estoy en el inicio del viaje
+    Y veo el texto "Escapada a París"
+    Y veo el texto "900 €"
 
   Escenario: El servidor no puede crear el viaje
     Dado que el servidor no puede crear viajes

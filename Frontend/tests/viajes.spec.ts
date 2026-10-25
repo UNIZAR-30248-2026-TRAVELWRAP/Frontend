@@ -61,6 +61,15 @@ const simularBackendViajes = async (page: Page, iniciales: ReturnType<typeof via
     }
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ viajes }) });
   });
+  await page.route('**/api/viajes/*', async (route) => {
+    const id = new URL(route.request().url()).pathname.split('/').pop();
+    const encontrado = viajes.find((v) => v.id === id);
+    return route.fulfill({
+      status: encontrado ? 200 : 404,
+      contentType: 'application/json',
+      body: JSON.stringify(encontrado ?? { error: { codigo: 'viaje_no_encontrado', mensaje: 'El viaje no existe' } }),
+    });
+  });
   return { creados };
 };
 
@@ -85,7 +94,7 @@ test.describe('RF8 · Mis viajes y crear viaje', () => {
     await expect(page.getByText('Archivado 2024')).toHaveCount(0);
   });
 
-  test('crear un viaje con destino lo envía al backend y aparece en Mis viajes', async ({ page }) => {
+  test('crear un viaje con destino lo envía al backend y abre directamente la pantalla del viaje', async ({ page }) => {
     await entrarConSesion(page);
     const { creados } = await simularBackendViajes(page);
 
@@ -100,10 +109,10 @@ test.describe('RF8 · Mis viajes y crear viaje', () => {
     await page.getByPlaceholder('Ciudad o país').fill('París');
     await page.getByRole('button', { name: 'Crear viaje', exact: true }).click();
 
-    await expect(page).toHaveURL(/\/$/);
-    const tarjeta = page.getByRole('button', { name: /Escapada a París/ });
-    await expect(tarjeta).toContainText('En curso');
-    await expect(tarjeta).toContainText('900 €');
+    await expect(page).toHaveURL(/\/viajes\/nuevo-1$/);
+    await expect(page.getByText('Escapada a París')).toBeVisible();
+    await expect(page.getByText('900 €')).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Secciones del viaje' })).toBeVisible();
     expect(creados).toEqual([
       { nombre: 'Escapada a París', presupuesto: 900, destino: 'París', fecha_inicio: '2027-04-10', fecha_fin: '2027-04-13' },
     ]);

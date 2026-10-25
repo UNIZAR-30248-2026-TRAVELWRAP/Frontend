@@ -7,6 +7,15 @@ const usuarioId = 'df77cba6-4be5-4cbc-814b-1e228dd73dcc';
 
 Given('que el servidor guarda los viajes que creo', async () => {
   const viajes: Record<string, unknown>[] = [];
+  await paginaActual().route('**/api/viajes/*', (route) => {
+    const id = new URL(route.request().url()).pathname.split('/').pop();
+    const encontrado = viajes.find((v) => v.id === id);
+    return route.fulfill({
+      status: encontrado ? 200 : 404,
+      contentType: 'application/json',
+      body: JSON.stringify(encontrado ?? { error: { codigo: 'viaje_no_encontrado', mensaje: 'El viaje no existe' } }),
+    });
+  });
   await paginaActual().route('**/api/viajes', (route) => {
     if (route.request().method() !== 'POST') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ viajes }) });

@@ -15,13 +15,13 @@ Característica: Nombre por defecto al crear un viaje (RF8)
     Y indico el presupuesto "850"
     Entonces el campo del nombre del viaje está vacío
     Cuando pulso el botón "Crear viaje"
-    Entonces vuelvo a la pantalla de mis viajes
-    Y veo el viaje "Roma 2027" en curso con presupuesto "850 €"
+    Entonces estoy en el inicio del viaje
+    Y veo el texto "Roma 2027"
 
   Escenario: Un viaje de diciembre a enero lleva los dos años
     Cuando abro el formulario de nuevo viaje
     Y indico el destino "Praga" con las fechas del "2027-12-28" al "2028-01-03"
     Y indico el presupuesto "600"
     Y pulso el botón "Crear viaje"
-    Entonces vuelvo a la pantalla de mis viajes
-    Y veo el viaje "Praga 2027-2028" en curso con presupuesto "600 €"
+    Entonces estoy en el inicio del viaje
+    Y veo el texto "Praga 2027-2028"

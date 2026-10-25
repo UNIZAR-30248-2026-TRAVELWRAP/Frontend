@@ -126,14 +126,16 @@ function RutaInvitarViajeros({ sesion }: { sesion: Sesion }) {
   return <InvitarViajeros viajeId={viajeId ?? ""} tokenSesion={sesion.token} onBack={() => navigate(-1)} />;
 }
 
-// Al crear el viaje se vuelve a «Mis viajes»; si el destino se va a votar, se abre la votación
+// Al crear el viaje se abre su pantalla; si el destino se va a votar, se abre la votación
 function RutaCrearViaje({ sesion }: { sesion: Sesion }) {
   const navigate = useNavigate();
   return (
     <CrearViaje
       tokenSesion={sesion.token}
       onBack={() => navigate("/")}
-      onCreated={(viaje) => navigate(viaje.pendiente_destino ? `/viajes/${viaje.id}/destino` : "/")}
+      onCreated={(viaje) =>
+        navigate(viaje.pendiente_destino ? `/viajes/${viaje.id}/destino` : `/viajes/${viaje.id}`, { replace: true })
+      }
     />
   );
 }
