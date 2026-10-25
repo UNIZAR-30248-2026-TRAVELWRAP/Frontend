@@ -146,6 +146,19 @@ describe('Itinerario', () => {
     expect(await screen.findByText('10:00 – 12:30 h')).toBeTruthy()
   })
 
+  it('marca el tipo de la actividad en su icono', async () => {
+    simularBackend({}, [
+      actividad('a1', { titulo: 'Cena', categoria: 'comida' }),
+      actividad('a2', { titulo: 'Paseo' }),
+    ])
+    renderizar()
+
+    await screen.findByText('Cena')
+
+    expect(screen.getByRole('img', { name: 'Comida' })).toBeTruthy()
+    expect(screen.getAllByRole('img')).toHaveLength(1)
+  })
+
   it('recorta los segundos de la hora', async () => {
     simularBackend({}, [actividad('a1', { titulo: 'Cena', hora_inicio: '20:15:00' })])
     renderizar()

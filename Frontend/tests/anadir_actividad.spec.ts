@@ -98,6 +98,7 @@ test.describe('Añadir actividad', () => {
     await page.getByLabel('Lugar / Dirección').fill('Piazza del Colosseo');
     await page.getByLabel('Hora').fill('10:00');
     await page.getByLabel('Hasta (opcional)').fill('12:30');
+    await page.getByRole('button', { name: 'Cultura' }).click();
     await page.getByRole('button', { name: 'Añadir al itinerario' }).click();
 
     await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}/itinerario$`));
@@ -109,6 +110,7 @@ test.describe('Añadir actividad', () => {
       hora_inicio: '10:00',
       hora_fin: '12:30',
       ubicacion_nombre: 'Piazza del Colosseo',
+      categoria: 'cultura',
     });
   });
 
@@ -127,6 +129,7 @@ test.describe('Añadir actividad', () => {
       hora_inicio: null,
       hora_fin: null,
       ubicacion_nombre: null,
+      categoria: null,
     });
   });
 

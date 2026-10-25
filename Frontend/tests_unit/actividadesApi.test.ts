@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../src/services/authApi'
-import { crearActividad, listarActividades } from '../src/services/actividadesApi'
+import { CATEGORIAS, crearActividad, iconoDeCategoria, listarActividades } from '../src/services/actividadesApi'
 
 const VIAJE_ID = '123e4567-e89b-12d3-a456-426614174000'
 
@@ -26,6 +26,7 @@ describe('actividadesApi · crear actividad', () => {
       hora_inicio: '10:00',
       hora_fin: '12:00',
       ubicacion_nombre: 'Piazza del Colosseo',
+      categoria: 'cultura' as const,
     }
 
     const actividad = await crearActividad(VIAJE_ID, nueva, 'token-acceso')
@@ -48,7 +49,7 @@ describe('actividadesApi · crear actividad', () => {
 
     const error = await crearActividad(
       VIAJE_ID,
-      { titulo: 'Cena', fecha: '2027-05-12', hora_inicio: null, hora_fin: null, ubicacion_nombre: null },
+      { titulo: 'Cena', fecha: '2027-05-12', hora_inicio: null, hora_fin: null, ubicacion_nombre: null, categoria: null },
       'token-acceso',
     ).catch((e) => e)
 
@@ -95,5 +96,15 @@ describe('actividadesApi · listar actividades', () => {
     expect(error).toBeInstanceOf(ApiError)
     expect(error.estado).toBe(404)
     expect(error.codigo).toBe('viaje_no_encontrado')
+  })
+})
+
+describe('actividadesApi · categorías', () => {
+  it('tiene un icono distinto para cada tipo y el pin como icono por defecto', () => {
+    expect(CATEGORIAS.map((categoria) => categoria.valor)).toEqual(['comida', 'cultura', 'transporte', 'alojamiento', 'otro'])
+    expect(iconoDeCategoria('comida')).toBe('restaurant')
+    expect(iconoDeCategoria('transporte')).toBe('car')
+    expect(iconoDeCategoria(null)).toBe('pin')
+    expect(iconoDeCategoria('desconocida')).toBe('pin')
   })
 })

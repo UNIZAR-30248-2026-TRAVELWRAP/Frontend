@@ -2,7 +2,7 @@ import { useEffect, useState, type CSSProperties, type FormEvent } from "react"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import SectionLabel from "../components/SectionLabel"
-import { crearActividad } from "../services/actividadesApi"
+import { CATEGORIAS, crearActividad, type Categoria } from "../services/actividadesApi"
 import { ApiError } from "../services/authApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
@@ -59,6 +59,7 @@ export default function AnadirActividad({ viajeId, tokenSesion, onVolver, onGuar
   const [ubicacion, setUbicacion] = useState("")
   const [hora, setHora] = useState("")
   const [horaFin, setHoraFin] = useState("")
+  const [categoria, setCategoria] = useState<Categoria | null>(null)
   const [fecha, setFecha] = useState("")
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState("")
@@ -99,6 +100,7 @@ export default function AnadirActividad({ viajeId, tokenSesion, onVolver, onGuar
           hora_inicio: hora || null,
           hora_fin: hora ? horaFin || null : null,
           ubicacion_nombre: ubicacion.trim() || null,
+          categoria,
         },
         tokenSesion,
       )
@@ -273,6 +275,42 @@ export default function AnadirActividad({ viajeId, tokenSesion, onVolver, onGuar
                   {avisoHoras}
                 </div>
               )}
+
+              <div style={{ marginBottom: 24 }}>
+                <span id="actividad-tipo" style={labelStyle}>
+                  Tipo (opcional)
+                </span>
+                <div role="group" aria-labelledby="actividad-tipo" style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {CATEGORIAS.map(({ valor, texto, icono }) => {
+                    const elegida = categoria === valor
+                    return (
+                      <button
+                        type="button"
+                        key={valor}
+                        aria-pressed={elegida}
+                        onClick={() => setCategoria(elegida ? null : valor)}
+                        style={{
+                          background: elegida ? C.lightBlue : "white",
+                          color: elegida ? C.blue : C.navy,
+                          border: `1.5px solid ${elegida ? C.blue : C.border}`,
+                          borderRadius: 999,
+                          padding: "8px 14px",
+                          fontFamily: NUNITO,
+                          fontWeight: 700,
+                          fontSize: 12,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        <Icon name={icono} size={15} color={elegida ? C.blue : C.muted} strokeWidth={2} />
+                        {texto}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
 
               {error && (
                 <div role="alert" style={{ ...alertaStyle, marginBottom: 16 }}>

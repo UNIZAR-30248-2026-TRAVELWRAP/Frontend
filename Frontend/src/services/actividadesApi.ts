@@ -1,5 +1,18 @@
 import { peticion } from "./authApi"
 
+export type Categoria = "comida" | "cultura" | "transporte" | "alojamiento" | "otro"
+
+export const CATEGORIAS: { valor: Categoria; texto: string; icono: string }[] = [
+  { valor: "comida", texto: "Comida", icono: "restaurant" },
+  { valor: "cultura", texto: "Cultura", icono: "gallery" },
+  { valor: "transporte", texto: "Transporte", icono: "car" },
+  { valor: "alojamiento", texto: "Alojamiento", icono: "house" },
+  { valor: "otro", texto: "Otro", icono: "pin" },
+]
+
+export const iconoDeCategoria = (categoria: string | null) =>
+  CATEGORIAS.find((c) => c.valor === categoria)?.icono ?? "pin"
+
 export type Actividad = {
   id: string
   viaje_id: string
@@ -25,6 +38,7 @@ export type NuevaActividad = {
   hora_inicio: string | null
   hora_fin: string | null
   ubicacion_nombre: string | null
+  categoria: Categoria | null
 }
 
 export const listarActividades = (viajeId: string, tokenSesion: string, fecha?: string) =>

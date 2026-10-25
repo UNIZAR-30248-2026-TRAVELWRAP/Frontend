@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import AnadirActividad from '../src/screens/AnadirActividad'
 
@@ -105,6 +105,7 @@ describe('AnadirActividad', () => {
     await user.type(screen.getByLabelText('Lugar / Dirección'), 'Piazza del Colosseo')
     await user.type(screen.getByLabelText('Hora'), '10:00')
     await user.type(screen.getByLabelText('Hasta (opcional)'), '12:30')
+    await user.click(screen.getByRole('button', { name: 'Cultura' }))
     await user.click(botonAnadir())
 
     await waitFor(() => expect(onGuardada).toHaveBeenCalledTimes(1))
@@ -114,6 +115,7 @@ describe('AnadirActividad', () => {
       hora_inicio: '10:00',
       hora_fin: '12:30',
       ubicacion_nombre: 'Piazza del Colosseo',
+      categoria: 'cultura',
     })
   })
 
@@ -132,7 +134,45 @@ describe('AnadirActividad', () => {
       hora_inicio: null,
       hora_fin: null,
       ubicacion_nombre: null,
+      categoria: null,
     })
+  })
+
+  it('ofrece los cinco tipos de actividad y deja elegir uno o quitarlo', async () => {
+    const user = userEvent.setup()
+    const fetchMock = simularBackend()
+    renderizar()
+
+    await user.type(await screen.findByLabelText('Nombre de la actividad'), 'Cena')
+    const tipos = screen.getByRole('group', { name: 'Tipo (opcional)' })
+    expect(within(tipos).getAllByRole('button').map((boton) => boton.textContent)).toEqual([
+      'Comida',
+      'Cultura',
+      'Transporte',
+      'Alojamiento',
+      'Otro',
+    ])
+    await user.click(within(tipos).getByRole('button', { name: 'Comida' }))
+    expect(within(tipos).getByRole('button', { name: 'Comida' }).getAttribute('aria-pressed')).toBe('true')
+    await user.click(within(tipos).getByRole('button', { name: 'Comida' }))
+    expect(within(tipos).getByRole('button', { name: 'Comida' }).getAttribute('aria-pressed')).toBe('false')
+    await user.click(botonAnadir())
+
+    await waitFor(() => expect(cuerpoDelPost(fetchMock)).toBeDefined())
+    expect(cuerpoDelPost(fetchMock).categoria).toBeNull()
+  })
+
+  it('envía el tipo elegido', async () => {
+    const user = userEvent.setup()
+    const fetchMock = simularBackend()
+    renderizar()
+
+    await user.type(await screen.findByLabelText('Nombre de la actividad'), 'Cena')
+    await user.click(screen.getByRole('button', { name: 'Comida' }))
+    await user.click(botonAnadir())
+
+    await waitFor(() => expect(cuerpoDelPost(fetchMock)).toBeDefined())
+    expect(cuerpoDelPost(fetchMock).categoria).toBe('comida')
   })
 
   it('no deja poner hora de fin hasta que hay hora de inicio', async () => {

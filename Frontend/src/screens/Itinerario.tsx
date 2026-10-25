@@ -4,7 +4,7 @@ import BarraInferior, { ALTO_BARRA_INFERIOR, type SeccionViaje } from "../compon
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import SectionLabel from "../components/SectionLabel"
-import { listarActividades, type Actividad } from "../services/actividadesApi"
+import { CATEGORIAS, iconoDeCategoria, listarActividades, type Actividad } from "../services/actividadesApi"
 import { ApiError } from "../services/authApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
@@ -212,6 +212,8 @@ export default function Itinerario({
                         style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 12 }}
                       >
                         <div
+                          role={actividad.categoria ? "img" : undefined}
+                          aria-label={CATEGORIAS.find((c) => c.valor === actividad.categoria)?.texto}
                           style={{
                             width: 40,
                             height: 40,
@@ -226,7 +228,12 @@ export default function Itinerario({
                             boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
                           }}
                         >
-                          <Icon name="pin" size={18} color={primera ? "white" : C.blue} strokeWidth={1.8} />
+                          <Icon
+                            name={iconoDeCategoria(actividad.categoria)}
+                            size={18}
+                            color={primera ? "white" : C.blue}
+                            strokeWidth={1.8}
+                          />
                         </div>
                         <div
                           style={{
