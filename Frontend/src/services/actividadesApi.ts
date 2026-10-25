@@ -26,6 +26,12 @@ export type NuevaActividad = {
   ubicacion_nombre: string | null
 }
 
+export const listarActividades = (viajeId: string, tokenSesion: string, fecha?: string) =>
+  peticion<{ actividades: Actividad[] }>(
+    `/viajes/${encodeURIComponent(viajeId)}/actividades${fecha ? `?fecha=${encodeURIComponent(fecha)}` : ""}`,
+    { token: tokenSesion },
+  )
+
 export const crearActividad = (viajeId: string, actividad: NuevaActividad, tokenSesion: string) =>
   peticion<Actividad>(`/viajes/${encodeURIComponent(viajeId)}/actividades`, {
     metodo: "POST",

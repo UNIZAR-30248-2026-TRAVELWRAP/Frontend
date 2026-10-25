@@ -4,11 +4,11 @@ import BarraInferior, { ALTO_BARRA_INFERIOR, type SeccionViaje } from "../compon
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import SectionLabel from "../components/SectionLabel"
-import type { Actividad } from "../services/actividadesApi"
+import { listarActividades, type Actividad } from "../services/actividadesApi"
 import { ApiError } from "../services/authApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
-import { diasDelViaje } from "../utils/formatoViaje"
+import { diasDelItinerario } from "../utils/formatoViaje"
 
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
 
@@ -34,7 +34,6 @@ const avisoVacioStyle: CSSProperties = {
 type ItinerarioProps = {
   viajeId: string
   tokenSesion: string
-  actividades?: Actividad[]
   onVolver?: () => void
   onAnadirActividad?: () => void
   onCambiarSeccion?: (seccion: SeccionViaje) => void
@@ -43,20 +42,22 @@ type ItinerarioProps = {
 export default function Itinerario({
   viajeId,
   tokenSesion,
-  actividades = [],
   onVolver,
   onAnadirActividad,
   onCambiarSeccion,
 }: ItinerarioProps) {
   const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
+  const [actividades, setActividades] = useState<Actividad[]>([])
   const [error, setError] = useState("")
   const [diaElegido, setDiaElegido] = useState("")
 
   useEffect(() => {
     let vigente = true
-    obtenerViaje(viajeId, tokenSesion)
-      .then((datos) => {
-        if (vigente) setViaje(datos)
+    Promise.all([obtenerViaje(viajeId, tokenSesion), listarActividades(viajeId, tokenSesion)])
+      .then(([datosViaje, lista]) => {
+        if (!vigente) return
+        setViaje(datosViaje)
+        setActividades(lista.actividades)
       })
       .catch((e) => {
         if (vigente) setError(mensajeDeError(e))
@@ -66,7 +67,9 @@ export default function Itinerario({
     }
   }, [viajeId, tokenSesion])
 
-  const dias = viaje?.fecha_inicio && viaje.fecha_fin ? diasDelViaje(viaje.fecha_inicio, viaje.fecha_fin) : []
+  const dias = viaje
+    ? diasDelItinerario(viaje.fecha_inicio, viaje.fecha_fin, actividades.map((actividad) => actividad.fecha))
+    : []
   const dia = dias.some((d) => d.fecha === diaElegido) ? diaElegido : (dias[0]?.fecha ?? "")
   const delDia = actividades.filter((actividad) => actividad.fecha === dia)
   const activo = viaje?.estado === "activo"
@@ -179,7 +182,7 @@ export default function Itinerario({
 
           {viaje && dias.length === 0 && (
             <div style={avisoVacioStyle}>
-              Este viaje aún no tiene fechas: añádelas al editar el viaje para organizar el itinerario por días.
+              Todavía no hay actividades ni fechas en este viaje. Añade una actividad y aparecerá aquí por día.
             </div>
           )}
 

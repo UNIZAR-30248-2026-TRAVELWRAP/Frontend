@@ -21,6 +21,13 @@ Before(() => {
 const simularActividades = async () => {
   await paginaActual().route('**/api/viajes/*/actividades', (route) => {
     const peticion = route.request();
+    if (peticion.method() === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ actividades: guardadas }),
+      });
+    }
     if (peticion.method() !== 'POST') return route.fallback();
 
     if (rechazaPorViajeCerrado) {

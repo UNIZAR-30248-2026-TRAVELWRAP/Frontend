@@ -33,6 +33,15 @@ export const diasDelViaje = (inicio: string, fin: string) => {
   })
 }
 
+export const diasDelItinerario = (inicio: string | null, fin: string | null, fechasActividades: string[]) => {
+  const delViaje = inicio && fin ? diasDelViaje(inicio, fin) : []
+  const delRango = new Set(delViaje.map((dia) => dia.fecha))
+  const sueltos = [...new Set(fechasActividades)]
+    .filter((fecha) => !delRango.has(fecha))
+    .map((fecha) => ({ fecha, texto: fechaCorta(fecha) }))
+  return [...delViaje, ...sueltos].sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0))
+}
+
 // Viaje activo: "12 – 15 may · 4 días"
 export const formatearFechasActivo = (inicio: string | null, fin: string | null) => {
   if (!inicio && !fin) return "Fechas por confirmar"

@@ -69,6 +69,9 @@ const simularBackend = async (
     const peticion = route.request();
     const ruta = new URL(peticion.url()).pathname.replace(/^.*\/api/, '');
 
+    if (ruta === `/viajes/${VIAJE_ID}/actividades` && peticion.method() === 'GET') {
+      return json(route, 200, { actividades: [] });
+    }
     if (ruta === `/viajes/${VIAJE_ID}/actividades` && peticion.method() === 'POST') {
       const cuerpo = peticion.postDataJSON();
       creadas.push({ cabecera: peticion.headers()['authorization'], cuerpo });
