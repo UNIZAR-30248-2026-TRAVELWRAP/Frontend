@@ -55,8 +55,8 @@ const simularBackend = async (page: Page) => {
   return { creados };
 };
 
-test.describe('Nuevo viaje · nombre sugerido', () => {
-  test('el nombre se rellena con el destino y el año y es el que se guarda', async ({ page }) => {
+test.describe('Nuevo viaje · nombre por defecto', () => {
+  test('el campo Nombre queda vacío y al crear se guarda el destino con el año', async ({ page }) => {
     await entrarConSesion(page);
     const { creados } = await simularBackend(page);
 
@@ -66,7 +66,7 @@ test.describe('Nuevo viaje · nombre sugerido', () => {
     await page.getByLabel('Fecha fin').fill('2027-05-15');
     await page.getByLabel('Presupuesto estimado (€)').fill('850');
 
-    await expect(page.getByLabel('Nombre del viaje')).toHaveValue('Roma 2027');
+    await expect(page.getByLabel('Nombre del viaje')).toHaveValue('');
     await page.getByRole('button', { name: 'Crear viaje', exact: true }).click();
 
     await expect(page).toHaveURL(/\/$/);
@@ -75,16 +75,19 @@ test.describe('Nuevo viaje · nombre sugerido', () => {
     ]);
   });
 
-  test('un viaje de diciembre a enero lleva los dos años', async ({ page }) => {
+  test('un viaje de diciembre a enero se guarda con los dos años', async ({ page }) => {
     await entrarConSesion(page);
-    await simularBackend(page);
+    const { creados } = await simularBackend(page);
 
     await page.goto('/viajes/nuevo');
     await page.getByPlaceholder('Ciudad o país').fill('Praga');
     await page.getByLabel('Fecha inicio').fill('2027-12-28');
     await page.getByLabel('Fecha fin').fill('2028-01-03');
+    await page.getByLabel('Presupuesto estimado (€)').fill('600');
+    await page.getByRole('button', { name: 'Crear viaje', exact: true }).click();
 
-    await expect(page.getByLabel('Nombre del viaje')).toHaveValue('Praga 2027-2028');
+    await expect(page).toHaveURL(/\/$/);
+    expect(creados[0].nombre).toBe('Praga 2027-2028');
   });
 
   test('si el usuario escribe su propio nombre, se respeta', async ({ page }) => {
@@ -92,26 +95,26 @@ test.describe('Nuevo viaje · nombre sugerido', () => {
     const { creados } = await simularBackend(page);
 
     await page.goto('/viajes/nuevo');
-    await page.getByPlaceholder('Ciudad o país').fill('Roma');
     await page.getByLabel('Nombre del viaje').fill('Escapada con los primos');
+    await page.getByPlaceholder('Ciudad o país').fill('Roma');
     await page.getByLabel('Fecha inicio').fill('2027-05-12');
     await page.getByLabel('Presupuesto estimado (€)').fill('850');
-
-    await expect(page.getByLabel('Nombre del viaje')).toHaveValue('Escapada con los primos');
     await page.getByRole('button', { name: 'Crear viaje', exact: true }).click();
 
     await expect(page).toHaveURL(/\/$/);
     expect(creados[0].nombre).toBe('Escapada con los primos');
   });
 
-  test('con «Votar destino» el nombre queda vacío para escribirlo', async ({ page }) => {
+  test('con «Votar destino» hace falta escribir el nombre', async ({ page }) => {
     await entrarConSesion(page);
     await simularBackend(page);
 
     await page.goto('/viajes/nuevo');
-    await page.getByPlaceholder('Ciudad o país').fill('Roma');
     await page.getByRole('radio', { name: /Votar destino/ }).click();
+    await page.getByLabel('Presupuesto estimado (€)').fill('850');
+    await expect(page.getByRole('button', { name: 'Crear viaje y elegir destino' })).toBeDisabled();
 
-    await expect(page.getByLabel('Nombre del viaje')).toHaveValue('');
+    await page.getByLabel('Nombre del viaje').fill('Verano 2027');
+    await expect(page.getByRole('button', { name: 'Crear viaje y elegir destino' })).toBeEnabled();
   });
 });

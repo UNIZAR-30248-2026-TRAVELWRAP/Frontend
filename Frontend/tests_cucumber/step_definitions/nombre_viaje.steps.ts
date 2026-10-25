@@ -17,6 +17,6 @@ When('indico el presupuesto {string}', async (presupuesto: string) => {
   await paginaActual().getByLabel('Presupuesto estimado (€)').fill(presupuesto);
 });
 
-Then('el nombre del viaje es {string}', async (nombre: string) => {
-  await expect(paginaActual().getByLabel('Nombre del viaje')).toHaveValue(nombre);
+Then('el campo del nombre del viaje está vacío', async () => {
+  await expect(paginaActual().getByLabel('Nombre del viaje')).toHaveValue('');
 });
