@@ -23,6 +23,7 @@ export type NuevaActividad = {
   titulo: string
   fecha: string
   hora_inicio: string | null
+  hora_fin: string | null
   ubicacion_nombre: string | null
 }
 

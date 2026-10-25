@@ -104,6 +104,7 @@ describe('AnadirActividad', () => {
     await user.type(screen.getByLabelText('Nombre de la actividad'), '  Visita al Coliseo ')
     await user.type(screen.getByLabelText('Lugar / Dirección'), 'Piazza del Colosseo')
     await user.type(screen.getByLabelText('Hora'), '10:00')
+    await user.type(screen.getByLabelText('Hasta (opcional)'), '12:30')
     await user.click(botonAnadir())
 
     await waitFor(() => expect(onGuardada).toHaveBeenCalledTimes(1))
@@ -111,6 +112,7 @@ describe('AnadirActividad', () => {
       titulo: 'Visita al Coliseo',
       fecha: '2027-05-13',
       hora_inicio: '10:00',
+      hora_fin: '12:30',
       ubicacion_nombre: 'Piazza del Colosseo',
     })
   })
@@ -128,8 +130,50 @@ describe('AnadirActividad', () => {
       titulo: 'Paseo',
       fecha: '2027-05-12',
       hora_inicio: null,
+      hora_fin: null,
       ubicacion_nombre: null,
     })
+  })
+
+  it('no deja poner hora de fin hasta que hay hora de inicio', async () => {
+    const user = userEvent.setup()
+    simularBackend()
+    renderizar()
+
+    const fin = (await screen.findByLabelText('Hasta (opcional)')) as HTMLInputElement
+    expect(fin.disabled).toBe(true)
+    await user.type(screen.getByLabelText('Hora'), '10:00')
+    expect(fin.disabled).toBe(false)
+  })
+
+  it('avisa y no deja añadir si la hora de fin es anterior a la de inicio', async () => {
+    const user = userEvent.setup()
+    simularBackend()
+    renderizar()
+
+    await user.type(await screen.findByLabelText('Nombre de la actividad'), 'Paseo')
+    await user.type(screen.getByLabelText('Hora'), '12:00')
+    await user.type(screen.getByLabelText('Hasta (opcional)'), '11:00')
+
+    expect((await screen.findByRole('alert')).textContent).toBe('La hora de fin no puede ser anterior a la de inicio')
+    expect(botonAnadir()).toHaveProperty('disabled', true)
+    await user.clear(screen.getByLabelText('Hasta (opcional)'))
+    expect(botonAnadir()).toHaveProperty('disabled', false)
+  })
+
+  it('si se borra la hora de inicio no se envía la hora de fin', async () => {
+    const user = userEvent.setup()
+    const fetchMock = simularBackend()
+    renderizar()
+
+    await user.type(await screen.findByLabelText('Nombre de la actividad'), 'Paseo')
+    await user.type(screen.getByLabelText('Hora'), '10:00')
+    await user.type(screen.getByLabelText('Hasta (opcional)'), '11:00')
+    await user.clear(screen.getByLabelText('Hora'))
+    await user.click(botonAnadir())
+
+    await waitFor(() => expect(cuerpoDelPost(fetchMock)).toBeDefined())
+    expect(cuerpoDelPost(fetchMock)).toMatchObject({ hora_inicio: null, hora_fin: null })
   })
 
   it('muestra el error del backend y no avisa de que se ha guardado', async () => {

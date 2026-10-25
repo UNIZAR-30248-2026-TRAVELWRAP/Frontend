@@ -262,7 +262,8 @@ export default function Itinerario({
                             <div style={{ marginTop: 8 }}>
                               <Badge bg={primera ? C.lightAccent : C.lightBlue} color={primera ? C.accent : C.blue}>
                                 <Icon name="clock" size={11} color={primera ? C.accent : C.blue} strokeWidth={2} />
-                                {actividad.hora_inicio.slice(0, 5)} h
+                                {actividad.hora_inicio.slice(0, 5)}
+                                {actividad.hora_fin ? ` – ${actividad.hora_fin.slice(0, 5)}` : ""} h
                               </Badge>
                             </div>
                           )}

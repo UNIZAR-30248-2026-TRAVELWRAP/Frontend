@@ -139,6 +139,13 @@ describe('Itinerario', () => {
     expect(titulosDeLaAgenda()).toEqual(['Paseo'])
   })
 
+  it('muestra el rango cuando la actividad tiene hora de fin', async () => {
+    simularBackend({}, [actividad('a1', { titulo: 'Museo', hora_inicio: '10:00:00', hora_fin: '12:30:00' })])
+    renderizar()
+
+    expect(await screen.findByText('10:00 – 12:30 h')).toBeTruthy()
+  })
+
   it('recorta los segundos de la hora', async () => {
     simularBackend({}, [actividad('a1', { titulo: 'Cena', hora_inicio: '20:15:00' })])
     renderizar()

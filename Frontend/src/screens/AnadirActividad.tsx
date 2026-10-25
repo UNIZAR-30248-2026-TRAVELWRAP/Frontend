@@ -58,6 +58,7 @@ export default function AnadirActividad({ viajeId, tokenSesion, onVolver, onGuar
   const [titulo, setTitulo] = useState("")
   const [ubicacion, setUbicacion] = useState("")
   const [hora, setHora] = useState("")
+  const [horaFin, setHoraFin] = useState("")
   const [fecha, setFecha] = useState("")
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState("")
@@ -80,7 +81,9 @@ export default function AnadirActividad({ viajeId, tokenSesion, onVolver, onGuar
 
   const dias = viaje?.fecha_inicio && viaje.fecha_fin ? diasDelViaje(viaje.fecha_inicio, viaje.fecha_fin) : []
   const editable = viaje?.estado === "activo"
-  const canSubmit = editable && titulo.trim() !== "" && fecha !== "" && !guardando
+  const avisoHoras =
+    hora !== "" && horaFin !== "" && horaFin < hora ? "La hora de fin no puede ser anterior a la de inicio" : ""
+  const canSubmit = editable && titulo.trim() !== "" && fecha !== "" && avisoHoras === "" && !guardando
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
@@ -90,7 +93,13 @@ export default function AnadirActividad({ viajeId, tokenSesion, onVolver, onGuar
     try {
       await crearActividad(
         viajeId,
-        { titulo: titulo.trim(), fecha, hora_inicio: hora || null, ubicacion_nombre: ubicacion.trim() || null },
+        {
+          titulo: titulo.trim(),
+          fecha,
+          hora_inicio: hora || null,
+          hora_fin: hora ? horaFin || null : null,
+          ubicacion_nombre: ubicacion.trim() || null,
+        },
         tokenSesion,
       )
       onGuardada?.()
@@ -225,18 +234,45 @@ export default function AnadirActividad({ viajeId, tokenSesion, onVolver, onGuar
                 />
               </div>
 
-              <div style={{ marginBottom: 24 }}>
-                <label htmlFor="actividad-hora" style={labelStyle}>
-                  Hora
-                </label>
-                <input
-                  id="actividad-hora"
-                  type="time"
-                  value={hora}
-                  onChange={(event) => setHora(event.target.value)}
-                  style={inputStyle}
-                />
+              <div style={{ display: "flex", gap: 10, marginBottom: avisoHoras ? 6 : 24 }}>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="actividad-hora" style={labelStyle}>
+                    Hora
+                  </label>
+                  <input
+                    id="actividad-hora"
+                    type="time"
+                    value={hora}
+                    onChange={(event) => setHora(event.target.value)}
+                    style={inputStyle}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="actividad-hora-fin" style={labelStyle}>
+                    Hasta (opcional)
+                  </label>
+                  <input
+                    id="actividad-hora-fin"
+                    type="time"
+                    value={hora ? horaFin : ""}
+                    disabled={hora === ""}
+                    min={hora || undefined}
+                    onChange={(event) => setHoraFin(event.target.value)}
+                    aria-invalid={avisoHoras !== ""}
+                    aria-describedby={avisoHoras ? "actividad-horas-aviso" : undefined}
+                    style={{ ...inputStyle, opacity: hora === "" ? 0.6 : 1 }}
+                  />
+                </div>
               </div>
+              {avisoHoras && (
+                <div
+                  id="actividad-horas-aviso"
+                  role="alert"
+                  style={{ fontFamily: NUNITO, color: C.red, fontSize: 12, fontWeight: 700, marginBottom: 24 }}
+                >
+                  {avisoHoras}
+                </div>
+              )}
 
               {error && (
                 <div role="alert" style={{ ...alertaStyle, marginBottom: 16 }}>

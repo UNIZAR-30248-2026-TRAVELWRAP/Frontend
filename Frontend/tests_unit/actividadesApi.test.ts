@@ -24,6 +24,7 @@ describe('actividadesApi · crear actividad', () => {
       titulo: 'Visita al Coliseo',
       fecha: '2027-05-12',
       hora_inicio: '10:00',
+      hora_fin: '12:00',
       ubicacion_nombre: 'Piazza del Colosseo',
     }
 
@@ -47,7 +48,7 @@ describe('actividadesApi · crear actividad', () => {
 
     const error = await crearActividad(
       VIAJE_ID,
-      { titulo: 'Cena', fecha: '2027-05-12', hora_inicio: null, ubicacion_nombre: null },
+      { titulo: 'Cena', fecha: '2027-05-12', hora_inicio: null, hora_fin: null, ubicacion_nombre: null },
       'token-acceso',
     ).catch((e) => e)
 

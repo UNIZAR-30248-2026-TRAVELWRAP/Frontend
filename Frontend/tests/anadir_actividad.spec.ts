@@ -97,6 +97,7 @@ test.describe('Añadir actividad', () => {
     await page.getByLabel('Nombre de la actividad').fill('Visita al Coliseo');
     await page.getByLabel('Lugar / Dirección').fill('Piazza del Colosseo');
     await page.getByLabel('Hora').fill('10:00');
+    await page.getByLabel('Hasta (opcional)').fill('12:30');
     await page.getByRole('button', { name: 'Añadir al itinerario' }).click();
 
     await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}/itinerario$`));
@@ -106,6 +107,7 @@ test.describe('Añadir actividad', () => {
       titulo: 'Visita al Coliseo',
       fecha: '2027-05-13',
       hora_inicio: '10:00',
+      hora_fin: '12:30',
       ubicacion_nombre: 'Piazza del Colosseo',
     });
   });
@@ -123,6 +125,7 @@ test.describe('Añadir actividad', () => {
       titulo: 'Paseo',
       fecha: '2027-05-12',
       hora_inicio: null,
+      hora_fin: null,
       ubicacion_nombre: null,
     });
   });
@@ -150,6 +153,20 @@ test.describe('Añadir actividad', () => {
 
     await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}/itinerario$`));
     expect(creadas[0].cuerpo.fecha).toBe('2027-06-01');
+  });
+
+  test('la hora de fin anterior a la de inicio muestra un aviso y bloquea el botón', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularBackend(page);
+
+    await page.goto(rutaFormulario);
+    await page.getByLabel('Nombre de la actividad').fill('Paseo');
+    await expect(page.getByLabel('Hasta (opcional)')).toBeDisabled();
+    await page.getByLabel('Hora').fill('12:00');
+    await page.getByLabel('Hasta (opcional)').fill('11:00');
+
+    await expect(page.getByRole('alert')).toHaveText('La hora de fin no puede ser anterior a la de inicio');
+    await expect(page.getByRole('button', { name: 'Añadir al itinerario' })).toBeDisabled();
   });
 
   test('si el servidor rechaza la actividad se muestra el error y se sigue en el formulario', async ({ page }) => {
