@@ -23,6 +23,16 @@ const fechaCorta = (texto: string, conAnio = false) => {
   return `${dia} ${MESES[mes]}${conAnio ? ` ${anio}` : ""}`
 }
 
+export const diasDelViaje = (inicio: string, fin: string) => {
+  const a = leerFecha(inicio)
+  const total = Math.max(diasEntre(inicio, fin), 0)
+  return Array.from({ length: total }, (_, i) => {
+    const fecha = new Date(Date.UTC(a.anio, a.mes, a.dia + i))
+    const iso = fecha.toISOString().slice(0, 10)
+    return { fecha: iso, texto: `Día ${i + 1} · ${fechaCorta(iso)}` }
+  })
+}
+
 // Viaje activo: "12 – 15 may · 4 días"
 export const formatearFechasActivo = (inicio: string | null, fin: string | null) => {
   if (!inicio && !fin) return "Fechas por confirmar"

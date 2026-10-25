@@ -14,6 +14,7 @@ import EditarViaje from "../screens/EditarViaje";
 import ViajesArchivados from "../screens/ViajesArchivados";
 import Votaciones from "../screens/Votaciones";
 import ElegirDestino from "../screens/ElegirDestino";
+import AnadirActividad from "../screens/AnadirActividad";
 import { rutaTrasLogin } from "../services/invitacionPendiente";
 
 interface AppRouterProps {
@@ -137,6 +138,19 @@ function RutaVotaciones() {
   return <Votaciones onVolver={() => navigate(`/viajes/${viajeId}`)} />;
 }
 
+function RutaAnadirActividad({ sesion }: { sesion: Sesion }) {
+  const { viajeId = "" } = useParams();
+  const navigate = useNavigate();
+  return (
+    <AnadirActividad
+      key={viajeId}
+      viajeId={viajeId}
+      tokenSesion={sesion.token}
+      onVolver={() => navigate(`/viajes/${viajeId}`)}
+    />
+  );
+}
+
 // Viaje pendiente de destino. Al fijarlo (o si ya lo tenía) se pasa al inicio del viaje
 function RutaElegirDestino({ sesion }: { sesion: Sesion }) {
   const { viajeId = "" } = useParams();
@@ -248,6 +262,11 @@ export default function AppRouter({
         <Route
           path="/viajes/:viajeId/votaciones"
           element={session ? <RutaVotaciones /> : <Navigate to="/login" replace />}
+        />
+
+        <Route
+          path="/viajes/:viajeId/actividades/nueva"
+          element={session ? <RutaAnadirActividad sesion={session} /> : <Navigate to="/login" replace />}
         />
 
         {/* Votación del destino de un viaje que aún no lo tiene (privada) */}
