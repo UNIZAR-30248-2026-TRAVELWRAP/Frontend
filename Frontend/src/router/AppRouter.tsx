@@ -15,6 +15,8 @@ import ViajesArchivados from "../screens/ViajesArchivados";
 import Votaciones from "../screens/Votaciones";
 import ElegirDestino from "../screens/ElegirDestino";
 import AnadirActividad from "../screens/AnadirActividad";
+import Itinerario from "../screens/Itinerario";
+import type { SeccionViaje } from "../components/BarraInferior";
 import { rutaTrasLogin } from "../services/invitacionPendiente";
 
 interface AppRouterProps {
@@ -68,6 +70,9 @@ function RutaPerfil(props: Omit<ComponentProps<typeof Perfil>, "onVolver" | "onV
   return <Perfil {...props} onVolver={() => navigate("/")} onVerArchivados={() => navigate("/viajes/archivados")} />;
 }
 
+const rutaDeSeccion = (viajeId: string, seccion: SeccionViaje) =>
+  seccion === "itinerario" ? `/viajes/${viajeId}/itinerario` : `/viajes/${viajeId}`;
+
 // Inicio del viaje de la URL. Al cerrarlo queda archivado y se va a «Viajes archivados»
 function RutaInicioViaje({ sesion }: { sesion: Sesion }) {
   const { viajeId = "" } = useParams();
@@ -81,6 +86,7 @@ function RutaInicioViaje({ sesion }: { sesion: Sesion }) {
       onEditar={() => navigate(`/viajes/${viajeId}/editar`)}
       onInvitar={() => navigate(`/viajes/${viajeId}/invitar`)}
       onVotaciones={() => navigate(`/viajes/${viajeId}/votaciones`)}
+      onCambiarSeccion={(seccion) => navigate(rutaDeSeccion(viajeId, seccion))}
       onPendienteDestino={() => navigate(`/viajes/${viajeId}/destino`, { replace: true })}
       onArchivado={() => navigate("/viajes/archivados")}
     />
@@ -138,6 +144,21 @@ function RutaVotaciones() {
   return <Votaciones onVolver={() => navigate(`/viajes/${viajeId}`)} />;
 }
 
+function RutaItinerario({ sesion }: { sesion: Sesion }) {
+  const { viajeId = "" } = useParams();
+  const navigate = useNavigate();
+  return (
+    <Itinerario
+      key={viajeId}
+      viajeId={viajeId}
+      tokenSesion={sesion.token}
+      onVolver={() => navigate("/")}
+      onAnadirActividad={() => navigate(`/viajes/${viajeId}/actividades/nueva`)}
+      onCambiarSeccion={(seccion) => navigate(rutaDeSeccion(viajeId, seccion))}
+    />
+  );
+}
+
 function RutaAnadirActividad({ sesion }: { sesion: Sesion }) {
   const { viajeId = "" } = useParams();
   const navigate = useNavigate();
@@ -146,8 +167,8 @@ function RutaAnadirActividad({ sesion }: { sesion: Sesion }) {
       key={viajeId}
       viajeId={viajeId}
       tokenSesion={sesion.token}
-      onVolver={() => navigate(`/viajes/${viajeId}`)}
-      onGuardada={() => navigate(`/viajes/${viajeId}`, { replace: true })}
+      onVolver={() => navigate(`/viajes/${viajeId}/itinerario`)}
+      onGuardada={() => navigate(`/viajes/${viajeId}/itinerario`, { replace: true })}
     />
   );
 }
@@ -263,6 +284,11 @@ export default function AppRouter({
         <Route
           path="/viajes/:viajeId/votaciones"
           element={session ? <RutaVotaciones /> : <Navigate to="/login" replace />}
+        />
+
+        <Route
+          path="/viajes/:viajeId/itinerario"
+          element={session ? <RutaItinerario sesion={session} /> : <Navigate to="/login" replace />}
         />
 
         <Route

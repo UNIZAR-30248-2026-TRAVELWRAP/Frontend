@@ -96,7 +96,7 @@ test.describe('Añadir actividad', () => {
     await page.getByLabel('Hora').fill('10:00');
     await page.getByRole('button', { name: 'Añadir al itinerario' }).click();
 
-    await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}$`));
+    await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}/itinerario$`));
     expect(creadas).toHaveLength(1);
     expect(creadas[0].cabecera).toBe('Bearer token-acceso');
     expect(creadas[0].cuerpo).toEqual({
@@ -115,7 +115,7 @@ test.describe('Añadir actividad', () => {
     await page.getByLabel('Nombre de la actividad').fill('Paseo');
     await page.getByRole('button', { name: 'Añadir al itinerario' }).click();
 
-    await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}$`));
+    await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}/itinerario$`));
     expect(creadas[0].cuerpo).toEqual({
       titulo: 'Paseo',
       fecha: '2027-05-12',
@@ -145,7 +145,7 @@ test.describe('Añadir actividad', () => {
     await page.getByLabel('Fecha').fill('2027-06-01');
     await page.getByRole('button', { name: 'Añadir al itinerario' }).click();
 
-    await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}$`));
+    await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}/itinerario$`));
     expect(creadas[0].cuerpo.fecha).toBe('2027-06-01');
   });
 

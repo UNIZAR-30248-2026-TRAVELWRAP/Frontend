@@ -6,7 +6,7 @@ export type SeccionViaje = "gastos" | "itinerario" | "inicio" | "agenda" | "mas"
 // Las secciones se activan a medida que se implementan (gastos, itinerario... en próximos sprints)
 const SECCIONES:{ id: SeccionViaje; icono: string; texto: string; disponible: boolean }[] = [
   { id: "gastos", icono: "euro", texto: "Gastos", disponible: false },
-  { id: "itinerario", icono: "calendar", texto: "Itinerario", disponible: false },
+  { id: "itinerario", icono: "calendar", texto: "Itinerario", disponible: true },
   { id: "inicio", icono: "home", texto: "Inicio", disponible: true },
   { id: "agenda", icono: "folder", texto: "Agenda", disponible: false },
   { id: "mas", icono: "chat", texto: "Más", disponible: false },

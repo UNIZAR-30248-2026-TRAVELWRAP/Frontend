@@ -14,7 +14,7 @@ Característica: Añadir una actividad al itinerario (PB-17)
     Y elijo el día "Día 2 · 13 may"
     Y relleno la actividad con título "Visita al Coliseo", lugar "Piazza del Colosseo" y hora "10:00"
     Y pulso el botón "Añadir al itinerario"
-    Entonces estoy en el inicio del viaje
+    Entonces estoy en el itinerario del viaje
     Y el servidor ha guardado la actividad "Visita al Coliseo" el "2027-05-13" a las "10:00" en "Piazza del Colosseo"
 
   Escenario: No se puede añadir una actividad sin título

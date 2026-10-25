@@ -28,13 +28,25 @@ describe('BarraInferior', () => {
     const onCambiar = vi.fn()
     render(<BarraInferior activa="inicio" onCambiar={onCambiar} />)
 
-    for (const seccion of ['Gastos', 'Itinerario', 'Agenda', 'Más']) {
+    for (const seccion of ['Gastos', 'Agenda', 'Más']) {
       const boton = screen.getByRole('button', { name: seccion })
       expect(boton).toHaveProperty('disabled', true)
       expect(boton.getAttribute('title')).toBe('Disponible próximamente')
     }
     await user.click(screen.getByRole('button', { name: 'Gastos' }))
     expect(onCambiar).not.toHaveBeenCalled()
+  })
+
+  it('deja activa la sección Itinerario y avisa al pulsarla', async () => {
+    const user = userEvent.setup()
+    const onCambiar = vi.fn()
+    render(<BarraInferior activa="inicio" onCambiar={onCambiar} />)
+
+    const boton = screen.getByRole('button', { name: 'Itinerario' })
+    expect(boton).toHaveProperty('disabled', false)
+    await user.click(boton)
+
+    expect(onCambiar).toHaveBeenCalledWith('itinerario')
   })
 
   it('no avisa al pulsar la sección en la que ya se está', async () => {

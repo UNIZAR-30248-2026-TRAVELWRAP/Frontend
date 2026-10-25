@@ -68,6 +68,10 @@ Then('el servidor ha guardado la actividad {string} el {string} a las {string} e
   expect(guardadas).toEqual([{ titulo, fecha, hora_inicio: hora, ubicacion_nombre: lugar }]);
 });
 
+Then('estoy en el itinerario del viaje', async () => {
+  await expect(paginaActual()).toHaveURL(/\/viajes\/viaje-\d+\/itinerario$/);
+});
+
 Then('sigo en la pantalla de añadir actividad', async () => {
   await expect(paginaActual()).toHaveURL(/\/actividades\/nueva$/);
 });
