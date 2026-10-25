@@ -17,7 +17,7 @@ const inputStyle: CSSProperties = {
   borderRadius: 14,
   padding: "13px 16px",
   fontFamily: NUNITO,
-  fontSize: 14,
+  fontSize: 16,
   color: C.navy,
   outline: "none",
   boxSizing: "border-box",

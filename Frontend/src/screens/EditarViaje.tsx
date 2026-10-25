@@ -14,7 +14,7 @@ const inputStyle: CSSProperties = {
   borderRadius: RADIUS.md,
   padding: "13px 16px",
   fontFamily: NUNITO,
-  fontSize: 14,
+  fontSize: 16,
   color: C.navy,
   outline: "none",
   boxSizing: "border-box",
@@ -221,7 +221,7 @@ export default function EditarViaje({ viajeId, tokenSesion, onVolver, onGuardado
 
               <div>
                 <div style={{ display: "flex", gap: 10 }}>
-                  <div style={{ flex: 1 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <label htmlFor="editar-fecha-inicio" style={labelStyle}>
                       Fecha de inicio
                     </label>
@@ -230,10 +230,10 @@ export default function EditarViaje({ viajeId, tokenSesion, onVolver, onGuardado
                       type="date"
                       value={formulario.fechaInicio}
                       onChange={(event) => cambiar("fechaInicio")(event.target.value)}
-                      style={inputStyle}
+                      style={{ ...inputStyle, padding: "13px 10px" }}
                     />
                   </div>
-                  <div style={{ flex: 1 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <label htmlFor="editar-fecha-fin" style={labelStyle}>
                       Fecha de fin
                     </label>
@@ -245,7 +245,7 @@ export default function EditarViaje({ viajeId, tokenSesion, onVolver, onGuardado
                       onChange={(event) => cambiar("fechaFin")(event.target.value)}
                       aria-invalid={avisoFechas !== ""}
                       aria-describedby={avisoFechas ? "editar-fechas-aviso" : undefined}
-                      style={inputStyle}
+                      style={{ ...inputStyle, padding: "13px 10px" }}
                     />
                   </div>
                 </div>

@@ -22,7 +22,7 @@ const inputStyle: CSSProperties = {
   borderRadius: RADIUS.md,
   padding: "13px 16px",
   fontFamily: NUNITO,
-  fontSize: 14,
+  fontSize: 16,
   color: C.navy,
   outline: "none",
   boxSizing: "border-box",
@@ -148,7 +148,7 @@ export default function CrearViaje({ tokenSesion, onBack, onCreated }: CrearViaj
           </div>
 
           <div style={{ display: "flex", gap: 10, marginBottom: avisoFechas ? 6 : 16 }}>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <label htmlFor="viaje-fecha-inicio" style={labelStyle}>
                 Fecha inicio
               </label>
@@ -157,10 +157,10 @@ export default function CrearViaje({ tokenSesion, onBack, onCreated }: CrearViaj
                 type="date"
                 value={fechaInicio}
                 onChange={(event) => setFechaInicio(event.target.value)}
-                style={inputStyle}
+                style={{ ...inputStyle, padding: "13px 10px" }}
               />
             </div>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <label htmlFor="viaje-fecha-fin" style={labelStyle}>
                 Fecha fin
               </label>
@@ -172,7 +172,7 @@ export default function CrearViaje({ tokenSesion, onBack, onCreated }: CrearViaj
                 onChange={(event) => setFechaFin(event.target.value)}
                 aria-invalid={avisoFechas !== ""}
                 aria-describedby={avisoFechas ? "viaje-fechas-aviso" : undefined}
-                style={inputStyle}
+                style={{ ...inputStyle, padding: "13px 10px" }}
               />
             </div>
           </div>

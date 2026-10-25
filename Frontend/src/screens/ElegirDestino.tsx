@@ -315,7 +315,7 @@ export default function ElegirDestino({ viajeId, tokenSesion, onVolver, onInvita
                         borderRadius: 12,
                         padding: "10px 14px",
                         fontFamily: NUNITO,
-                        fontSize: 13,
+                        fontSize: 16,
                         color: C.navy,
                         outline: "none",
                       }}
