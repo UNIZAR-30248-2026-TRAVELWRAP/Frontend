@@ -42,6 +42,20 @@ export const diasDelItinerario = (inicio: string | null, fin: string | null, fec
   return [...delViaje, ...sueltos].sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0))
 }
 
+const MAX_NOMBRE_VIAJE = 100
+
+export const sugerirNombreViaje = (destino: string, inicio: string, fin: string) => {
+  const lugar = destino.trim()
+  if (!lugar) return ""
+  const anioInicio = inicio.split("-")[0]
+  const anioFin = fin.split("-")[0]
+  let anio = anioInicio || anioFin
+  if (anioInicio && anioFin && anioFin !== anioInicio && fin >= inicio) anio = `${anioInicio}-${anioFin}`
+  if (!anio) return lugar.slice(0, MAX_NOMBRE_VIAJE)
+  const lugarRecortado = lugar.slice(0, MAX_NOMBRE_VIAJE - anio.length - 1).trimEnd()
+  return `${lugarRecortado} ${anio}`
+}
+
 // Viaje activo: "12 – 15 may · 4 días"
 export const formatearFechasActivo = (inicio: string | null, fin: string | null) => {
   if (!inicio && !fin) return "Fechas por confirmar"

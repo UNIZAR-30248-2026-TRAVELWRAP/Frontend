@@ -5,6 +5,7 @@ import SectionLabel from "../components/SectionLabel"
 import { ApiError } from "../services/authApi"
 import { crearViaje, type Viaje } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
+import { sugerirNombreViaje } from "../utils/formatoViaje"
 
 type ModoDestino = "votar" | "elegido"
 
@@ -47,6 +48,7 @@ type CrearViajeProps = {
 
 export default function CrearViaje({ tokenSesion, onBack, onCreated }: CrearViajeProps) {
   const [nombre, setNombre] = useState("")
+  const [nombreEditado, setNombreEditado] = useState(false)
   const [fechaInicio, setFechaInicio] = useState("")
   const [fechaFin, setFechaFin] = useState("")
   const [presupuesto, setPresupuesto] = useState("")
@@ -61,10 +63,13 @@ export default function CrearViaje({ tokenSesion, onBack, onCreated }: CrearViaj
       ? "La fecha de fin no puede ser anterior a la de inicio"
       : ""
 
+  const destinoElegido = modoDestino === "elegido" ? destino : ""
+  const nombreMostrado = nombreEditado ? nombre : sugerirNombreViaje(destinoElegido, fechaInicio, fechaFin)
+
   const presupuestoValido = presupuesto.trim() !== "" && Number(presupuesto) >= 0
 
   const canSubmit =
-    nombre.trim() !== "" &&
+    nombreMostrado.trim() !== "" &&
     avisoFechas === "" &&
     presupuestoValido &&
     (modoDestino === "votar" || destino.trim() !== "") &&
@@ -78,7 +83,7 @@ export default function CrearViaje({ tokenSesion, onBack, onCreated }: CrearViaj
     try {
       const viaje = await crearViaje(
         {
-          nombre: nombre.trim(),
+          nombre: nombreMostrado.trim(),
           presupuesto: Number(presupuesto),
           destino: modoDestino === "elegido" ? destino.trim() : null,
           fecha_inicio: fechaInicio || null,
@@ -136,8 +141,11 @@ export default function CrearViaje({ tokenSesion, onBack, onCreated }: CrearViaj
             </label>
             <input
               id="viaje-nombre"
-              value={nombre}
-              onChange={(event) => setNombre(event.target.value)}
+              value={nombreMostrado}
+              onChange={(event) => {
+                setNombre(event.target.value)
+                setNombreEditado(true)
+              }}
               placeholder="Ej. Verano 2027"
               style={inputStyle}
             />
