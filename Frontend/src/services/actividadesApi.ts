@@ -26,7 +26,7 @@ export type Actividad = {
   latitud: number | null
   longitud: number | null
   lugar_externo_id: string | null
-  categoria: string | null
+  categoria: Categoria | null
   creado_por: string | null
   creado_en: string
   actualizado_en: string

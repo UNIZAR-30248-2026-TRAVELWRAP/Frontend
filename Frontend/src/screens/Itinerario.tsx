@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties } from "react"
 import Badge from "../components/Badge"
+import DialogoConfirmacion from "../components/DialogoConfirmacion"
 import BarraInferior, { ALTO_BARRA_INFERIOR, type SeccionViaje } from "../components/BarraInferior"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
@@ -39,6 +40,8 @@ type ItinerarioProps = {
   diaInicial?: string
   onVolver?: () => void
   onAnadirActividad?: (fecha: string) => void
+  onEditarActividad?: (actividad: Actividad) => void
+  onEliminarActividad?: (actividad: Actividad) => void
   onCambiarSeccion?: (seccion: SeccionViaje) => void
 }
 
@@ -48,6 +51,8 @@ export default function Itinerario({
   diaInicial = "",
   onVolver,
   onAnadirActividad,
+  onEditarActividad,
+  onEliminarActividad,
   onCambiarSeccion,
 }: ItinerarioProps) {
   const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
@@ -55,6 +60,7 @@ export default function Itinerario({
   const [error, setError] = useState("")
   const [guardadoEn, setGuardadoEn] = useState<string | null>(null)
   const [intento, setIntento] = useState(0)
+  const [aEliminar, setAEliminar] = useState<Actividad | null>(null)
   const [diaElegido, setDiaElegido] = useState(diaInicial)
 
   useEffect(() => {
@@ -105,6 +111,7 @@ export default function Itinerario({
     viaje?.fecha_inicio && viaje.fecha_fin && dia !== "" ? dia < viaje.fecha_inicio || dia > viaje.fecha_fin : false
   const delDia = actividades.filter((actividad) => actividad.fecha === dia)
   const activo = viaje?.estado === "activo"
+  const puedeModificar = activo && !guardadoEn
   const indiceDeMiembro = (usuarioId: string | null) =>
     (viaje?.miembros ?? []).findIndex((miembro) => miembro.usuario_id === usuarioId)
 
@@ -391,13 +398,67 @@ export default function Itinerario({
                               </div>
                             )}
                           </div>
-                          {actividad.hora_inicio && (
-                            <div style={{ marginTop: 8 }}>
-                              <Badge bg={primera ? C.lightAccent : C.lightBlue} color={primera ? C.accent : C.blue}>
-                                <Icon name="clock" size={11} color={primera ? C.accent : C.blue} strokeWidth={2} />
-                                {actividad.hora_inicio.slice(0, 5)}
-                                {actividad.hora_fin ? ` – ${actividad.hora_fin.slice(0, 5)}` : ""} h
-                              </Badge>
+                          {(actividad.hora_inicio || puedeModificar) && (
+                            <div
+                              style={{
+                                marginTop: 8,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                gap: 8,
+                              }}
+                            >
+                              <div>
+                                {actividad.hora_inicio && (
+                                  <Badge bg={primera ? C.lightAccent : C.lightBlue} color={primera ? C.accent : C.blue}>
+                                    <Icon name="clock" size={11} color={primera ? C.accent : C.blue} strokeWidth={2} />
+                                    {actividad.hora_inicio.slice(0, 5)}
+                                    {actividad.hora_fin ? ` – ${actividad.hora_fin.slice(0, 5)}` : ""} h
+                                  </Badge>
+                                )}
+                              </div>
+                              {puedeModificar && (
+                                <div style={{ display: "flex", gap: 7, marginLeft: "auto" }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => onEditarActividad?.(actividad)}
+                                    aria-label={`Editar ${actividad.titulo}`}
+                                    style={{
+                                      width: 28,
+                                      height: 28,
+                                      borderRadius: 8,
+                                      border: "none",
+                                      background: C.lightBlue,
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      cursor: "pointer",
+                                      flexShrink: 0,
+                                    }}
+                                  >
+                                    <Icon name="edit" size={13} color={C.blue} strokeWidth={2} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setAEliminar(actividad)}
+                                    aria-label={`Eliminar ${actividad.titulo}`}
+                                    style={{
+                                      width: 28,
+                                      height: 28,
+                                      borderRadius: 8,
+                                      border: "none",
+                                      background: C.redBg,
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      cursor: "pointer",
+                                      flexShrink: 0,
+                                    }}
+                                  >
+                                    <Icon name="trash" size={13} color={C.red} strokeWidth={2} />
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
@@ -412,6 +473,25 @@ export default function Itinerario({
       </div>
 
       <BarraInferior activa="itinerario" onCambiar={onCambiarSeccion} />
+
+      {aEliminar && (
+        <DialogoConfirmacion
+          titulo="¿Eliminar esta actividad?"
+          icono="trash"
+          color={C.red}
+          colorFondo={C.redBg}
+          textoConfirmar="Eliminar actividad"
+          textoConfirmando="Eliminando..."
+          onConfirmar={() => {
+            onEliminarActividad?.(aEliminar)
+            setAEliminar(null)
+          }}
+          onCancelar={() => setAEliminar(null)}
+        >
+          Se eliminará <strong style={{ color: C.navy }}>{aEliminar.titulo}</strong> del itinerario para todos los
+          viajeros. Esta acción no se puede deshacer.
+        </DialogoConfirmacion>
+      )}
     </div>
   )
 }

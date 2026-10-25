@@ -2,11 +2,11 @@ import { useEffect, useState, type CSSProperties, type FormEvent } from "react"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import SectionLabel from "../components/SectionLabel"
-import { CATEGORIAS, crearActividad, type Categoria } from "../services/actividadesApi"
+import { CATEGORIAS, crearActividad, listarActividades, type Actividad, type Categoria, type NuevaActividad } from "../services/actividadesApi"
 import { ApiError } from "../services/authApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
-import { diasDelViaje } from "../utils/formatoViaje"
+import { diasDelItinerario } from "../utils/formatoViaje"
 
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
 
@@ -48,12 +48,23 @@ const alertaStyle: CSSProperties = {
 type AnadirActividadProps = {
   viajeId: string
   tokenSesion: string
+  actividadId?: string
   onVolver?: () => void
   fechaInicial?: string
   onGuardada?: (fecha: string) => void
+  onGuardarCambios?: (cambios: NuevaActividad) => void
 }
 
-export default function AnadirActividad({ viajeId, tokenSesion, fechaInicial = "", onVolver, onGuardada }: AnadirActividadProps) {
+export default function AnadirActividad({
+  viajeId,
+  tokenSesion,
+  actividadId,
+  fechaInicial = "",
+  onVolver,
+  onGuardada,
+  onGuardarCambios,
+}: AnadirActividadProps) {
+  const edicion = actividadId !== undefined
   const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
   const [errorCarga, setErrorCarga] = useState("")
   const [titulo, setTitulo] = useState("")
@@ -62,17 +73,36 @@ export default function AnadirActividad({ viajeId, tokenSesion, fechaInicial = "
   const [horaFin, setHoraFin] = useState("")
   const [categoria, setCategoria] = useState<Categoria | null>(null)
   const [fecha, setFecha] = useState("")
+  const [original, setOriginal] = useState<Actividad | null>(null)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState("")
 
   useEffect(() => {
     let vigente = true
-    obtenerViaje(viajeId, tokenSesion)
-      .then((datos) => {
+    const peticiones = actividadId === undefined
+      ? Promise.all([obtenerViaje(viajeId, tokenSesion), Promise.resolve(null)])
+      : Promise.all([obtenerViaje(viajeId, tokenSesion), listarActividades(viajeId, tokenSesion)])
+    peticiones
+      .then(([datos, lista]) => {
         if (!vigente) return
         setViaje(datos)
+        if (lista) {
+          const actividad = lista.actividades.find((a) => a.id === actividadId) ?? null
+          if (!actividad) {
+            setErrorCarga("La actividad no existe en este viaje")
+            return
+          }
+          setOriginal(actividad)
+          setTitulo(actividad.titulo)
+          setUbicacion(actividad.ubicacion_nombre ?? "")
+          setHora(actividad.hora_inicio?.slice(0, 5) ?? "")
+          setHoraFin(actividad.hora_fin?.slice(0, 5) ?? "")
+          setCategoria(actividad.categoria)
+          setFecha(actividad.fecha)
+          return
+        }
         if (datos.fecha_inicio && datos.fecha_fin) {
-          const enElViaje = diasDelViaje(datos.fecha_inicio, datos.fecha_fin).some((d) => d.fecha === fechaInicial)
+          const enElViaje = diasDelItinerario(datos.fecha_inicio, datos.fecha_fin, []).some((d) => d.fecha === fechaInicial)
           setFecha(enElViaje ? fechaInicial : datos.fecha_inicio)
         } else {
           setFecha(fechaInicial)
@@ -84,32 +114,45 @@ export default function AnadirActividad({ viajeId, tokenSesion, fechaInicial = "
     return () => {
       vigente = false
     }
-  }, [viajeId, tokenSesion, fechaInicial])
+  }, [viajeId, tokenSesion, fechaInicial, actividadId])
 
-  const dias = viaje?.fecha_inicio && viaje.fecha_fin ? diasDelViaje(viaje.fecha_inicio, viaje.fecha_fin) : []
+  const dias =
+    viaje?.fecha_inicio && viaje.fecha_fin
+      ? diasDelItinerario(viaje.fecha_inicio, viaje.fecha_fin, original ? [original.fecha] : [])
+      : []
   const editable = viaje?.estado === "activo"
   const avisoHoras =
     hora !== "" && horaFin !== "" && horaFin < hora ? "La hora de fin no puede ser anterior a la de inicio" : ""
-  const canSubmit = editable && titulo.trim() !== "" && fecha !== "" && avisoHoras === "" && !guardando
+  const datosDelFormulario: NuevaActividad = {
+    titulo: titulo.trim(),
+    fecha,
+    hora_inicio: hora || null,
+    hora_fin: hora ? horaFin || null : null,
+    ubicacion_nombre: ubicacion.trim() || null,
+    categoria,
+  }
+  const hayCambios =
+    original === null ||
+    datosDelFormulario.titulo !== original.titulo ||
+    datosDelFormulario.fecha !== original.fecha ||
+    datosDelFormulario.hora_inicio !== (original.hora_inicio?.slice(0, 5) ?? null) ||
+    datosDelFormulario.hora_fin !== (original.hora_fin?.slice(0, 5) ?? null) ||
+    datosDelFormulario.ubicacion_nombre !== original.ubicacion_nombre ||
+    datosDelFormulario.categoria !== original.categoria
+  const canSubmit =
+    editable && titulo.trim() !== "" && fecha !== "" && avisoHoras === "" && hayCambios && !guardando && (!edicion || original !== null)
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
     if (!canSubmit) return
+    if (edicion) {
+      onGuardarCambios?.(datosDelFormulario)
+      return
+    }
     setGuardando(true)
     setError("")
     try {
-      await crearActividad(
-        viajeId,
-        {
-          titulo: titulo.trim(),
-          fecha,
-          hora_inicio: hora || null,
-          hora_fin: hora ? horaFin || null : null,
-          ubicacion_nombre: ubicacion.trim() || null,
-          categoria,
-        },
-        tokenSesion,
-      )
+      await crearActividad(viajeId, datosDelFormulario, tokenSesion)
       onGuardada?.(fecha)
     } catch (e) {
       setError(mensajeDeError(e))
@@ -148,7 +191,7 @@ export default function AnadirActividad({ viajeId, tokenSesion, fechaInicial = "
                 </span>
               </SectionLabel>
               <Heading size={22} color="white">
-                Añadir Actividad
+                {edicion ? "Editar Actividad" : "Añadir Actividad"}
               </Heading>
             </div>
           </div>
@@ -194,7 +237,9 @@ export default function AnadirActividad({ viajeId, tokenSesion, fechaInicial = "
 
           {viaje && !editable && (
             <div role="alert" style={alertaStyle}>
-              El viaje está cerrado y ya no se pueden añadir actividades
+              {edicion
+                ? "El viaje está cerrado y ya no se pueden modificar actividades"
+                : "El viaje está cerrado y ya no se pueden añadir actividades"}
             </div>
           )}
 
@@ -346,8 +391,8 @@ export default function AnadirActividad({ viajeId, tokenSesion, fechaInicial = "
                   boxShadow: SHADOWS.button,
                 }}
               >
-                <Icon name="plus" size={18} color="white" strokeWidth={2.5} />
-                {guardando ? "Guardando..." : "Añadir al itinerario"}
+                <Icon name={edicion ? "check" : "plus"} size={18} color="white" strokeWidth={2.5} />
+                {guardando ? "Guardando..." : edicion ? "Guardar cambios" : "Añadir al itinerario"}
               </button>
             </form>
           )}

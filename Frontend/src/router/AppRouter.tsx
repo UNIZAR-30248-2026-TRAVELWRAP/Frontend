@@ -159,6 +159,9 @@ function RutaItinerario({ sesion }: { sesion: Sesion }) {
       diaInicial={parametros.get("fecha") ?? ""}
       onVolver={() => navigate("/")}
       onAnadirActividad={(fecha) => navigate(`/viajes/${viajeId}/actividades/nueva${fecha ? `?fecha=${fecha}` : ""}`)}
+      onEditarActividad={(actividad) =>
+        navigate(`/viajes/${viajeId}/actividades/${actividad.id}/editar?fecha=${actividad.fecha}`)
+      }
       onCambiarSeccion={(seccion) => navigate(rutaDeSeccion(viajeId, seccion))}
     />
   );
@@ -177,6 +180,22 @@ function RutaAnadirActividad({ sesion }: { sesion: Sesion }) {
       fechaInicial={fechaInicial}
       onVolver={() => navigate(rutaItinerario(viajeId, fechaInicial))}
       onGuardada={(fecha) => navigate(rutaItinerario(viajeId, fecha), { replace: true })}
+    />
+  );
+}
+
+function RutaEditarActividad({ sesion }: { sesion: Sesion }) {
+  const { viajeId = "", actividadId = "" } = useParams();
+  const [parametros] = useSearchParams();
+  const navigate = useNavigate();
+  const fechaDeVuelta = parametros.get("fecha") ?? "";
+  return (
+    <AnadirActividad
+      key={actividadId}
+      viajeId={viajeId}
+      actividadId={actividadId}
+      tokenSesion={sesion.token}
+      onVolver={() => navigate(rutaItinerario(viajeId, fechaDeVuelta))}
     />
   );
 }
@@ -297,6 +316,11 @@ export default function AppRouter({
         <Route
           path="/viajes/:viajeId/itinerario"
           element={session ? <RutaItinerario sesion={session} /> : <Navigate to="/login" replace />}
+        />
+
+        <Route
+          path="/viajes/:viajeId/actividades/:actividadId/editar"
+          element={session ? <RutaEditarActividad sesion={session} /> : <Navigate to="/login" replace />}
         />
 
         <Route

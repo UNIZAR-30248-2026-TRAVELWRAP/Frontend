@@ -155,6 +155,11 @@ export default function Icon({
         <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
       </>
     ),
+    edit: (
+      <>
+        <path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+      </>
+    ),
     trash: (
       <>
         <polyline points="3 6 5 6 21 6" />
