@@ -6,7 +6,13 @@ import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import SectionLabel from "../components/SectionLabel"
 import Avatar from "../components/Avatar"
-import { CATEGORIAS, iconoDeCategoria, listarActividades, type Actividad } from "../services/actividadesApi"
+import {
+  CATEGORIAS,
+  eliminarActividad,
+  iconoDeCategoria,
+  listarActividades,
+  type Actividad,
+} from "../services/actividadesApi"
 import { ApiError } from "../services/authApi"
 import { guardarItinerario, leerItinerario } from "../services/itinerarioGuardado"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
@@ -41,7 +47,6 @@ type ItinerarioProps = {
   onVolver?: () => void
   onAnadirActividad?: (fecha: string) => void
   onEditarActividad?: (actividad: Actividad) => void
-  onEliminarActividad?: (actividad: Actividad) => void
   onCambiarSeccion?: (seccion: SeccionViaje) => void
 }
 
@@ -52,7 +57,6 @@ export default function Itinerario({
   onVolver,
   onAnadirActividad,
   onEditarActividad,
-  onEliminarActividad,
   onCambiarSeccion,
 }: ItinerarioProps) {
   const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
@@ -61,6 +65,8 @@ export default function Itinerario({
   const [guardadoEn, setGuardadoEn] = useState<string | null>(null)
   const [intento, setIntento] = useState(0)
   const [aEliminar, setAEliminar] = useState<Actividad | null>(null)
+  const [eliminando, setEliminando] = useState(false)
+  const [errorEliminar, setErrorEliminar] = useState("")
   const [diaElegido, setDiaElegido] = useState(diaInicial)
 
   useEffect(() => {
@@ -104,6 +110,23 @@ export default function Itinerario({
   const dias = viaje
     ? diasDelItinerario(viaje.fecha_inicio, viaje.fecha_fin, actividades.map((actividad) => actividad.fecha))
     : []
+  const handleEliminar = async () => {
+    if (!aEliminar || !viaje) return
+    setEliminando(true)
+    setErrorEliminar("")
+    try {
+      await eliminarActividad(viajeId, aEliminar.id, tokenSesion)
+      const restantes = actividades.filter((actividad) => actividad.id !== aEliminar.id)
+      setActividades(restantes)
+      guardarItinerario(viajeId, { viaje, actividades: restantes, guardadoEn: new Date().toISOString() })
+      setAEliminar(null)
+    } catch (e) {
+      setErrorEliminar(mensajeDeError(e))
+    } finally {
+      setEliminando(false)
+    }
+  }
+
   const hoy = fechaDeHoy()
   const diaPorDefecto = dias.find((d) => d.fecha === hoy)?.fecha ?? dias[0]?.fecha ?? ""
   const dia = dias.some((d) => d.fecha === diaElegido) ? diaElegido : diaPorDefecto
@@ -440,7 +463,10 @@ export default function Itinerario({
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => setAEliminar(actividad)}
+                                    onClick={() => {
+                                      setErrorEliminar("")
+                                      setAEliminar(actividad)
+                                    }}
                                     aria-label={`Eliminar ${actividad.titulo}`}
                                     style={{
                                       width: 28,
@@ -482,10 +508,9 @@ export default function Itinerario({
           colorFondo={C.redBg}
           textoConfirmar="Eliminar actividad"
           textoConfirmando="Eliminando..."
-          onConfirmar={() => {
-            onEliminarActividad?.(aEliminar)
-            setAEliminar(null)
-          }}
+          ocupado={eliminando}
+          error={errorEliminar}
+          onConfirmar={handleEliminar}
           onCancelar={() => setAEliminar(null)}
         >
           Se eliminará <strong style={{ color: C.navy }}>{aEliminar.titulo}</strong> del itinerario para todos los

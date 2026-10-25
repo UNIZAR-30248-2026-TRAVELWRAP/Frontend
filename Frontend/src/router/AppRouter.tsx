@@ -196,6 +196,7 @@ function RutaEditarActividad({ sesion }: { sesion: Sesion }) {
       actividadId={actividadId}
       tokenSesion={sesion.token}
       onVolver={() => navigate(rutaItinerario(viajeId, fechaDeVuelta))}
+      onGuardada={(fecha) => navigate(rutaItinerario(viajeId, fecha), { replace: true })}
     />
   );
 }

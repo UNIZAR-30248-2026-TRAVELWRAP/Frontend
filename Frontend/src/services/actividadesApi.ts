@@ -47,6 +47,21 @@ export const listarActividades = (viajeId: string, tokenSesion: string, fecha?: 
     { token: tokenSesion },
   )
 
+export type CambiosActividad = Partial<NuevaActividad>
+
+export const editarActividad = (viajeId: string, actividadId: string, cambios: CambiosActividad, tokenSesion: string) =>
+  peticion<Actividad>(`/viajes/${encodeURIComponent(viajeId)}/actividades/${encodeURIComponent(actividadId)}`, {
+    metodo: "PATCH",
+    cuerpo: cambios,
+    token: tokenSesion,
+  })
+
+export const eliminarActividad = (viajeId: string, actividadId: string, tokenSesion: string) =>
+  peticion<null>(`/viajes/${encodeURIComponent(viajeId)}/actividades/${encodeURIComponent(actividadId)}`, {
+    metodo: "DELETE",
+    token: tokenSesion,
+  })
+
 export const crearActividad = (viajeId: string, actividad: NuevaActividad, tokenSesion: string) =>
   peticion<Actividad>(`/viajes/${encodeURIComponent(viajeId)}/actividades`, {
     metodo: "POST",

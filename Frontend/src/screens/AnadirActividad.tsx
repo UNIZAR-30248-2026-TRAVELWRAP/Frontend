@@ -2,7 +2,16 @@ import { useEffect, useState, type CSSProperties, type FormEvent } from "react"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import SectionLabel from "../components/SectionLabel"
-import { CATEGORIAS, crearActividad, listarActividades, type Actividad, type Categoria, type NuevaActividad } from "../services/actividadesApi"
+import {
+  CATEGORIAS,
+  crearActividad,
+  editarActividad,
+  listarActividades,
+  type Actividad,
+  type Categoria,
+  type CambiosActividad,
+  type NuevaActividad,
+} from "../services/actividadesApi"
 import { ApiError } from "../services/authApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
@@ -52,7 +61,6 @@ type AnadirActividadProps = {
   onVolver?: () => void
   fechaInicial?: string
   onGuardada?: (fecha: string) => void
-  onGuardarCambios?: (cambios: NuevaActividad) => void
 }
 
 export default function AnadirActividad({
@@ -62,7 +70,6 @@ export default function AnadirActividad({
   fechaInicial = "",
   onVolver,
   onGuardada,
-  onGuardarCambios,
 }: AnadirActividadProps) {
   const edicion = actividadId !== undefined
   const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
@@ -131,28 +138,33 @@ export default function AnadirActividad({
     ubicacion_nombre: ubicacion.trim() || null,
     categoria,
   }
-  const hayCambios =
-    original === null ||
-    datosDelFormulario.titulo !== original.titulo ||
-    datosDelFormulario.fecha !== original.fecha ||
-    datosDelFormulario.hora_inicio !== (original.hora_inicio?.slice(0, 5) ?? null) ||
-    datosDelFormulario.hora_fin !== (original.hora_fin?.slice(0, 5) ?? null) ||
-    datosDelFormulario.ubicacion_nombre !== original.ubicacion_nombre ||
-    datosDelFormulario.categoria !== original.categoria
+  const cambios: CambiosActividad = {}
+  if (original) {
+    if (datosDelFormulario.titulo !== original.titulo) cambios.titulo = datosDelFormulario.titulo
+    if (datosDelFormulario.fecha !== original.fecha) cambios.fecha = datosDelFormulario.fecha
+    if (datosDelFormulario.hora_inicio !== (original.hora_inicio?.slice(0, 5) ?? null)) {
+      cambios.hora_inicio = datosDelFormulario.hora_inicio
+    }
+    if (datosDelFormulario.hora_fin !== (original.hora_fin?.slice(0, 5) ?? null)) {
+      cambios.hora_fin = datosDelFormulario.hora_fin
+    }
+    if (datosDelFormulario.ubicacion_nombre !== original.ubicacion_nombre) {
+      cambios.ubicacion_nombre = datosDelFormulario.ubicacion_nombre
+    }
+    if (datosDelFormulario.categoria !== original.categoria) cambios.categoria = datosDelFormulario.categoria
+  }
+  const hayCambios = original === null || Object.keys(cambios).length > 0
   const canSubmit =
     editable && titulo.trim() !== "" && fecha !== "" && avisoHoras === "" && hayCambios && !guardando && (!edicion || original !== null)
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
     if (!canSubmit) return
-    if (edicion) {
-      onGuardarCambios?.(datosDelFormulario)
-      return
-    }
     setGuardando(true)
     setError("")
     try {
-      await crearActividad(viajeId, datosDelFormulario, tokenSesion)
+      if (edicion) await editarActividad(viajeId, actividadId, cambios, tokenSesion)
+      else await crearActividad(viajeId, datosDelFormulario, tokenSesion)
       onGuardada?.(fecha)
     } catch (e) {
       setError(mensajeDeError(e))
