@@ -28,6 +28,14 @@ Then('veo en la agenda, por este orden, {string}', async (titulo: string) => {
   await expect(agenda()).toHaveText([new RegExp(`^${titulo}`)]);
 });
 
+When('pulso editar la actividad {string}', async (titulo: string) => {
+  await paginaActual().getByRole('button', { name: `Editar ${titulo}`, exact: true }).click();
+});
+
+When('pulso eliminar la actividad {string}', async (titulo: string) => {
+  await paginaActual().getByRole('button', { name: `Eliminar ${titulo}`, exact: true }).click();
+});
+
 Then('no veo en la agenda la actividad {string}', async (titulo: string) => {
   await expect(paginaActual().getByText(titulo)).toHaveCount(0);
 });

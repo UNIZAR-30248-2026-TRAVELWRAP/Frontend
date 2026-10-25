@@ -16,13 +16,25 @@ type DatosActividad = Pick<ActividadSimulada, 'titulo' | 'fecha' | 'hora_inicio'
 
 let actividades: ActividadSimulada[] = [];
 let rechazaPorViajeCerrado = false;
+let cambiosRecibidos: Partial<DatosActividad>[] = [];
+let eliminadas: string[] = [];
 
 Before(() => {
   actividades = [];
   rechazaPorViajeCerrado = false;
+  cambiosRecibidos = [];
+  eliminadas = [];
 });
 
 const idDeLaUrl = (url: string) => new URL(url).pathname.split('/')[3];
+
+const ordenadas = (lista: ActividadSimulada[]) =>
+  [...lista].sort(
+    (a, b) =>
+      a.fecha.localeCompare(b.fecha) ||
+      (a.hora_inicio === null ? 1 : 0) - (b.hora_inicio === null ? 1 : 0) ||
+      (a.hora_inicio ?? '').localeCompare(b.hora_inicio ?? ''),
+  );
 
 export const sembrarActividad = (
   viajeId: string,
@@ -42,6 +54,31 @@ export const sembrarActividad = (
 };
 
 export const simularActividades = async () => {
+  await paginaActual().route('**/api/viajes/*/actividades/*', (route) => {
+    const peticion = route.request();
+    const actividadId = new URL(peticion.url()).pathname.split('/').pop();
+    if (rechazaPorViajeCerrado) {
+      return route.fulfill({
+        status: 409,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está cerrado y ya no se puede modificar' },
+        }),
+      });
+    }
+    const actividad = actividades.find((a) => a.id === actividadId);
+    if (!actividad) return route.fulfill({ status: 404, contentType: 'application/json', body: '{}' });
+
+    if (peticion.method() === 'DELETE') {
+      actividades = actividades.filter((a) => a.id !== actividadId);
+      eliminadas.push(actividad.titulo);
+      return route.fulfill({ status: 204 });
+    }
+    const cambios = peticion.postDataJSON() as Partial<DatosActividad>;
+    cambiosRecibidos.push(cambios);
+    Object.assign(actividad, cambios);
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(actividad) });
+  });
   await paginaActual().route('**/api/viajes/*/actividades', (route) => {
     const peticion = route.request();
     const viajeId = idDeLaUrl(peticion.url());
@@ -50,7 +87,7 @@ export const simularActividades = async () => {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ actividades: actividades.filter((a) => a.viaje_id === viajeId) }),
+        body: JSON.stringify({ actividades: ordenadas(actividades.filter((a) => a.viaje_id === viajeId)) }),
       });
     }
     if (peticion.method() !== 'POST') return route.fallback();
@@ -104,6 +141,26 @@ Then('el servidor ha guardado la actividad {string} el {string} a las {string} e
     ubicacion_nombre: a.ubicacion_nombre,
   }));
   expect(guardadas).toEqual([{ titulo, fecha, hora_inicio: hora, ubicacion_nombre: lugar }]);
+});
+
+When('cambio el nombre de la actividad a {string}', async (titulo: string) => {
+  await paginaActual().getByLabel('Nombre de la actividad').fill(titulo);
+});
+
+Then('el servidor ha recibido el cambio de título a {string}', (titulo: string) => {
+  expect(cambiosRecibidos).toEqual([{ titulo }]);
+});
+
+Then('el servidor ha recibido el cambio de día a {string}', (fecha: string) => {
+  expect(cambiosRecibidos).toEqual([{ fecha }]);
+});
+
+Then('el servidor ha eliminado {int} actividades', (cantidad: number) => {
+  expect(eliminadas).toHaveLength(cantidad);
+});
+
+Then('el servidor ha eliminado la actividad {string}', (titulo: string) => {
+  expect(eliminadas).toEqual([titulo]);
 });
 
 Then('estoy en el itinerario del viaje', async () => {

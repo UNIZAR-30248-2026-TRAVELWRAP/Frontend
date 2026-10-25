@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../src/services/authApi'
-import { CATEGORIAS, crearActividad, iconoDeCategoria, listarActividades } from '../src/services/actividadesApi'
+import {
+  CATEGORIAS,
+  crearActividad,
+  editarActividad,
+  eliminarActividad,
+  iconoDeCategoria,
+  listarActividades,
+} from '../src/services/actividadesApi'
 
 const VIAJE_ID = '123e4567-e89b-12d3-a456-426614174000'
 
@@ -108,3 +115,54 @@ describe('actividadesApi · categorías', () => {
     expect(iconoDeCategoria('desconocida')).toBe('pin')
   })
 })
+
+describe('actividadesApi · editar y eliminar actividad', () => {
+  const ACTIVIDAD_ID = '8a1b2c3d-0000-4000-8000-000000000020'
+
+  it('modifica la actividad con PATCH enviando solo los cambios', async () => {
+    const fetchMock = vi.fn(() => respuesta(200, { id: ACTIVIDAD_ID, titulo: 'Coliseo y Foro' }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const actividad = await editarActividad(VIAJE_ID, ACTIVIDAD_ID, { titulo: 'Coliseo y Foro', hora_fin: null }, 'token-acceso')
+
+    expect(actividad.titulo).toBe('Coliseo y Foro')
+    const [url, opciones] = llamada(fetchMock)
+    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/actividades/${ACTIVIDAD_ID}$`))
+    expect(opciones.method).toBe('PATCH')
+    expect(opciones.headers.Authorization).toBe('Bearer token-acceso')
+    expect(JSON.parse(opciones.body as string)).toEqual({ titulo: 'Coliseo y Foro', hora_fin: null })
+  })
+
+  it('elimina la actividad con DELETE y devuelve null si el servidor responde 204', async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(new Response(null, { status: 204 })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const resultado = await eliminarActividad(VIAJE_ID, ACTIVIDAD_ID, 'token-acceso')
+
+    expect(resultado).toBeNull()
+    const [url, opciones] = llamada(fetchMock)
+    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/actividades/${ACTIVIDAD_ID}$`))
+    expect(opciones.method).toBe('DELETE')
+    expect(opciones.headers.Authorization).toBe('Bearer token-acceso')
+    expect(opciones.body).toBeUndefined()
+  })
+
+  it('propaga los rechazos del backend como ApiError en ambos casos', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        respuesta(404, { error: { codigo: 'actividad_no_encontrada', mensaje: 'La actividad no existe en este viaje' } }),
+      ),
+    )
+
+    const alEditar = await editarActividad(VIAJE_ID, ACTIVIDAD_ID, { titulo: 'X' }, 'token-acceso').catch((e) => e)
+    const alEliminar = await eliminarActividad(VIAJE_ID, ACTIVIDAD_ID, 'token-acceso').catch((e) => e)
+
+    for (const error of [alEditar, alEliminar]) {
+      expect(error).toBeInstanceOf(ApiError)
+      expect(error.estado).toBe(404)
+      expect(error.codigo).toBe('actividad_no_encontrada')
+    }
+  })
+})
+

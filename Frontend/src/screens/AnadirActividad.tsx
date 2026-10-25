@@ -255,7 +255,7 @@ export default function AnadirActividad({
             </div>
           )}
 
-          {viaje && editable && (
+          {viaje && editable && (!edicion || original !== null) && (
             <form onSubmit={handleSubmit} noValidate>
               <div style={{ marginBottom: 16 }}>
                 <label htmlFor="actividad-titulo" style={labelStyle}>
