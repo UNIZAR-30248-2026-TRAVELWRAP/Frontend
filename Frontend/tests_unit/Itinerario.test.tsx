@@ -41,7 +41,7 @@ const actividad = (id: string, datos: Record<string, unknown> = {}) => ({
   longitud: null,
   lugar_externo_id: null,
   categoria: null,
-  creado_por: 'u1',
+  creado_por: null as string | null,
   creado_en: '2026-10-24T10:00:00Z',
   actualizado_en: '2026-10-24T10:00:00Z',
   ...datos,
@@ -144,6 +144,35 @@ describe('Itinerario', () => {
     renderizar()
 
     expect(await screen.findByText('10:00 – 12:30 h')).toBeTruthy()
+  })
+
+  it('muestra el avatar de quien añadió la actividad', async () => {
+    simularBackend(
+      { miembros: [
+        { usuario_id: 'u1', nombre: 'Adriana', avatar_url: null, rol: 'creador' },
+        { usuario_id: 'u2', nombre: 'Berta', avatar_url: null, rol: 'miembro' },
+      ] },
+      [
+        actividad('a1', { titulo: 'Cena', creado_por: 'u2' }),
+        actividad('a2', { titulo: 'Museo', creado_por: 'u1' }),
+      ],
+    )
+    renderizar()
+
+    await screen.findByText('Cena')
+
+    const berta = screen.getByRole('img', { name: 'Añadida por Berta' })
+    expect(berta.textContent).toBe('B')
+    expect(screen.getByRole('img', { name: 'Añadida por Adriana' }).textContent).toBe('A')
+  })
+
+  it('no muestra avatar si quien la añadió ya no es miembro del viaje', async () => {
+    simularBackend({}, [actividad('a1', { titulo: 'Cena', creado_por: 'otro-usuario' }), actividad('a2', { titulo: 'Museo' })])
+    renderizar()
+
+    await screen.findByText('Cena')
+
+    expect(screen.queryByRole('img')).toBeNull()
   })
 
   it('marca el tipo de la actividad en su icono', async () => {

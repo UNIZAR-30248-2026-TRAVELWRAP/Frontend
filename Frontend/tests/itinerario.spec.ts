@@ -52,7 +52,7 @@ const actividad = (id: string, datos: Record<string, unknown> = {}) => ({
   longitud: null,
   lugar_externo_id: null,
   categoria: null,
-  creado_por: USUARIO_ID,
+  creado_por: null as string | null,
   creado_en: '2026-10-24T10:00:00Z',
   actualizado_en: '2026-10-24T10:00:00Z',
   ...datos,
@@ -143,6 +143,19 @@ test.describe('Itinerario · agenda del día', () => {
     await expect(
       page.getByRole('navigation', { name: 'Secciones del viaje' }).getByRole('button', { name: 'Itinerario' }),
     ).toHaveAttribute('aria-current', 'page');
+  });
+
+  test('cada actividad muestra el avatar de quien la añadió', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularBackend(page, {}, [
+      actividad('cena', { titulo: 'Cena', creado_por: 'u2' }),
+      actividad('museo', { titulo: 'Museo', creado_por: USUARIO_ID }),
+    ]);
+
+    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
+
+    await expect(page.getByRole('img', { name: 'Añadida por Berta' })).toHaveText('B');
+    await expect(page.getByRole('img', { name: 'Añadida por Adriana' })).toHaveText('A');
   });
 
   test('al elegir otro día se muestran solo sus actividades', async ({ page }) => {

@@ -4,11 +4,12 @@ import BarraInferior, { ALTO_BARRA_INFERIOR, type SeccionViaje } from "../compon
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import SectionLabel from "../components/SectionLabel"
+import Avatar from "../components/Avatar"
 import { CATEGORIAS, iconoDeCategoria, listarActividades, type Actividad } from "../services/actividadesApi"
 import { ApiError } from "../services/authApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
-import { diasDelItinerario } from "../utils/formatoViaje"
+import { aMiembro, diasDelItinerario } from "../utils/formatoViaje"
 
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
 
@@ -73,6 +74,8 @@ export default function Itinerario({
   const dia = dias.some((d) => d.fecha === diaElegido) ? diaElegido : (dias[0]?.fecha ?? "")
   const delDia = actividades.filter((actividad) => actividad.fecha === dia)
   const activo = viaje?.estado === "activo"
+  const indiceDeMiembro = (usuarioId: string | null) =>
+    (viaje?.miembros ?? []).findIndex((miembro) => miembro.usuario_id === usuarioId)
 
   return (
     <div style={{ background: C.bg, minHeight: "100vh" }}>
@@ -246,25 +249,44 @@ export default function Itinerario({
                             border: `1.5px solid ${primera ? `${C.accent}50` : C.border}`,
                           }}
                         >
-                          <div style={{ fontFamily: NUNITO, color: C.navy, fontSize: 13, fontWeight: 800, overflowWrap: "anywhere" }}>
-                            {actividad.titulo}
-                          </div>
-                          {actividad.ubicacion_nombre && (
-                            <div
-                              style={{
-                                fontFamily: NUNITO,
-                                color: C.muted,
-                                fontSize: 11,
-                                marginTop: 3,
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 4,
-                              }}
-                            >
-                              <Icon name="pin" size={11} color={C.muted} strokeWidth={2} />
-                              <span style={{ overflowWrap: "anywhere" }}>{actividad.ubicacion_nombre}</span>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontFamily: NUNITO, color: C.navy, fontSize: 13, fontWeight: 800, overflowWrap: "anywhere" }}>
+                                {actividad.titulo}
+                              </div>
+                              {actividad.ubicacion_nombre && (
+                                <div
+                                  style={{
+                                    fontFamily: NUNITO,
+                                    color: C.muted,
+                                    fontSize: 11,
+                                    marginTop: 3,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 4,
+                                  }}
+                                >
+                                  <Icon name="pin" size={11} color={C.muted} strokeWidth={2} />
+                                  <span style={{ overflowWrap: "anywhere" }}>{actividad.ubicacion_nombre}</span>
+                                </div>
+                              )}
                             </div>
-                          )}
+                            {viaje && indiceDeMiembro(actividad.creado_por) >= 0 && (
+                              <div
+                                role="img"
+                                aria-label={`Añadida por ${viaje.miembros[indiceDeMiembro(actividad.creado_por)].nombre ?? "un viajero"}`}
+                              >
+                                <Avatar
+                                  member={aMiembro(
+                                    viaje.miembros[indiceDeMiembro(actividad.creado_por)].nombre,
+                                    indiceDeMiembro(actividad.creado_por),
+                                  )}
+                                  size={26}
+                                  showBorder={false}
+                                />
+                              </div>
+                            )}
+                          </div>
                           {actividad.hora_inicio && (
                             <div style={{ marginTop: 8 }}>
                               <Badge bg={primera ? C.lightAccent : C.lightBlue} color={primera ? C.accent : C.blue}>
