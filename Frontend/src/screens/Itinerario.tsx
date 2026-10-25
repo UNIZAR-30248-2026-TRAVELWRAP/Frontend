@@ -7,6 +7,7 @@ import SectionLabel from "../components/SectionLabel"
 import Avatar from "../components/Avatar"
 import { CATEGORIAS, iconoDeCategoria, listarActividades, type Actividad } from "../services/actividadesApi"
 import { ApiError } from "../services/authApi"
+import { guardarItinerario, leerItinerario } from "../services/itinerarioGuardado"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro, diasDelItinerario, fechaDeHoy, formatearFechasActivo } from "../utils/formatoViaje"
@@ -52,6 +53,8 @@ export default function Itinerario({
   const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
   const [actividades, setActividades] = useState<Actividad[]>([])
   const [error, setError] = useState("")
+  const [guardadoEn, setGuardadoEn] = useState<string | null>(null)
+  const [intento, setIntento] = useState(0)
   const [diaElegido, setDiaElegido] = useState(diaInicial)
 
   useEffect(() => {
@@ -61,14 +64,36 @@ export default function Itinerario({
         if (!vigente) return
         setViaje(datosViaje)
         setActividades(lista.actividades)
+        setGuardadoEn(null)
+        setError("")
+        guardarItinerario(viajeId, {
+          viaje: datosViaje,
+          actividades: lista.actividades,
+          guardadoEn: new Date().toISOString(),
+        })
       })
       .catch((e) => {
-        if (vigente) setError(mensajeDeError(e))
+        if (!vigente) return
+        const guardado = e instanceof ApiError && e.estado === 0 ? leerItinerario(viajeId) : null
+        if (guardado) {
+          setViaje(guardado.viaje)
+          setActividades(guardado.actividades)
+          setGuardadoEn(guardado.guardadoEn)
+          setError("")
+          return
+        }
+        setError(mensajeDeError(e))
       })
     return () => {
       vigente = false
     }
-  }, [viajeId, tokenSesion])
+  }, [viajeId, tokenSesion, intento])
+
+  useEffect(() => {
+    const alVolverLaRed = () => setIntento((n) => n + 1)
+    window.addEventListener("online", alVolverLaRed)
+    return () => window.removeEventListener("online", alVolverLaRed)
+  }, [])
 
   const dias = viaje
     ? diasDelItinerario(viaje.fecha_inicio, viaje.fecha_fin, actividades.map((actividad) => actividad.fecha))
@@ -162,7 +187,56 @@ export default function Itinerario({
             </div>
           )}
 
-          {viaje && activo && (
+          {guardadoEn && (
+            <div
+              role="status"
+              style={{
+                background: C.lightAccent,
+                border: `1.5px solid ${C.accent}40`,
+                borderRadius: RADIUS.md,
+                padding: "10px 12px",
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 8,
+                fontFamily: NUNITO,
+                fontSize: 12,
+                lineHeight: 1.5,
+                color: C.navy,
+                marginBottom: 14,
+              }}
+            >
+              <Icon name="wifi" size={16} color={C.accent} strokeWidth={2} />
+              <div style={{ flex: 1 }}>
+                Sin conexión: se muestra lo último guardado (
+                {new Date(guardadoEn).toLocaleString("es-ES", {
+                  day: "numeric",
+                  month: "short",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+                ). No puedes añadir actividades hasta que vuelva la conexión.
+              </div>
+              <button
+                type="button"
+                onClick={() => setIntento((n) => n + 1)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  cursor: "pointer",
+                  color: C.blue,
+                  fontFamily: NUNITO,
+                  fontSize: 12,
+                  fontWeight: 800,
+                  flexShrink: 0,
+                }}
+              >
+                Reintentar
+              </button>
+            </div>
+          )}
+
+          {viaje && activo && !guardadoEn && (
             <button
               type="button"
               onClick={() => onAnadirActividad?.(dia)}

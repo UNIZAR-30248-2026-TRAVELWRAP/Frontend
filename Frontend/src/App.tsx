@@ -16,6 +16,7 @@ export default function App() {
   const [guardadaAlAbrir] = useState(() => leerSesion())
   const [sesion, setSesion] = useState<Sesion | null>(null)
   const [comprobando, setComprobando] = useState(guardadaAlAbrir !== null)
+  const [sinVerificar, setSinVerificar] = useState(false)
   const [error, setError] = useState("")
   const [errorCodigo, setErrorCodigo] = useState("")
   const [avisoLogin, setAvisoLogin] = useState("")
@@ -26,20 +27,41 @@ export default function App() {
   const [cargandoRegistro, setCargandoRegistro] = useState(false)
   const [cerrandoSesion, setCerrandoSesion] = useState(false)
 
+  const renovarSesion = useCallback(
+    (guardada: Sesion) =>
+      refrescar(guardada.refresh_token)
+        .then((tokens) => {
+          const renovada = { ...guardada, ...tokens }
+          guardarSesion(renovada)
+          setSesion(renovada)
+          setSinVerificar(false)
+        })
+        .catch((e) => {
+          if (!(e instanceof ApiError)) return
+          if (e.estado === 401) borrarSesion()
+          if (e.estado === 0) {
+            setSesion(guardada)
+            setSinVerificar(true)
+          }
+        }),
+    [],
+  )
+
   useEffect(() => {
     const guardada = guardadaAlAbrir
     if (!guardada) return
-    refrescar(guardada.refresh_token)
-      .then((tokens) => {
-        const renovada = { ...guardada, ...tokens }
-        guardarSesion(renovada)
-        setSesion(renovada)
-      })
-      .catch((e) => {
-        if (e instanceof ApiError && e.estado === 401) borrarSesion()
-      })
-      .finally(() => setComprobando(false))
-  }, [guardadaAlAbrir])
+    renovarSesion(guardada).finally(() => setComprobando(false))
+  }, [guardadaAlAbrir, renovarSesion])
+
+  useEffect(() => {
+    if (!sinVerificar) return
+    const alVolverLaRed = () => {
+      const guardada = leerSesion()
+      if (guardada) renovarSesion(guardada)
+    }
+    window.addEventListener("online", alVolverLaRed)
+    return () => window.removeEventListener("online", alVolverLaRed)
+  }, [sinVerificar, renovarSesion])
 
   const handleLogin = async (email: string, password: string) => {
     setCargando(true)

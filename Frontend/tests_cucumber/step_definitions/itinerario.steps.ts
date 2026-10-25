@@ -31,3 +31,20 @@ Then('veo en la agenda, por este orden, {string}', async (titulo: string) => {
 Then('no veo en la agenda la actividad {string}', async (titulo: string) => {
   await expect(paginaActual().getByText(titulo)).toHaveCount(0);
 });
+
+let manejadorSinConexion: Parameters<ReturnType<typeof paginaActual>['route']>[1] | null = null;
+
+When('se corta la conexión con el servidor', async () => {
+  manejadorSinConexion = (route) => route.abort('internetdisconnected');
+  await paginaActual().route('**/api/**', manejadorSinConexion);
+});
+
+When('vuelve la conexión con el servidor', async () => {
+  if (manejadorSinConexion) await paginaActual().unroute('**/api/**', manejadorSinConexion);
+  manejadorSinConexion = null;
+  await paginaActual().evaluate(() => window.dispatchEvent(new Event('online')));
+});
+
+Then('veo el botón {string}', async (texto: string) => {
+  await expect(paginaActual().getByRole('button', { name: texto })).toBeVisible();
+});

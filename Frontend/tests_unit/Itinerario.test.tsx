@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Itinerario from '../src/screens/Itinerario'
+import { guardarItinerario, leerItinerario } from '../src/services/itinerarioGuardado'
 
 const VIAJE_ID = '123e4567-e89b-12d3-a456-426614174000'
 
@@ -74,6 +75,7 @@ afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
   vi.useRealTimers()
+  localStorage.clear()
 })
 
 describe('Itinerario', () => {
@@ -358,3 +360,87 @@ describe('Itinerario', () => {
     expect(onVolver).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('Itinerario · sin conexión', () => {
+  const sinConexion = () => vi.fn(() => Promise.reject(new TypeError('Failed to fetch')))
+
+  const guardarCopia = () =>
+    guardarItinerario(VIAJE_ID, {
+      viaje: viaje() as never,
+      actividades: ACTIVIDADES as never,
+      guardadoEn: '2026-10-25T10:30:00.000Z',
+    })
+
+  it('al cargar con conexión guarda el itinerario para verlo después sin red', async () => {
+    simularBackend()
+    renderizar()
+
+    await screen.findByText('Visita al Coliseo')
+
+    const guardado = leerItinerario(VIAJE_ID)
+    expect(guardado?.viaje.nombre).toBe('Roma 2027')
+    expect(guardado?.actividades).toHaveLength(4)
+    expect(screen.queryByText(/Sin conexión: se muestra lo último guardado/)).toBeNull()
+  })
+
+  it('sin conexión muestra lo último guardado, avisa y no deja añadir actividades', async () => {
+    guardarCopia()
+    vi.stubGlobal('fetch', sinConexion())
+    renderizar()
+
+    expect(await screen.findByText('Visita al Coliseo')).toBeTruthy()
+    expect((await screen.findByRole('status')).textContent).toContain('Sin conexión: se muestra lo último guardado')
+    expect(screen.queryByRole('button', { name: 'Añadir Actividad' })).toBeNull()
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Día 2 · 13 may' })).toBeTruthy()
+  })
+
+  it('sin conexión y sin nada guardado muestra el error', async () => {
+    vi.stubGlobal('fetch', sinConexion())
+    renderizar()
+
+    expect((await screen.findByRole('alert')).textContent).toContain('No se puede conectar con el servidor')
+    expect(screen.queryByText('Visita al Coliseo')).toBeNull()
+  })
+
+  it('un fallo del servidor con conexión no usa lo guardado', async () => {
+    guardarCopia()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => respuesta(502, { error: { codigo: 'error_actividad', mensaje: 'No se han podido obtener las actividades' } })),
+    )
+    renderizar()
+
+    expect((await screen.findByRole('alert')).textContent).toContain('No se han podido obtener las actividades')
+    expect(screen.queryByText('Visita al Coliseo')).toBeNull()
+  })
+
+  it('Reintentar vuelve a pedir los datos y quita el aviso cuando hay conexión', async () => {
+    const user = userEvent.setup()
+    guardarCopia()
+    vi.stubGlobal('fetch', sinConexion())
+    renderizar()
+    await screen.findByRole('status')
+
+    simularBackend({}, [actividad('nueva', { titulo: 'Actividad recién añadida' })])
+    await user.click(screen.getByRole('button', { name: 'Reintentar' }))
+
+    expect(await screen.findByText('Actividad recién añadida')).toBeTruthy()
+    expect(screen.queryByText(/Sin conexión: se muestra lo último guardado/)).toBeNull()
+    expect(screen.getByRole('button', { name: 'Añadir Actividad' })).toBeTruthy()
+  })
+
+  it('cuando vuelve la conexión del dispositivo se actualiza solo', async () => {
+    guardarCopia()
+    vi.stubGlobal('fetch', sinConexion())
+    renderizar()
+    await screen.findByRole('status')
+
+    simularBackend({}, [actividad('nueva', { titulo: 'Actividad recién añadida' })])
+    window.dispatchEvent(new Event('online'))
+
+    expect(await screen.findByText('Actividad recién añadida')).toBeTruthy()
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+})
+

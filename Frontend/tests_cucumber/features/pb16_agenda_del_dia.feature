@@ -53,3 +53,14 @@ Característica: Ver la agenda del día en el itinerario (PB-16)
     Y pulso el botón "Añadir al itinerario"
     Entonces estoy en el itinerario del viaje
     Y veo en la agenda, por este orden, "Vaticano" y "Cena en Trastevere"
+
+  Escenario: Sin conexión se ve lo último guardado y al volver la red se actualiza
+    Dado que el servidor devuelve en "Roma 2027" la actividad "Visita al Coliseo" el "2027-05-12" a las "10:00"
+    Cuando abro el itinerario del viaje "Roma 2027"
+    Y se corta la conexión con el servidor
+    Y recargo la aplicación
+    Entonces veo en la agenda, por este orden, "Visita al Coliseo"
+    Y veo el texto "Sin conexión: se muestra lo último guardado"
+    Y no veo el botón "Añadir Actividad"
+    Cuando vuelve la conexión con el servidor
+    Entonces veo el botón "Añadir Actividad"
