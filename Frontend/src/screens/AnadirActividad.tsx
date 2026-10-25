@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties, type FormEvent } from "react"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import SectionLabel from "../components/SectionLabel"
+import { crearActividad } from "../services/actividadesApi"
 import { ApiError } from "../services/authApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
@@ -44,27 +45,22 @@ const alertaStyle: CSSProperties = {
   fontWeight: 700,
 }
 
-export type DatosActividad = {
-  titulo: string
-  ubicacion_nombre: string | null
-  fecha: string
-  hora_inicio: string | null
-}
-
 type AnadirActividadProps = {
   viajeId: string
   tokenSesion: string
   onVolver?: () => void
-  onGuardar?: (actividad: DatosActividad) => void
+  onGuardada?: () => void
 }
 
-export default function AnadirActividad({ viajeId, tokenSesion, onVolver, onGuardar }: AnadirActividadProps) {
+export default function AnadirActividad({ viajeId, tokenSesion, onVolver, onGuardada }: AnadirActividadProps) {
   const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
   const [errorCarga, setErrorCarga] = useState("")
   const [titulo, setTitulo] = useState("")
   const [ubicacion, setUbicacion] = useState("")
   const [hora, setHora] = useState("")
   const [fecha, setFecha] = useState("")
+  const [guardando, setGuardando] = useState(false)
+  const [error, setError] = useState("")
 
   useEffect(() => {
     let vigente = true
@@ -84,17 +80,24 @@ export default function AnadirActividad({ viajeId, tokenSesion, onVolver, onGuar
 
   const dias = viaje?.fecha_inicio && viaje.fecha_fin ? diasDelViaje(viaje.fecha_inicio, viaje.fecha_fin) : []
   const editable = viaje?.estado === "activo"
-  const canSubmit = editable && titulo.trim() !== "" && fecha !== ""
+  const canSubmit = editable && titulo.trim() !== "" && fecha !== "" && !guardando
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
     if (!canSubmit) return
-    onGuardar?.({
-      titulo: titulo.trim(),
-      ubicacion_nombre: ubicacion.trim() || null,
-      fecha,
-      hora_inicio: hora || null,
-    })
+    setGuardando(true)
+    setError("")
+    try {
+      await crearActividad(
+        viajeId,
+        { titulo: titulo.trim(), fecha, hora_inicio: hora || null, ubicacion_nombre: ubicacion.trim() || null },
+        tokenSesion,
+      )
+      onGuardada?.()
+    } catch (e) {
+      setError(mensajeDeError(e))
+      setGuardando(false)
+    }
   }
 
   return (
@@ -235,6 +238,12 @@ export default function AnadirActividad({ viajeId, tokenSesion, onVolver, onGuar
                 />
               </div>
 
+              {error && (
+                <div role="alert" style={{ ...alertaStyle, marginBottom: 16 }}>
+                  {error}
+                </div>
+              )}
+
               <button
                 type="submit"
                 disabled={!canSubmit}
@@ -258,7 +267,7 @@ export default function AnadirActividad({ viajeId, tokenSesion, onVolver, onGuar
                 }}
               >
                 <Icon name="plus" size={18} color="white" strokeWidth={2.5} />
-                Añadir al itinerario
+                {guardando ? "Guardando..." : "Añadir al itinerario"}
               </button>
             </form>
           )}

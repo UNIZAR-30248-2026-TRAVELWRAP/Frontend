@@ -147,6 +147,7 @@ function RutaAnadirActividad({ sesion }: { sesion: Sesion }) {
       viajeId={viajeId}
       tokenSesion={sesion.token}
       onVolver={() => navigate(`/viajes/${viajeId}`)}
+      onGuardada={() => navigate(`/viajes/${viajeId}`, { replace: true })}
     />
   );
 }
