@@ -90,6 +90,8 @@ const simularBackend = async () => {
   });
 };
 
+export const idDelViaje = (nombre: string) => viajes.find((v) => v.nombre === nombre)?.id;
+
 const irA = (ruta: string) => paginaActual().goto(new URL(ruta, paginaActual().url()).toString());
 
 Given('que tengo el viaje activo {string} con destino {string} y presupuesto {int}', async (nombre: string, destino: string, presupuesto: number) => {
