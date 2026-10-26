@@ -13,6 +13,13 @@ export const CATEGORIAS: { valor: Categoria; texto: string; icono: string }[] = 
 export const iconoDeCategoria = (categoria: string | null) =>
   CATEGORIAS.find((c) => c.valor === categoria)?.icono ?? "pin"
 
+export type ResultadoDireccion = {
+  nombre: string
+  latitud: number
+  longitud: number
+  lugar_externo_id: string | null
+}
+
 export type Actividad = {
   id: string
   viaje_id: string

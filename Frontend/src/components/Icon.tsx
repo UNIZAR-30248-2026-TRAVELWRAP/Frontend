@@ -160,6 +160,12 @@ export default function Icon({
         <path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
       </>
     ),
+    search: (
+      <>
+        <circle cx="11" cy="11" r="8" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </>
+    ),
     trash: (
       <>
         <polyline points="3 6 5 6 21 6" />

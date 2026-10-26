@@ -11,6 +11,7 @@ import {
   type Categoria,
   type CambiosActividad,
   type NuevaActividad,
+  type ResultadoDireccion,
 } from "../services/actividadesApi"
 import { ApiError } from "../services/authApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
@@ -61,6 +62,7 @@ type AnadirActividadProps = {
   onVolver?: () => void
   fechaInicial?: string
   onGuardada?: (fecha: string) => void
+  onBuscarDirecciones?: (consulta: string) => Promise<ResultadoDireccion[]>
 }
 
 export default function AnadirActividad({
@@ -70,6 +72,7 @@ export default function AnadirActividad({
   fechaInicial = "",
   onVolver,
   onGuardada,
+  onBuscarDirecciones,
 }: AnadirActividadProps) {
   const edicion = actividadId !== undefined
   const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
@@ -81,6 +84,10 @@ export default function AnadirActividad({
   const [categoria, setCategoria] = useState<Categoria | null>(null)
   const [fecha, setFecha] = useState("")
   const [original, setOriginal] = useState<Actividad | null>(null)
+  const [resultados, setResultados] = useState<ResultadoDireccion[] | null>(null)
+  const [buscando, setBuscando] = useState(false)
+  const [errorBusqueda, setErrorBusqueda] = useState("")
+  const [lugarElegido, setLugarElegido] = useState<ResultadoDireccion | null>(null)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState("")
 
@@ -102,6 +109,14 @@ export default function AnadirActividad({
           setOriginal(actividad)
           setTitulo(actividad.titulo)
           setUbicacion(actividad.ubicacion_nombre ?? "")
+          if (actividad.latitud !== null && actividad.longitud !== null) {
+            setLugarElegido({
+              nombre: actividad.ubicacion_nombre ?? "",
+              latitud: actividad.latitud,
+              longitud: actividad.longitud,
+              lugar_externo_id: actividad.lugar_externo_id,
+            })
+          }
           setHora(actividad.hora_inicio?.slice(0, 5) ?? "")
           setHoraFin(actividad.hora_fin?.slice(0, 5) ?? "")
           setCategoria(actividad.categoria)
@@ -156,6 +171,35 @@ export default function AnadirActividad({
   const hayCambios = original === null || Object.keys(cambios).length > 0
   const canSubmit =
     editable && titulo.trim() !== "" && fecha !== "" && avisoHoras === "" && hayCambios && !guardando && (!edicion || original !== null)
+
+  const cambiarLugar = (texto: string) => {
+    setUbicacion(texto)
+    setLugarElegido(null)
+    setResultados(null)
+    setErrorBusqueda("")
+  }
+
+  const elegirResultado = (resultado: ResultadoDireccion) => {
+    setLugarElegido(resultado)
+    setUbicacion(resultado.nombre)
+    setResultados(null)
+  }
+
+  const handleBuscar = async () => {
+    const consulta = ubicacion.trim()
+    if (!onBuscarDirecciones || consulta.length < 3 || buscando) return
+    setBuscando(true)
+    setErrorBusqueda("")
+    setResultados(null)
+    setLugarElegido(null)
+    try {
+      setResultados(await onBuscarDirecciones(consulta))
+    } catch (e) {
+      setErrorBusqueda(mensajeDeError(e))
+    } finally {
+      setBuscando(false)
+    }
+  }
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
@@ -290,13 +334,133 @@ export default function AnadirActividad({
                 <label htmlFor="actividad-lugar" style={labelStyle}>
                   Lugar / Dirección
                 </label>
-                <input
-                  id="actividad-lugar"
-                  value={ubicacion}
-                  onChange={(event) => setUbicacion(event.target.value)}
-                  placeholder="Ej. Piazza del Colosseo"
-                  style={inputStyle}
-                />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input
+                    id="actividad-lugar"
+                    value={ubicacion}
+                    onChange={(event) => cambiarLugar(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key !== "Enter" || !onBuscarDirecciones) return
+                      event.preventDefault()
+                      handleBuscar()
+                    }}
+                    placeholder="Ej. Piazza del Colosseo"
+                    style={{ ...inputStyle, flex: 1, minWidth: 0, width: "auto" }}
+                  />
+                  {onBuscarDirecciones && (
+                    <button
+                      type="button"
+                      onClick={handleBuscar}
+                      disabled={ubicacion.trim().length < 3 || buscando}
+                      aria-label="Buscar dirección"
+                      style={{
+                        width: 50,
+                        flexShrink: 0,
+                        background: C.blue,
+                        border: "none",
+                        borderRadius: 14,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: ubicacion.trim().length < 3 || buscando ? "not-allowed" : "pointer",
+                        opacity: ubicacion.trim().length < 3 || buscando ? 0.6 : 1,
+                        boxShadow: SHADOWS.button,
+                      }}
+                    >
+                      <Icon name="search" size={20} color="white" strokeWidth={2.2} />
+                    </button>
+                  )}
+                </div>
+
+                {buscando && (
+                  <div role="status" style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, marginTop: 8 }}>
+                    Buscando...
+                  </div>
+                )}
+
+                {errorBusqueda && (
+                  <div role="alert" style={{ ...alertaStyle, marginTop: 8 }}>
+                    {errorBusqueda}
+                  </div>
+                )}
+
+                {resultados !== null && resultados.length === 0 && (
+                  <div role="status" style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, lineHeight: 1.5, marginTop: 8 }}>
+                    No se han encontrado resultados. Puedes guardar el lugar como texto o probar con otra dirección.
+                  </div>
+                )}
+
+                {resultados !== null && resultados.length > 0 && (
+                  <div role="list" aria-label="Resultados de la búsqueda" style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+                    {resultados.map((resultado) => (
+                      <div role="listitem" key={`${resultado.latitud},${resultado.longitud},${resultado.nombre}`}>
+                        <button
+                          type="button"
+                          onClick={() => elegirResultado(resultado)}
+                          style={{
+                            width: "100%",
+                            background: "white",
+                            border: `1.5px solid ${C.border}`,
+                            borderRadius: 12,
+                            padding: "10px 12px",
+                            display: "flex",
+                            alignItems: "flex-start",
+                            gap: 8,
+                            textAlign: "left",
+                            cursor: "pointer",
+                            fontFamily: NUNITO,
+                            fontSize: 13,
+                            color: C.navy,
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          <Icon name="pin" size={15} color={C.blue} strokeWidth={2} />
+                          <span style={{ overflowWrap: "anywhere" }}>{resultado.nombre}</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {lugarElegido && (
+                  <div
+                    role="status"
+                    style={{
+                      marginTop: 8,
+                      background: C.greenBg,
+                      border: `1.5px solid ${C.greenMid}55`,
+                      borderRadius: 12,
+                      padding: "9px 12px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      fontFamily: NUNITO,
+                      fontSize: 12,
+                      color: C.green,
+                      fontWeight: 700,
+                    }}
+                  >
+                    <Icon name="pin" size={15} color={C.green} strokeWidth={2} />
+                    <span style={{ flex: 1 }}>Ubicación localizada en el mapa</span>
+                    <button
+                      type="button"
+                      onClick={() => setLugarElegido(null)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        cursor: "pointer",
+                        color: C.green,
+                        fontFamily: NUNITO,
+                        fontSize: 12,
+                        fontWeight: 800,
+                        textDecoration: "underline",
+                      }}
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div style={{ display: "flex", gap: 10, marginBottom: avisoHoras ? 6 : 24 }}>
