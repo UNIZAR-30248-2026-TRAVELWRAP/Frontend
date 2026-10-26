@@ -16,6 +16,7 @@ import Votaciones from "../screens/Votaciones";
 import ElegirDestino from "../screens/ElegirDestino";
 import AnadirActividad from "../screens/AnadirActividad";
 import Itinerario from "../screens/Itinerario";
+import { buscarDirecciones } from "../services/actividadesApi";
 import type { SeccionViaje } from "../components/BarraInferior";
 import { rutaTrasLogin } from "../services/invitacionPendiente";
 
@@ -182,6 +183,7 @@ function RutaAnadirActividad({ sesion }: { sesion: Sesion }) {
       fechaInicial={fechaInicial}
       onVolver={() => navigate(rutaItinerario(viajeId, fechaInicial))}
       onGuardada={(fecha) => navigate(rutaItinerario(viajeId, fecha), { replace: true })}
+      onBuscarDirecciones={(consulta) => buscarDirecciones(consulta, sesion.token).then((resultado) => resultado.direcciones)}
     />
   );
 }
@@ -199,6 +201,7 @@ function RutaEditarActividad({ sesion }: { sesion: Sesion }) {
       tokenSesion={sesion.token}
       onVolver={() => navigate(rutaItinerario(viajeId, fechaDeVuelta))}
       onGuardada={(fecha) => navigate(rutaItinerario(viajeId, fecha), { replace: true })}
+      onBuscarDirecciones={(consulta) => buscarDirecciones(consulta, sesion.token).then((resultado) => resultado.direcciones)}
     />
   );
 }

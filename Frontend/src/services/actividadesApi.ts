@@ -46,7 +46,15 @@ export type NuevaActividad = {
   hora_fin: string | null
   ubicacion_nombre: string | null
   categoria: Categoria | null
+  latitud: number | null
+  longitud: number | null
+  lugar_externo_id: string | null
 }
+
+export const buscarDirecciones = (consulta: string, tokenSesion: string) =>
+  peticion<{ direcciones: ResultadoDireccion[] }>(`/direcciones?q=${encodeURIComponent(consulta)}`, {
+    token: tokenSesion,
+  })
 
 export const listarActividades = (viajeId: string, tokenSesion: string, fecha?: string) =>
   peticion<{ actividades: Actividad[] }>(

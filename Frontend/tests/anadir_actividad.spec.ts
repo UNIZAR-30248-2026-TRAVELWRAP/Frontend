@@ -111,6 +111,9 @@ test.describe('Añadir actividad', () => {
       hora_fin: '12:30',
       ubicacion_nombre: 'Piazza del Colosseo',
       categoria: 'cultura',
+      latitud: null,
+      longitud: null,
+      lugar_externo_id: null,
     });
   });
 
@@ -130,6 +133,9 @@ test.describe('Añadir actividad', () => {
       hora_fin: null,
       ubicacion_nombre: null,
       categoria: null,
+      latitud: null,
+      longitud: null,
+      lugar_externo_id: null,
     });
   });
 

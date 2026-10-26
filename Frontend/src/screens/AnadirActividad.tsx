@@ -152,6 +152,9 @@ export default function AnadirActividad({
     hora_fin: hora ? horaFin || null : null,
     ubicacion_nombre: ubicacion.trim() || null,
     categoria,
+    latitud: lugarElegido?.latitud ?? null,
+    longitud: lugarElegido?.longitud ?? null,
+    lugar_externo_id: lugarElegido?.lugar_externo_id ?? null,
   }
   const cambios: CambiosActividad = {}
   if (original) {
@@ -167,6 +170,15 @@ export default function AnadirActividad({
       cambios.ubicacion_nombre = datosDelFormulario.ubicacion_nombre
     }
     if (datosDelFormulario.categoria !== original.categoria) cambios.categoria = datosDelFormulario.categoria
+    if (
+      datosDelFormulario.latitud !== original.latitud ||
+      datosDelFormulario.longitud !== original.longitud ||
+      datosDelFormulario.lugar_externo_id !== original.lugar_externo_id
+    ) {
+      cambios.latitud = datosDelFormulario.latitud
+      cambios.longitud = datosDelFormulario.longitud
+      cambios.lugar_externo_id = datosDelFormulario.lugar_externo_id
+    }
   }
   const hayCambios = original === null || Object.keys(cambios).length > 0
   const canSubmit =

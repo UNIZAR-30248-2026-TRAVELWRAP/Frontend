@@ -10,6 +10,9 @@ type ActividadSimulada = {
   fecha: string;
   hora_inicio: string | null;
   ubicacion_nombre: string | null;
+  latitud: number | null;
+  longitud: number | null;
+  lugar_externo_id: string | null;
 };
 
 type DatosActividad = Pick<ActividadSimulada, 'titulo' | 'fecha' | 'hora_inicio' | 'ubicacion_nombre'>;
@@ -50,6 +53,9 @@ export const sembrarActividad = (
     fecha,
     hora_inicio: hora,
     ubicacion_nombre: ubicacion,
+    latitud: null,
+    longitud: null,
+    lugar_externo_id: null,
   });
 };
 
