@@ -34,11 +34,22 @@ const guardadas = () =>
   }));
 
 Given(
-  'que el buscador de direcciones encuentra {string} en la latitud {float} y la longitud {float}',
-  async (nombre: string, latitud: number, longitud: number) => {
+  'que el buscador de direcciones encuentra {string} en {string} en la latitud {float} y la longitud {float}',
+  async (titulo: string, localidad: string, latitud: number, longitud: number) => {
     respuestaBusqueda = {
       status: 200,
-      cuerpo: { direcciones: [{ nombre, latitud, longitud, lugar_externo_id: 'way/24146600' }] },
+      cuerpo: {
+        direcciones: [
+          {
+            nombre: `${titulo}, ${localidad}`,
+            titulo,
+            detalle: `${localidad}, Italia`,
+            latitud,
+            longitud,
+            lugar_externo_id: 'way/24146600',
+          },
+        ],
+      },
     };
     await simularDirecciones();
   },
@@ -63,8 +74,17 @@ When('busco la dirección {string}', async (lugar: string) => {
   await paginaActual().getByRole('button', { name: 'Buscar dirección' }).click();
 });
 
-When('elijo el resultado {string}', async (nombre: string) => {
-  await paginaActual().getByRole('button', { name: nombre }).click();
+When('elijo el resultado {string}', async (titulo: string) => {
+  await paginaActual().getByRole('button', { name: titulo }).click();
+});
+
+Then('el resultado {int} muestra el título {string} y el detalle {string}', async (posicion: number, titulo: string, detalle: string) => {
+  const resultado = paginaActual()
+    .getByRole('list', { name: 'Resultados de la búsqueda' })
+    .getByRole('listitem')
+    .nth(posicion - 1);
+  await expect(resultado).toContainText(titulo);
+  await expect(resultado).toContainText(detalle);
 });
 
 When('relleno solo el título {string}', async (titulo: string) => {

@@ -18,17 +18,23 @@ const sesion = {
 };
 
 const COLISEO = {
-  nombre: 'Colosseo, Piazza del Colosseo, Roma, Lazio, Italia',
+  nombre: 'Colosseo, Roma',
+  titulo: 'Colosseo',
+  detalle: 'Roma, Italia',
   latitud: 41.890214,
   longitud: 12.492231,
   lugar_externo_id: 'way/24146600',
 };
 const FORO = {
-  nombre: 'Foro Romano, Via della Salara Vecchia, Roma, Lazio, Italia',
+  nombre: 'Foro Romano, Roma',
+  titulo: 'Foro Romano',
+  detalle: 'Roma, Italia',
   latitud: 41.892462,
   longitud: 12.485325,
   lugar_externo_id: 'relation/5',
 };
+
+const etiqueta = (direccion: { titulo: string; detalle: string }) => `${direccion.titulo}, ${direccion.detalle}`;
 
 const viaje = {
   id: VIAJE_ID,
@@ -163,8 +169,9 @@ test.describe('Buscar la dirección de una actividad', () => {
 
     const lista = page.getByRole('list', { name: 'Resultados de la búsqueda' });
     await expect(lista.getByRole('listitem')).toHaveCount(2);
-    await expect(lista).toContainText(COLISEO.nombre);
-    await expect(lista).toContainText(FORO.nombre);
+    await expect(lista).toContainText(COLISEO.titulo);
+    await expect(lista).toContainText(FORO.titulo);
+    await expect(lista).toContainText(COLISEO.detalle);
     expect(busquedas).toEqual([{ consulta: 'Colosseo, Roma', cabecera: 'Bearer token-acceso' }]);
   });
 
@@ -190,7 +197,7 @@ test.describe('Buscar la dirección de una actividad', () => {
     await page.goto(rutaNueva);
     await page.getByLabel('Nombre de la actividad').fill('Visita al Coliseo');
     await buscarColosseo(page);
-    await page.getByRole('button', { name: COLISEO.nombre }).click();
+    await page.getByRole('button', { name: etiqueta(COLISEO) }).click();
 
     await expect(page.getByLabel('Lugar / Dirección')).toHaveValue(COLISEO.nombre);
     await expect(page.getByText('Ubicación localizada en el mapa')).toBeVisible();
@@ -215,7 +222,7 @@ test.describe('Buscar la dirección de una actividad', () => {
     await page.goto(rutaNueva);
     await page.getByLabel('Nombre de la actividad').fill('Visita al Coliseo');
     await buscarColosseo(page);
-    await page.getByRole('button', { name: COLISEO.nombre }).click();
+    await page.getByRole('button', { name: etiqueta(COLISEO) }).click();
     await page.getByRole('button', { name: 'Quitar' }).click();
 
     await expect(page.getByText('Ubicación localizada en el mapa')).toHaveCount(0);
@@ -238,7 +245,7 @@ test.describe('Buscar la dirección de una actividad', () => {
     await page.goto(rutaNueva);
     await page.getByLabel('Nombre de la actividad').fill('Visita al Coliseo');
     await buscarColosseo(page);
-    await page.getByRole('button', { name: COLISEO.nombre }).click();
+    await page.getByRole('button', { name: etiqueta(COLISEO) }).click();
     await page.getByLabel('Lugar / Dirección').pressSequentially(' (entrada norte)');
 
     await expect(page.getByText('Ubicación localizada en el mapa')).toHaveCount(0);
@@ -327,7 +334,7 @@ test.describe('Buscar la dirección de una actividad', () => {
     await expect(page.getByLabel('Nombre de la actividad')).toHaveValue('Visita al Coliseo');
     await page.getByLabel('Lugar / Dirección').fill('Foro Romano');
     await page.getByRole('button', { name: 'Buscar dirección' }).click();
-    await page.getByRole('button', { name: FORO.nombre }).click();
+    await page.getByRole('button', { name: etiqueta(FORO) }).click();
     await page.getByRole('button', { name: 'Guardar cambios' }).click();
 
     await expect(page).toHaveURL(/\/viajes\/roma\/itinerario/);

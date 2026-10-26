@@ -112,6 +112,8 @@ export default function AnadirActividad({
           if (actividad.latitud !== null && actividad.longitud !== null) {
             setLugarElegido({
               nombre: actividad.ubicacion_nombre ?? "",
+              titulo: actividad.ubicacion_nombre ?? "",
+              detalle: null,
               latitud: actividad.latitud,
               longitud: actividad.longitud,
               lugar_externo_id: actividad.lugar_externo_id,
@@ -409,6 +411,7 @@ export default function AnadirActividad({
                         <button
                           type="button"
                           onClick={() => elegirResultado(resultado)}
+                          aria-label={resultado.detalle ? `${resultado.titulo}, ${resultado.detalle}` : resultado.titulo}
                           style={{
                             width: "100%",
                             background: "white",
@@ -427,7 +430,12 @@ export default function AnadirActividad({
                           }}
                         >
                           <Icon name="pin" size={15} color={C.blue} strokeWidth={2} />
-                          <span style={{ overflowWrap: "anywhere" }}>{resultado.nombre}</span>
+                          <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+                            <span style={{ fontWeight: 800, overflowWrap: "anywhere" }}>{resultado.titulo}</span>
+                            {resultado.detalle && (
+                              <span style={{ fontSize: 12, color: C.muted, overflowWrap: "anywhere" }}>{resultado.detalle}</span>
+                            )}
+                          </span>
                         </button>
                       </div>
                     ))}

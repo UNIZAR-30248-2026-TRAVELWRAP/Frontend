@@ -15,6 +15,8 @@ export const iconoDeCategoria = (categoria: string | null) =>
 
 export type ResultadoDireccion = {
   nombre: string
+  titulo: string
+  detalle: string | null
   latitud: number
   longitud: number
   lugar_externo_id: string | null

@@ -9,17 +9,23 @@ const VIAJE_ID = '123e4567-e89b-12d3-a456-426614174000'
 const ACTIVIDAD_ID = '8a1b2c3d-0000-4000-8000-000000000020'
 
 const COLISEO: ResultadoDireccion = {
-  nombre: 'Colosseo, Piazza del Colosseo, Roma, Lazio, Italia',
+  nombre: 'Colosseo, Roma',
+  titulo: 'Colosseo',
+  detalle: 'Roma, Italia',
   latitud: 41.890214,
   longitud: 12.492231,
   lugar_externo_id: 'way/24146600',
 }
 const FORO: ResultadoDireccion = {
-  nombre: 'Foro Romano, Via della Salara Vecchia, Roma, Lazio, Italia',
+  nombre: 'Foro Romano, Roma',
+  titulo: 'Foro Romano',
+  detalle: 'Roma, Italia',
   latitud: 41.892462,
   longitud: 12.485325,
   lugar_externo_id: 'relation/5',
 }
+
+const etiqueta = (direccion: ResultadoDireccion) => `${direccion.titulo}, ${direccion.detalle}`
 
 const respuesta = (estado: number, cuerpo: unknown) =>
   Promise.resolve(
@@ -197,8 +203,24 @@ describe('AnadirActividad · buscador de direcciones', () => {
     const lista = await screen.findByRole('list', { name: 'Resultados de la búsqueda' })
     const elementos = within(lista).getAllByRole('listitem')
     expect(elementos).toHaveLength(2)
-    expect(elementos[0].textContent).toBe(COLISEO.nombre)
-    expect(elementos[1].textContent).toBe(FORO.nombre)
+    expect(within(elementos[0]).getByText('Colosseo').textContent).toBe('Colosseo')
+    expect(within(elementos[0]).getByText('Roma, Italia')).toBeTruthy()
+    expect(within(elementos[1]).getByText('Foro Romano')).toBeTruthy()
+    expect(elementos[0].textContent).not.toContain('Piazza')
+  });
+
+  it('un resultado sin detalle muestra solo el título', async () => {
+    const user = userEvent.setup()
+    simularBackend()
+    renderizarNueva(vi.fn(() => Promise.resolve([{ ...COLISEO, detalle: null }])))
+
+    await esperarFormulario()
+    await user.type(campoLugar(), 'Colosseo')
+    await user.click(lupa())
+
+    const elemento = within(await screen.findByRole('list', { name: 'Resultados de la búsqueda' })).getByRole('listitem')
+    expect(elemento.textContent).toBe('Colosseo')
+    expect(within(elemento).getByRole('button', { name: 'Colosseo' })).toBeTruthy()
   })
 
   it('si no hay resultados lo dice y deja guardar el lugar como texto', async () => {
@@ -262,7 +284,7 @@ describe('AnadirActividad · buscador de direcciones', () => {
     await esperarFormulario()
     await user.type(campoLugar(), 'Roma')
     await user.click(lupa())
-    await user.click(await screen.findByRole('button', { name: FORO.nombre }))
+    await user.click(await screen.findByRole('button', { name: etiqueta(FORO) }))
 
     expect(campoLugar().value).toBe(FORO.nombre)
     expect(screen.getByText('Ubicación localizada en el mapa')).toBeTruthy()
@@ -277,7 +299,7 @@ describe('AnadirActividad · buscador de direcciones', () => {
     await user.type(await esperarFormulario(), 'Visita al Coliseo')
     await user.type(campoLugar(), 'Colosseo')
     await user.click(lupa())
-    await user.click(await screen.findByRole('button', { name: COLISEO.nombre }))
+    await user.click(await screen.findByRole('button', { name: etiqueta(COLISEO) }))
     await user.click(botonAnadir())
 
     await waitFor(() => expect(cuerpoEnviado(fetchMock, 'POST')).toBeDefined())
@@ -297,7 +319,7 @@ describe('AnadirActividad · buscador de direcciones', () => {
     await user.type(await esperarFormulario(), 'Visita al Coliseo')
     await user.type(campoLugar(), 'Colosseo')
     await user.click(lupa())
-    await user.click(await screen.findByRole('button', { name: COLISEO.nombre }))
+    await user.click(await screen.findByRole('button', { name: etiqueta(COLISEO) }))
     await user.click(screen.getByRole('button', { name: 'Quitar' }))
 
     expect(screen.queryByText('Ubicación localizada en el mapa')).toBeNull()
@@ -320,7 +342,7 @@ describe('AnadirActividad · buscador de direcciones', () => {
     await user.type(await esperarFormulario(), 'Visita al Coliseo')
     await user.type(campoLugar(), 'Colosseo')
     await user.click(lupa())
-    await user.click(await screen.findByRole('button', { name: COLISEO.nombre }))
+    await user.click(await screen.findByRole('button', { name: etiqueta(COLISEO) }))
     await user.type(campoLugar(), ' (entrada norte)')
 
     expect(screen.queryByText('Ubicación localizada en el mapa')).toBeNull()
@@ -355,7 +377,7 @@ describe('AnadirActividad · buscador de direcciones', () => {
     await esperarFormulario()
     await user.type(campoLugar(), 'Colosseo')
     await user.click(lupa())
-    await user.click(await screen.findByRole('button', { name: COLISEO.nombre }))
+    await user.click(await screen.findByRole('button', { name: etiqueta(COLISEO) }))
     expect(screen.getByText('Ubicación localizada en el mapa')).toBeTruthy()
     await user.click(lupa())
 
@@ -402,7 +424,7 @@ describe('AnadirActividad · buscador de direcciones en modo edición', () => {
     await user.clear(campoLugar())
     await user.type(campoLugar(), 'Foro Romano')
     await user.click(lupa())
-    await user.click(await screen.findByRole('button', { name: FORO.nombre }))
+    await user.click(await screen.findByRole('button', { name: etiqueta(FORO) }))
     await user.click(botonGuardar())
 
     await waitFor(() => expect(cuerpoEnviado(fetchMock, 'PATCH')).toBeDefined())

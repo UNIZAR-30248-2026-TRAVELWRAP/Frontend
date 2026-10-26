@@ -10,31 +10,32 @@ Característica: Buscar la dirección de una actividad (PB-26)
     Y que tengo el viaje activo "Roma 2027" con destino "Roma" y presupuesto 850
 
   Escenario: Buscar una dirección, elegirla y guardar la actividad con sus coordenadas
-    Dado que el buscador de direcciones encuentra "Colosseo, Piazza del Colosseo, Roma" en la latitud 41.890214 y la longitud 12.492231
+    Dado que el buscador de direcciones encuentra "Colosseo" en "Roma" en la latitud 41.890214 y la longitud 12.492231
     Cuando abro la pantalla para añadir una actividad al viaje "Roma 2027"
     Y relleno solo el título "Visita al Coliseo"
     Y busco la dirección "Colosseo"
     Entonces el servidor de direcciones ha recibido la búsqueda "Colosseo"
     Y veo 1 resultados de búsqueda
-    Cuando elijo el resultado "Colosseo, Piazza del Colosseo, Roma"
+    Y el resultado 1 muestra el título "Colosseo" y el detalle "Roma, Italia"
+    Cuando elijo el resultado "Colosseo"
     Entonces veo la ubicación localizada en el mapa
-    Y el campo del lugar contiene "Colosseo, Piazza del Colosseo, Roma"
+    Y el campo del lugar contiene "Colosseo, Roma"
     Cuando pulso el botón "Añadir al itinerario"
     Entonces estoy en el itinerario del viaje
-    Y el servidor ha guardado la actividad "Visita al Coliseo" en "Colosseo, Piazza del Colosseo, Roma" con la latitud 41.890214 y la longitud 12.492231
+    Y el servidor ha guardado la actividad "Visita al Coliseo" en "Colosseo, Roma" con la latitud 41.890214 y la longitud 12.492231
 
   Escenario: Quitar la ubicación localizada deja el texto sin coordenadas
-    Dado que el buscador de direcciones encuentra "Colosseo, Piazza del Colosseo, Roma" en la latitud 41.890214 y la longitud 12.492231
+    Dado que el buscador de direcciones encuentra "Colosseo" en "Roma" en la latitud 41.890214 y la longitud 12.492231
     Cuando abro la pantalla para añadir una actividad al viaje "Roma 2027"
     Y relleno solo el título "Visita al Coliseo"
     Y busco la dirección "Colosseo"
-    Y elijo el resultado "Colosseo, Piazza del Colosseo, Roma"
+    Y elijo el resultado "Colosseo"
     Y pulso el botón "Quitar"
     Entonces no veo la ubicación localizada en el mapa
-    Y el campo del lugar contiene "Colosseo, Piazza del Colosseo, Roma"
+    Y el campo del lugar contiene "Colosseo, Roma"
     Cuando pulso el botón "Añadir al itinerario"
     Entonces estoy en el itinerario del viaje
-    Y el servidor ha guardado la actividad "Visita al Coliseo" en "Colosseo, Piazza del Colosseo, Roma" sin coordenadas
+    Y el servidor ha guardado la actividad "Visita al Coliseo" en "Colosseo, Roma" sin coordenadas
 
   Escenario: La lupa no se activa con menos de tres caracteres
     Cuando abro la pantalla para añadir una actividad al viaje "Roma 2027"
