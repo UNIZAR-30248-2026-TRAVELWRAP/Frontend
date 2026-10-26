@@ -59,6 +59,8 @@ export const sembrarActividad = (
   });
 };
 
+export const actividadesGuardadas = () => actividades;
+
 export const simularActividades = async () => {
   await paginaActual().route('**/api/viajes/*/actividades/*', (route) => {
     const peticion = route.request();
@@ -107,8 +109,14 @@ export const simularActividades = async () => {
         }),
       });
     }
-    const datos = peticion.postDataJSON() as DatosActividad;
+    const datos = peticion.postDataJSON() as DatosActividad &
+      Pick<ActividadSimulada, 'latitud' | 'longitud' | 'lugar_externo_id'>;
     sembrarActividad(viajeId, datos.titulo, datos.fecha, datos.hora_inicio, datos.ubicacion_nombre);
+    Object.assign(actividades[actividades.length - 1], {
+      latitud: datos.latitud ?? null,
+      longitud: datos.longitud ?? null,
+      lugar_externo_id: datos.lugar_externo_id ?? null,
+    });
     return route.fulfill({
       status: 201,
       contentType: 'application/json',

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../src/services/authApi'
 import {
+  buscarDirecciones,
   CATEGORIAS,
   crearActividad,
   editarActividad,
@@ -166,3 +167,48 @@ describe('actividadesApi · editar y eliminar actividad', () => {
   })
 })
 
+describe('actividadesApi · buscar direcciones', () => {
+  it('pide GET /direcciones con el texto codificado y el token, y devuelve las direcciones', async () => {
+    const colosseo = { nombre: 'Colosseo, Roma', latitud: 41.890214, longitud: 12.492231, lugar_externo_id: 'way/1' }
+    const fetchMock = vi.fn(() => respuesta(200, { direcciones: [colosseo] }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const resultado = await buscarDirecciones('Colosseo, Roma & Foro', 'token-acceso')
+
+    expect(resultado.direcciones).toEqual([colosseo])
+    const [url, opciones] = llamada(fetchMock)
+    expect(url).toMatch(/\/direcciones\?q=Colosseo%2C%20Roma%20%26%20Foro$/)
+    expect(opciones.method ?? 'GET').toBe('GET')
+    expect(opciones.headers.Authorization).toBe('Bearer token-acceso')
+  })
+
+  it('devuelve una lista vacía si no hay resultados', async () => {
+    vi.stubGlobal('fetch', vi.fn(() => respuesta(200, { direcciones: [] })))
+
+    const resultado = await buscarDirecciones('Lugar inexistente', 'token-acceso')
+
+    expect(resultado.direcciones).toEqual([])
+  })
+
+  it('propaga el 429 y el 502 del backend como ApiError', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockImplementationOnce(() =>
+          respuesta(429, { error: { codigo: 'demasiadas_busquedas', mensaje: 'Espera un segundo entre una búsqueda y otra' } }),
+        )
+        .mockImplementationOnce(() =>
+          respuesta(502, { error: { codigo: 'error_geocodificacion', mensaje: 'No se ha podido buscar la dirección' } }),
+        ),
+    )
+
+    const limite = await buscarDirecciones('Colosseo', 'token-acceso').catch((e) => e)
+    const caido = await buscarDirecciones('Colosseo', 'token-acceso').catch((e) => e)
+
+    expect(limite).toBeInstanceOf(ApiError)
+    expect([limite.estado, limite.codigo]).toEqual([429, 'demasiadas_busquedas'])
+    expect(caido).toBeInstanceOf(ApiError)
+    expect([caido.estado, caido.codigo]).toEqual([502, 'error_geocodificacion'])
+  })
+})
