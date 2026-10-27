@@ -143,3 +143,119 @@ test.describe('Votación del destino', () => {
     await expect(page.getByRole('region', { name: '¿A dónde queremos ir?' })).toContainText('Ganó: Praga');
   });
 });
+
+// Viaje con destino y sin votaciones: POST crea la votación y GET devuelve la lista
+const simularBackendConDestino = async (page: Page) => {
+  const viaje = {
+    id: 'roma',
+    nombre: 'Roma 2027',
+    destino: 'Roma',
+    descripcion: null,
+    fecha_inicio: '2027-05-12',
+    fecha_fin: '2027-05-15',
+    moneda: 'EUR',
+    presupuesto: 850,
+    estado: 'activo',
+    creado_en: '2026-10-12T10:00:00Z',
+    pendiente_destino: false,
+    rol: 'creador',
+    miembros: [
+      { usuario_id: USUARIO_ID, nombre: 'Adriana', avatar_url: null, rol: 'creador' },
+      { usuario_id: 'u2', nombre: 'Berta', avatar_url: null, rol: 'miembro' },
+    ],
+  };
+  const votaciones: unknown[] = [];
+  const recibidas: unknown[] = [];
+
+  await page.route('**/api/viajes**', async (route) => {
+    const peticion = route.request();
+    const ruta = new URL(peticion.url()).pathname.replace(/^.*\/api/, '');
+
+    if (ruta === '/viajes') return json(route, 200, { viajes: [viaje] });
+    if (ruta === '/viajes/roma') return json(route, 200, viaje);
+    if (ruta === '/viajes/roma/votaciones' && peticion.method() === 'POST') {
+      const datos = peticion.postDataJSON();
+      recibidas.push(datos);
+      const nueva = {
+        id: `votacion-${votaciones.length + 1}`,
+        titulo: datos.titulo,
+        descripcion: null,
+        tipo: datos.tipo,
+        estado: 'abierta',
+        opcion_ganadora_id: null,
+        creado_por: USUARIO_ID,
+        creado_en: '2026-10-27T10:00:00Z',
+        cerrada_en: null,
+        opciones: datos.opciones.map((o: { texto: string; valor_fecha: string | null }, i: number) => ({
+          id: `opcion-${i + 1}`,
+          ...o,
+          orden: i,
+          votos: 0,
+          votantes: [],
+        })),
+        total_votos: 0,
+        total_miembros: viaje.miembros.length,
+        todos_han_votado: false,
+        mi_voto: null,
+      };
+      votaciones.unshift(nueva);
+      return json(route, 201, nueva);
+    }
+    if (ruta === '/viajes/roma/votaciones') return json(route, 200, { votaciones });
+    return json(route, 404, { error: { codigo: 'no_encontrado', mensaje: 'No encontrado' } });
+  });
+
+  return { recibidas };
+};
+
+test.describe('Crear una votación', () => {
+  test('desde las votaciones del viaje se crea una votación de fechas y aparece la primera de la lista', async ({ page }) => {
+    await entrarConSesion(page);
+    const { recibidas } = await simularBackendConDestino(page);
+
+    await page.goto('/viajes/roma');
+    await page.getByRole('button', { name: 'Votaciones' }).click();
+    await expect(page.getByText('Todavía no hay votaciones en este viaje.')).toBeVisible();
+    await page.getByRole('button', { name: 'Crear nueva votación' }).click();
+    await expect(page).toHaveURL(/\/viajes\/roma\/votaciones\/nueva$/);
+
+    await page.getByLabel('Pregunta de la votación').fill('¿Qué fin de semana salimos?');
+    await page.getByLabel('Opción A', { exact: true }).fill('12 – 15 mayo');
+    await page.getByLabel('Fecha de la opción A').fill('2027-05-12');
+    await page.getByLabel('Opción B', { exact: true }).fill('19 – 22 mayo');
+    await page.getByRole('button', { name: 'Publicar votación' }).click();
+
+    // Vuelve a la lista con la votación nueva, abierta y lista para votar
+    await expect(page).toHaveURL(/\/viajes\/roma\/votaciones$/);
+    const votacion = page.getByRole('region', { name: '¿Qué fin de semana salimos?' });
+    await expect(votacion.getByRole('radio')).toHaveCount(2);
+    await expect(votacion.getByText('0/2')).toBeVisible();
+    expect(recibidas).toEqual([
+      {
+        titulo: '¿Qué fin de semana salimos?',
+        tipo: 'fecha',
+        opciones: [
+          { texto: '12 – 15 mayo', valor_fecha: '2027-05-12' },
+          { texto: '19 – 22 mayo', valor_fecha: null },
+        ],
+      },
+    ]);
+
+    // Al volver atrás no se regresa al formulario ya enviado
+    await page.goBack();
+    await expect(page).toHaveURL(/\/viajes\/roma$/);
+  });
+
+  test('a 320 px de ancho el formulario cabe sin scroll horizontal', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await entrarConSesion(page);
+    await simularBackendConDestino(page);
+
+    await page.goto('/viajes/roma/votaciones/nueva');
+    await page.getByRole('button', { name: 'Añadir opción' }).click();
+    await expect(page.getByLabel('Opción C', { exact: true })).toBeVisible();
+
+    const anchoContenido = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(anchoContenido).toBeLessThanOrEqual(320);
+  });
+});

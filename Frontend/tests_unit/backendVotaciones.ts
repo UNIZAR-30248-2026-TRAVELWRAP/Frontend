@@ -69,60 +69,94 @@ export const simularBackendVotaciones = (
     }
   }
 
+  type Peticion = { metodo: string; cuerpo: any; searchParams: URLSearchParams }
+
+  const crear = ({ cuerpo }: Peticion) => {
+    if (cuerpo.tipo === 'destino') return error(400, 'datos_invalidos', 'El tipo debe ser fecha, presupuesto, actividad, otro')
+    const nueva: VotacionGuardada = {
+      id: `votacion-${estado.votaciones.length + 1}`,
+      titulo: cuerpo.titulo,
+      tipo: cuerpo.tipo ?? 'otro',
+      estado: 'abierta',
+      opciones: cuerpo.opciones.map((o: { texto: string; valor_fecha?: string | null }, i: number) => ({
+        ...opcion(`nueva-${i + 1}`, o.texto, i),
+        valor_fecha: o.valor_fecha ?? null,
+      })),
+      votos: {},
+    }
+    estado.votaciones.unshift(nueva)
+    return json(201, formatear(nueva))
+  }
+
+  const listar = ({ searchParams }: Peticion) => {
+    const tipo = searchParams.get('tipo')
+    const estadoBuscado = searchParams.get('estado')
+    const lista = estado.votaciones.filter((v) => (!tipo || v.tipo === tipo) && (!estadoBuscado || v.estado === estadoBuscado))
+    return json(200, { votaciones: lista.map(formatear) })
+  }
+
+  const proponer = (votacion: VotacionGuardada, { cuerpo }: Peticion) => {
+    const texto = cuerpo.texto.trim()
+    if (votacion.opciones.some((o) => o.texto.toLowerCase() === texto.toLowerCase())) {
+      return error(409, 'opcion_duplicada', 'Esa opción ya está en la votación')
+    }
+    votacion.opciones.push(opcion(`op-${votacion.opciones.length + 1}`, texto, votacion.opciones.length))
+    return json(201, formatear(votacion))
+  }
+
+  const votarORetirar = (votacion: VotacionGuardada, { metodo, cuerpo }: Peticion) => {
+    if (metodo === 'DELETE') delete votacion.votos[YO]
+    else votacion.votos[YO] = cuerpo.opcion_id
+    return json(200, formatear(votacion))
+  }
+
+  const cerrar = (votacion: VotacionGuardada) => {
+    if (estado.viaje.rol !== 'creador') return error(403, 'no_creador', 'Solo el creador del viaje puede cerrar las votaciones')
+    const actual = formatear(votacion)
+    if (!actual.todos_han_votado) {
+      return error(409, 'faltan_votos', 'La votación solo se puede cerrar cuando hayan votado todos los miembros')
+    }
+    const maximo = Math.max(0, ...actual.opciones.map((o) => o.votos))
+    const empatadas = actual.opciones.filter((o) => o.votos === maximo)
+    // En la API real se elige al azar entre las empatadas; aquí, la primera para que el test sea predecible
+    const ganadora = empatadas[0] ?? null
+    votacion.estado = 'cerrada'
+    votacion.opcion_ganadora_id = ganadora?.id ?? null
+    const destino = votacion.tipo === 'destino' ? (ganadora?.texto ?? null) : null
+    if (destino) estado.viaje = { ...estado.viaje, destino, pendiente_destino: false }
+    return json(200, { votacion: formatear(votacion), hubo_empate: empatadas.length > 1, destino })
+  }
+
+  const ACCIONES: Record<string, (votacion: VotacionGuardada, peticion: Peticion) => Promise<Response>> = {
+    opciones: proponer,
+    voto: votarORetirar,
+    cerrar,
+  }
+
+  // /viajes/:viajeId/votaciones/:votacionId[/accion]
+  const sobreUnaVotacion = (pathname: string, peticion: Peticion) => {
+    const partes = pathname.split('/')
+    const posicion = partes.indexOf('votaciones')
+    const votacion = estado.votaciones.find((v) => v.id === partes[posicion + 1])
+    const accion = partes[posicion + 2] ?? ''
+    if (!votacion) return error(404, 'votacion_no_encontrada', 'La votación no existe en este viaje')
+    if (accion === '') return json(200, formatear(votacion))
+    if (votacion.estado === 'cerrada') return error(409, 'votacion_cerrada', 'La votación ya está cerrada')
+    return ACCIONES[accion](votacion, peticion)
+  }
+
   const fetchMock = vi.fn((url: string, opciones: RequestInit = {}) => {
     const { pathname, searchParams } = new URL(url)
-    const metodo = opciones.method ?? 'GET'
-    const cuerpo = opciones.body ? JSON.parse(opciones.body as string) : undefined
-
+    const peticion: Peticion = {
+      metodo: opciones.method ?? 'GET',
+      cuerpo: opciones.body ? JSON.parse(opciones.body as string) : undefined,
+      searchParams,
+    }
     if (pathname.endsWith(`/viajes/${VIAJE_ID}`)) return json(200, estado.viaje)
-
     if (pathname.endsWith(`/viajes/${VIAJE_ID}/votaciones`)) {
-      const lista = estado.votaciones.filter(
-        (v) =>
-          (!searchParams.get('tipo') || v.tipo === searchParams.get('tipo')) &&
-          (!searchParams.get('estado') || v.estado === searchParams.get('estado')),
-      )
-      return json(200, { votaciones: lista.map(formatear) })
+      return peticion.metodo === 'POST' ? crear(peticion) : listar(peticion)
     }
-
-    const [, votacionId, accion] = pathname.match(/\/votaciones\/([^/]+)\/?([a-z]*)$/) ?? []
-    const votacion = estado.votaciones.find((v) => v.id === votacionId)
-    if (!votacion) return error(404, 'votacion_no_encontrada', 'La votación no existe en este viaje')
-    if (accion !== '' && votacion.estado === 'cerrada') return error(409, 'votacion_cerrada', 'La votación ya está cerrada')
-
-    if (accion === 'opciones') {
-      const texto = cuerpo.texto.trim()
-      if (votacion.opciones.some((o) => o.texto.toLowerCase() === texto.toLowerCase())) {
-        return error(409, 'opcion_duplicada', 'Esa opción ya está en la votación')
-      }
-      votacion.opciones.push(opcion(`op-${votacion.opciones.length + 1}`, texto, votacion.opciones.length))
-      return json(201, formatear(votacion))
-    }
-
-    if (accion === 'voto') {
-      if (metodo === 'DELETE') delete votacion.votos[YO]
-      else votacion.votos[YO] = cuerpo.opcion_id
-      return json(200, formatear(votacion))
-    }
-
-    if (accion === 'cerrar') {
-      if (estado.viaje.rol !== 'creador') return error(403, 'no_creador', 'Solo el creador del viaje puede cerrar las votaciones')
-      const actual = formatear(votacion)
-      if (!actual.todos_han_votado) {
-        return error(409, 'faltan_votos', 'La votación solo se puede cerrar cuando hayan votado todos los miembros')
-      }
-      const maximo = Math.max(0, ...actual.opciones.map((o) => o.votos))
-      const empatadas = actual.opciones.filter((o) => o.votos === maximo)
-      // En la API real se elige al azar entre las empatadas; aquí, la primera para que el test sea predecible
-      const ganadora = empatadas[0] ?? null
-      votacion.estado = 'cerrada'
-      votacion.opcion_ganadora_id = ganadora?.id ?? null
-      const destino = votacion.tipo === 'destino' ? (ganadora?.texto ?? null) : null
-      if (destino) estado.viaje = { ...estado.viaje, destino, pendiente_destino: false }
-      return json(200, { votacion: formatear(votacion), hubo_empate: empatadas.length > 1, destino })
-    }
-
-    return json(200, formatear(votacion))
+    return sobreUnaVotacion(pathname, peticion)
   })
 
   vi.stubGlobal('fetch', fetchMock)
