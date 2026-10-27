@@ -79,9 +79,27 @@ describe('Votaciones', () => {
     expect(JSON.parse(peticion?.body as string)).toEqual({ opcion_id: 'mayo-19' })
   })
 
+  it('el creador solo puede cerrar la votación cuando han votado todos los miembros (RF9)', async () => {
+    const user = userEvent.setup()
+    await abrir()
+    const abierta = screen.getByRole('region', { name: PREGUNTA_ABIERTA })
+
+    expect(within(abierta).getByRole('button', { name: 'Cerrar votación' })).toHaveProperty('disabled', true)
+    expect(within(abierta).getByText('Podrás cerrarla cuando hayan votado todos los miembros.')).toBeTruthy()
+
+    await user.click(within(abierta).getByRole('radio', { name: /12 – 15 mayo/ }))
+    await user.click(within(abierta).getByRole('button', { name: 'Emitir voto' }))
+
+    await vi.waitFor(() =>
+      expect(within(abierta).getByRole('button', { name: 'Cerrar votación' })).toHaveProperty('disabled', false),
+    )
+    expect(within(abierta).getByText('Completo')).toBeTruthy()
+    expect(within(abierta).queryByText('Podrás cerrarla cuando hayan votado todos los miembros.')).toBeNull()
+  })
+
   it('el creador cierra la votación tras confirmar y pasa a cerradas con la ganadora', async () => {
     const user = userEvent.setup()
-    const { fetchMock } = await abrir()
+    const { fetchMock } = await abrir({ viaje: viajeConDestino, votaciones: [{ ...fechas(), votos: { u1: 'mayo-12', u2: 'mayo-12', u3: 'mayo-19' } }] })
 
     await user.click(screen.getByRole('button', { name: 'Cerrar votación' }))
     const dialogo = screen.getByRole('dialog')
@@ -97,11 +115,14 @@ describe('Votaciones', () => {
 
   it('avisa del empate antes de cerrar', async () => {
     const user = userEvent.setup()
-    await abrir({ viaje: viajeConDestino, votaciones: [{ ...fechas(), votos: { u2: 'mayo-12', u3: 'mayo-19' } }] })
+    const empate = fechas()
+    empate.opciones.push(opcion('mayo-26', '26 – 29 mayo', 2))
+    empate.votos = { u1: 'mayo-12', u2: 'mayo-19', u3: 'mayo-26' }
+    await abrir({ viaje: viajeConDestino, votaciones: [empate] })
 
     await user.click(screen.getByRole('button', { name: 'Cerrar votación' }))
 
-    expect(screen.getByRole('dialog').textContent).toContain('Hay un empate entre 12 – 15 mayo y 19 – 22 mayo')
+    expect(screen.getByRole('dialog').textContent).toContain('Hay un empate entre 12 – 15 mayo, 19 – 22 mayo y 26 – 29 mayo')
   })
 
   it('quien no es el creador vota pero no puede cerrar la votación', async () => {

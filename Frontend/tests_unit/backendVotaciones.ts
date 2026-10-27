@@ -64,6 +64,7 @@ export const simularBackendVotaciones = (
       }),
       total_votos: votos.length,
       total_miembros: estado.viaje.miembros.length,
+      todos_han_votado: estado.viaje.miembros.every((m) => v.votos[m.usuario_id] !== undefined),
       mi_voto: v.votos[YO] ?? null,
     }
   }
@@ -106,12 +107,12 @@ export const simularBackendVotaciones = (
 
     if (accion === 'cerrar') {
       if (estado.viaje.rol !== 'creador') return error(403, 'no_creador', 'Solo el creador del viaje puede cerrar las votaciones')
-      const recuento = formatear(votacion).opciones
-      const maximo = Math.max(0, ...recuento.map((o) => o.votos))
-      const empatadas = maximo === 0 ? [] : recuento.filter((o) => o.votos === maximo)
-      if (empatadas.length === 0 && votacion.tipo === 'destino') {
-        return error(409, 'sin_votos', 'La votación de destino necesita al menos un voto para cerrarse')
+      const actual = formatear(votacion)
+      if (!actual.todos_han_votado) {
+        return error(409, 'faltan_votos', 'La votación solo se puede cerrar cuando hayan votado todos los miembros')
       }
+      const maximo = Math.max(0, ...actual.opciones.map((o) => o.votos))
+      const empatadas = actual.opciones.filter((o) => o.votos === maximo)
       // En la API real se elige al azar entre las empatadas; aquí, la primera para que el test sea predecible
       const ganadora = empatadas[0] ?? null
       votacion.estado = 'cerrada'

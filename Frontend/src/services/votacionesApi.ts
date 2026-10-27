@@ -29,6 +29,8 @@ export type Votacion = {
   total_votos: number
   // Miembros activos del viaje, es decir, cuántos pueden votar
   total_miembros: number
+  // Ya han votado todos los miembros activos: solo entonces el creador puede cerrarla (RF9)
+  todos_han_votado: boolean
   // Opción que ha votado el usuario, o null si no ha votado
   mi_voto: string | null
 }
@@ -94,6 +96,7 @@ export const votar = (viajeId: string, votacionId: string, opcionId: string, tok
 export const retirarVoto = (viajeId: string, votacionId: string, tokenSesion: string) =>
   peticion<Votacion>(`${rutaVotacion(viajeId, votacionId)}/voto`, { metodo: "DELETE", token: tokenSesion })
 
-// Solo el creador del viaje. Gana la más votada (con empate, una al azar); la de destino lo fija en el viaje
+// Solo el creador del viaje y cuando han votado todos los miembros (RF9). Gana la más votada (con empate, una al
+// azar); la de destino lo fija en el viaje
 export const cerrarVotacion = (viajeId: string, votacionId: string, tokenSesion: string) =>
   peticion<CierreVotacion>(`${rutaVotacion(viajeId, votacionId)}/cerrar`, { metodo: "POST", token: tokenSesion })

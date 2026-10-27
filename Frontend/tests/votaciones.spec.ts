@@ -79,6 +79,7 @@ const simularBackend = async (page: Page) => {
       }),
       total_votos: votos.length,
       total_miembros: viaje.miembros.length,
+      todos_han_votado: viaje.miembros.every((m) => votacion.votos[m.usuario_id] !== undefined),
       mi_voto: votacion.votos[USUARIO_ID] ?? null,
     };
   };
@@ -120,6 +121,8 @@ test.describe('Votación del destino', () => {
     await page.getByRole('button', { name: /Verano 2027/ }).click();
     await expect(page).toHaveURL(/\/viajes\/verano\/destino$/);
     await expect(page.getByText('1/2')).toBeVisible();
+    // RF9: hasta que no vota Adriana no se puede fijar el destino
+    await expect(page.getByRole('button', { name: 'Fijar «Praga» como destino' })).toBeDisabled();
 
     await page.getByLabel('Proponer destino').fill('Lisboa');
     await page.getByRole('button', { name: 'Añadir' }).click();

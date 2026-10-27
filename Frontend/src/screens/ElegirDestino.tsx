@@ -68,6 +68,9 @@ export default function ElegirDestino({ viajeId, tokenSesion, onVolver, onInvita
   const conVotos = conPorcentajes(votacion?.opciones ?? [])
   const ganadoras = opcionesGanadoras(conVotos)
   const hayEmpate = ganadoras.length > 1
+  // RF9: el destino solo se fija cuando han votado todos los miembros
+  const todosHanVotado = votacion?.todos_han_votado ?? false
+  const puedeFijar = todosHanVotado && ganadoras.length > 0
   const miVoto = votacion?.mi_voto ?? null
   const puedeProponer = nuevoDestino.trim() !== "" && !proponiendo
 
@@ -111,7 +114,7 @@ export default function ElegirDestino({ viajeId, tokenSesion, onVolver, onInvita
 
   // Cerrar la votación fija el destino en el viaje; con empate, el backend elige uno al azar
   const fijarDestino = async () => {
-    if (!viaje || !votacion || ganadoras.length === 0) return
+    if (!viaje || !votacion || !puedeFijar) return
     setFijando(true)
     setErrorFijar("")
     try {
@@ -245,8 +248,8 @@ export default function ElegirDestino({ viajeId, tokenSesion, onVolver, onInvita
               >
                 <Icon name="info" size={18} color={C.blue} strokeWidth={2} />
                 <span style={{ fontFamily: NUNITO, fontSize: 13, color: C.blue, lineHeight: 1.5 }}>
-                  Vota el destino del viaje. Cuando haya una mayoría clara, el creador podrá fijarlo como destino oficial y
-                  se desbloqueará el resto de funciones.
+                  Vota el destino del viaje. Cuando hayan votado todos los miembros, el creador podrá fijar el más votado
+                  como destino oficial y se desbloqueará el resto de funciones.
                 </span>
               </div>
 
@@ -389,7 +392,7 @@ export default function ElegirDestino({ viajeId, tokenSesion, onVolver, onInvita
               {/* Fijar destino: solo el creador */}
               {!esCreador && (
                 <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, textAlign: "center", lineHeight: 1.5 }}>
-                  El creador del viaje fijará el destino cuando haya una mayoría.
+                  El creador del viaje fijará el destino cuando hayan votado todos los miembros.
                 </div>
               )}
 
@@ -397,7 +400,7 @@ export default function ElegirDestino({ viajeId, tokenSesion, onVolver, onInvita
                 <button
                   type="button"
                   onClick={() => setConfirmando(true)}
-                  disabled={ganadoras.length === 0}
+                  disabled={!puedeFijar}
                   style={{
                     width: "100%",
                     background: GRADIENTS.success,
@@ -408,8 +411,8 @@ export default function ElegirDestino({ viajeId, tokenSesion, onVolver, onInvita
                     fontFamily: NUNITO,
                     fontWeight: 800,
                     fontSize: 15,
-                    cursor: ganadoras.length ? "pointer" : "not-allowed",
-                    opacity: ganadoras.length ? 1 : 0.6,
+                    cursor: puedeFijar ? "pointer" : "not-allowed",
+                    opacity: puedeFijar ? 1 : 0.6,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -422,6 +425,12 @@ export default function ElegirDestino({ viajeId, tokenSesion, onVolver, onInvita
                   {ganadoras.length === 1 && `Fijar «${ganadoras[0].texto}» como destino`}
                   {hayEmpate && "Fijar destino (hay empate)"}
                 </button>
+              )}
+
+              {esCreador && !confirmando && !todosHanVotado && (
+                <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, textAlign: "center", lineHeight: 1.5, marginTop: 8 }}>
+                  Podrás fijar el destino cuando hayan votado todos los miembros.
+                </div>
               )}
 
               {esCreador && confirmando && (

@@ -76,7 +76,7 @@ describe('ElegirDestino', () => {
     const user = userEvent.setup()
     const onDestinoFijado = vi.fn()
     const { fetchMock } = await abrir(
-      { votaciones: [destino({ opciones: [opcion('lisboa', 'Lisboa', 0), opcion('praga', 'Praga', 1)], votos: { u1: 'praga', u2: 'praga' } })] },
+      { votaciones: [destino({ opciones: [opcion('lisboa', 'Lisboa', 0), opcion('praga', 'Praga', 1)], votos: { u1: 'praga', u2: 'praga', u3: 'lisboa' } })] },
       { onDestinoFijado },
     )
 
@@ -90,15 +90,29 @@ describe('ElegirDestino', () => {
     expect(llamadas(fetchMock, 'PATCH', `/viajes/${VIAJE_ID}`)).toHaveLength(0)
   })
 
+  it('el destino solo se puede fijar cuando han votado todos los miembros (RF9)', async () => {
+    await abrir({
+      votaciones: [destino({ opciones: [opcion('lisboa', 'Lisboa', 0), opcion('praga', 'Praga', 1)], votos: { u1: 'praga', u2: 'praga' } })],
+    })
+
+    expect(await screen.findByRole('button', { name: 'Fijar «Praga» como destino' })).toHaveProperty('disabled', true)
+    expect(screen.getByText('Podrás fijar el destino cuando hayan votado todos los miembros.')).toBeTruthy()
+  })
+
   it('con empate avisa de que se sorteará antes de confirmar', async () => {
     const user = userEvent.setup()
     await abrir({
-      votaciones: [destino({ opciones: [opcion('lisboa', 'Lisboa', 0), opcion('praga', 'Praga', 1)], votos: { u1: 'lisboa', u2: 'praga' } })],
+      votaciones: [
+        destino({
+          opciones: [opcion('lisboa', 'Lisboa', 0), opcion('praga', 'Praga', 1), opcion('roma', 'Roma', 2)],
+          votos: { u1: 'lisboa', u2: 'praga', u3: 'roma' },
+        }),
+      ],
     })
 
     await user.click(await screen.findByRole('button', { name: 'Fijar destino (hay empate)' }))
 
-    expect(screen.getByRole('dialog', { name: 'Confirmar destino' }).textContent).toContain('Hay un empate entre Lisboa y Praga')
+    expect(screen.getByRole('dialog', { name: 'Confirmar destino' }).textContent).toContain('Hay un empate entre Lisboa, Praga y Roma')
     expect(screen.getByRole('button', { name: 'Confirmar sorteo' })).toBeTruthy()
   })
 

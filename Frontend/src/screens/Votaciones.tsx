@@ -227,7 +227,6 @@ export default function Votaciones({ viajeId, tokenSesion, onVolver, onCrearVota
             const opciones = conPorcentajes(votacion.opciones)
             const marcada = seleccion[votacion.id] ?? votacion.mi_voto ?? undefined
             const yaVotado = marcada !== undefined && marcada === votacion.mi_voto
-            const completa = votacion.total_votos >= votacion.total_miembros
             const enviando = votando === votacion.id
             const errorVoto = erroresVoto[votacion.id]
             return (
@@ -292,7 +291,7 @@ export default function Votaciones({ viajeId, tokenSesion, onVolver, onCrearVota
                     </strong>{" "}
                     miembros han votado
                   </span>
-                  {completa && (
+                  {votacion.todos_han_votado && (
                     <Badge bg={C.greenBg} color={C.green}>
                       Completo
                     </Badge>
@@ -346,6 +345,7 @@ export default function Votaciones({ viajeId, tokenSesion, onVolver, onCrearVota
                           setErrorCierre("")
                           setPorCerrar(votacion)
                         }}
+                        disabled={!votacion.todos_han_votado}
                         style={{
                           flex: 1,
                           background: C.redBg,
@@ -356,12 +356,20 @@ export default function Votaciones({ viajeId, tokenSesion, onVolver, onCrearVota
                           fontFamily: NUNITO,
                           fontWeight: 800,
                           fontSize: 13,
-                          cursor: "pointer",
+                          cursor: votacion.todos_han_votado ? "pointer" : "not-allowed",
+                          opacity: votacion.todos_han_votado ? 1 : 0.5,
                         }}
                       >
                         Cerrar votación
                       </button>
                     )}
+                  </div>
+                )}
+
+                {/* RF9: solo se cierra cuando han votado todos los miembros */}
+                {editable && esCreador && !votacion.todos_han_votado && (
+                  <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, marginTop: 10, textAlign: "center" }}>
+                    Podrás cerrarla cuando hayan votado todos los miembros.
                   </div>
                 )}
               </section>
@@ -421,7 +429,6 @@ export default function Votaciones({ viajeId, tokenSesion, onVolver, onCrearVota
           onConfirmar={confirmarCierre}
           onCancelar={() => setPorCerrar(null)}
         >
-          {ganadorasPorCerrar.length === 0 && "Nadie ha votado todavía: la votación se cerrará sin ganadora."}
           {ganadorasPorCerrar.length === 1 && (
             <>
               Ganará <strong style={{ color: C.navy }}>{ganadorasPorCerrar[0].texto}</strong>, la opción más votada.
