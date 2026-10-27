@@ -1,4 +1,4 @@
-import { test, expect, type Page, type Route } from '@playwright/test';
+import { test, expect, type Page, type Route, type WebSocketRoute } from '@playwright/test';
 
 const USUARIO_ID = 'df77cba6-4be5-4cbc-814b-1e228dd73dcc';
 
@@ -92,6 +92,7 @@ const simularBackend = async (page: Page) => {
     if (ruta === '/viajes') return json(route, 200, { viajes: [viaje] });
     if (ruta === '/viajes/verano') return json(route, 200, viaje);
     if (ruta === '/viajes/verano/votaciones') return json(route, 200, { votaciones: [formatear()] });
+    if (ruta === '/viajes/verano/votaciones/destino' && metodo === 'GET') return json(route, 200, formatear());
     if (ruta.endsWith('/opciones')) {
       const { texto } = peticion.postDataJSON();
       votacion.opciones.push({ id: texto.toLowerCase(), texto, valor_fecha: null, orden: votacion.opciones.length });
@@ -109,6 +110,35 @@ const simularBackend = async (page: Page) => {
     }
     return json(route, 404, { error: { codigo: 'no_encontrado', mensaje: 'No encontrado' } });
   });
+
+  return { viaje, votacion };
+};
+
+// Servidor de Socket.io simulado (namespace /votaciones) hablando su protocolo sobre WebSocket:
+// abre la conexión, acepta el namespace, apunta a qué viajes se une el cliente y le envía avisos
+const simularTiempoReal = async (page: Page) => {
+  const unidos: string[] = [];
+  const conexion: { ws: WebSocketRoute | null } = { ws: null };
+
+  await page.routeWebSocket(/\/socket\.io\//, (ws) => {
+    conexion.ws = ws;
+    ws.send(`0${JSON.stringify({ sid: 'e2e', upgrades: [], pingInterval: 25000, pingTimeout: 60000, maxPayload: 1000000 })}`);
+    ws.onMessage((mensaje) => {
+      const texto = String(mensaje);
+      if (texto.startsWith('40/votaciones')) {
+        ws.send('40/votaciones,{"sid":"e2e-votaciones"}');
+      } else if (texto.startsWith('42/votaciones,')) {
+        const [evento, datos] = JSON.parse(texto.slice('42/votaciones,'.length));
+        if (evento === 'unirse_viaje') unidos.push(datos.viaje_id);
+      }
+    });
+  });
+
+  return {
+    unidos,
+    avisar: (cambio: Record<string, unknown>) =>
+      conexion.ws?.send(`42/votaciones,${JSON.stringify(['votacion_cambiada', cambio])}`),
+  };
 };
 
 test.describe('Votación del destino', () => {
@@ -257,5 +287,34 @@ test.describe('Crear una votación', () => {
 
     const anchoContenido = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(anchoContenido).toBeLessThanOrEqual(320);
+  });
+});
+
+test.describe('Votaciones en tiempo real', () => {
+  test('las propuestas y votos de los demás aparecen sin recargar y, al fijar el destino, todos pasan al viaje', async ({ page }) => {
+    await entrarConSesion(page);
+    const { viaje, votacion } = await simularBackend(page);
+    viaje.rol = 'miembro';
+    const servidor = await simularTiempoReal(page);
+
+    await page.goto('/viajes/verano/destino');
+    await expect(page.getByText('1/2')).toBeVisible();
+    await expect.poll(() => servidor.unidos).toEqual(['verano']);
+
+    // Berta propone Roma y cambia su voto a Roma desde su móvil
+    votacion.opciones.push({ id: 'roma', texto: 'Roma', valor_fecha: null, orden: 1 });
+    votacion.votos.u2 = 'roma';
+    servidor.avisar({ viaje_id: 'verano', votacion_id: 'destino', motivo: 'opcion' });
+
+    const roma = page.getByRole('radio', { name: /Roma/ });
+    await expect(roma).toBeVisible();
+    await expect(roma).toContainText('1 voto');
+    await expect(page.getByRole('radio', { name: /Praga/ })).toContainText('0 votos');
+
+    // El creador fija Roma: quien está en «Elegir destino» pasa solo al inicio del viaje
+    Object.assign(viaje, { destino: 'Roma', pendiente_destino: false });
+    servidor.avisar({ viaje_id: 'verano', votacion_id: 'destino', motivo: 'cerrada', destino: 'Roma' });
+
+    await expect(page).toHaveURL(/\/viajes\/verano$/);
   });
 });

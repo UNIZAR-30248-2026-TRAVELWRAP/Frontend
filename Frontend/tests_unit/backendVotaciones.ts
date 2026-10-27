@@ -1,6 +1,8 @@
 // Backend de viajes y votaciones simulado en memoria para los tests de las pantallas de votaciones.
 // Sustituye a fetch y responde como la API real (formato de las votaciones, errores y cierre).
+import { act } from '@testing-library/react'
 import { vi } from 'vitest'
+import { escucharVotaciones, type CambioVotacion } from '../src/services/votacionesTiempoReal'
 
 export const VIAJE_ID = '123e4567-e89b-12d3-a456-426614174000'
 export const YO = 'u1'
@@ -168,3 +170,11 @@ export const llamadas = (fetchMock: ReturnType<typeof vi.fn>, metodo: string, fi
   (fetchMock.mock.calls as unknown as [string, RequestInit | undefined][]).filter(
     ([url, opciones]) => (opciones?.method ?? 'GET') === metodo && new URL(url).pathname.endsWith(finRuta),
   )
+
+// Simula un aviso del servidor por WebSocket a la pantalla abierta. Los tests que lo usan simulan el módulo con
+// vi.mock('../src/services/votacionesTiempoReal')
+export const avisarCambio = async (cambio: Omit<CambioVotacion, 'viaje_id'>) => {
+  const alCambiar = vi.mocked(escucharVotaciones).mock.calls.at(-1)?.[2]
+  if (!alCambiar) throw new Error('La pantalla no está escuchando los cambios de las votaciones')
+  await act(async () => alCambiar({ viaje_id: VIAJE_ID, ...cambio }))
+}

@@ -2,7 +2,19 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Votaciones from '../src/screens/Votaciones'
-import { VIAJE_ID, llamadas, opcion, simularBackendVotaciones, viajeDePrueba, type VotacionGuardada } from './backendVotaciones'
+import { escucharVotaciones } from '../src/services/votacionesTiempoReal'
+import {
+  VIAJE_ID,
+  avisarCambio,
+  llamadas,
+  opcion,
+  simularBackendVotaciones,
+  viajeDePrueba,
+  type VotacionGuardada,
+} from './backendVotaciones'
+
+// Sin servidor de WebSocket: los avisos se lanzan desde el test con avisarCambio
+vi.mock('../src/services/votacionesTiempoReal')
 
 const PREGUNTA_ABIERTA = '¿Qué fin de semana preferimos?'
 
@@ -37,6 +49,7 @@ const abrir = async (opciones: Parameters<typeof simularBackendVotaciones>[0] = 
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
+  vi.clearAllMocks()
 })
 
 describe('Votaciones', () => {
@@ -145,5 +158,50 @@ describe('Votaciones', () => {
 
     expect(onCrearVotacion).toHaveBeenCalledTimes(1)
     expect(onVolver).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('Votaciones en tiempo real', () => {
+  it('escucha los cambios del viaje mientras la pantalla está abierta', async () => {
+    const dejarDeEscuchar = vi.fn()
+    vi.mocked(escucharVotaciones).mockReturnValueOnce(dejarDeEscuchar)
+    await abrir()
+
+    expect(vi.mocked(escucharVotaciones).mock.calls[0].slice(0, 2)).toEqual([VIAJE_ID, 'token-acceso'])
+    cleanup()
+    expect(dejarDeEscuchar).toHaveBeenCalled()
+  })
+
+  it('el voto de otro miembro aparece sin recargar', async () => {
+    const { estado } = await abrir({ viaje: viajeConDestino, votaciones: [{ ...fechas(), votos: { u2: 'mayo-12' } }] })
+    const abierta = screen.getByRole('region', { name: PREGUNTA_ABIERTA })
+    expect(within(abierta).getByText('1/3')).toBeTruthy()
+
+    estado.votaciones[0].votos.u3 = 'mayo-19'
+    await avisarCambio({ votacion_id: 'fechas', motivo: 'voto' })
+
+    expect(await within(abierta).findByText('2/3')).toBeTruthy()
+    expect(within(abierta).getByRole('radio', { name: /19 – 22 mayo/ }).textContent).toContain('1 voto')
+  })
+
+  it('una votación creada por otro miembro aparece la primera', async () => {
+    const { estado } = await abrir()
+
+    estado.votaciones.unshift({ id: 'cena', titulo: '¿Dónde cenamos?', tipo: 'otro', estado: 'abierta', opciones: [opcion('a', 'Pizzería'), opcion('b', 'Tasca', 1)], votos: {} })
+    await avisarCambio({ votacion_id: 'cena', motivo: 'creada' })
+
+    expect(await screen.findByRole('region', { name: '¿Dónde cenamos?' })).toBeTruthy()
+  })
+
+  it('cuando el creador cierra la votación, pasa a cerradas para todos', async () => {
+    const { estado } = await abrir({ viaje: { ...viajeConDestino, rol: 'miembro' }, votaciones: [fechas()] })
+
+    Object.assign(estado.votaciones[0], { estado: 'cerrada', opcion_ganadora_id: 'mayo-12' })
+    await avisarCambio({ votacion_id: 'fechas', motivo: 'cerrada' })
+
+    const cerrada = await screen.findByText('Cerrada')
+    expect(cerrada).toBeTruthy()
+    expect(screen.getByRole('region', { name: PREGUNTA_ABIERTA }).textContent).toContain('Ganó: 12 – 15 mayo')
+    expect(screen.queryByRole('button', { name: 'Emitir voto' })).toBeNull()
   })
 })
