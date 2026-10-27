@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { ComponentProps } from "react";
 import type { Sesion } from "../services/authApi";
 import Login from "../screens/Login";
@@ -13,6 +13,7 @@ import InicioViaje from "../screens/InicioViaje";
 import EditarViaje from "../screens/EditarViaje";
 import ViajesArchivados from "../screens/ViajesArchivados";
 import Votaciones from "../screens/Votaciones";
+import CrearVotacion from "../screens/CrearVotacion";
 import ElegirDestino from "../screens/ElegirDestino";
 import AnadirActividad from "../screens/AnadirActividad";
 import Itinerario from "../screens/Itinerario";
@@ -150,6 +151,28 @@ function RutaVotaciones({ sesion }: { sesion: Sesion }) {
       viajeId={viajeId}
       tokenSesion={sesion.token}
       onVolver={() => navigate(`/viajes/${viajeId}`)}
+      onCrearVotacion={() => navigate(`/viajes/${viajeId}/votaciones/nueva`)}
+    />
+  );
+}
+
+// Al publicarla (o al volver) se regresa a la lista, que la muestra la primera, sin dejar el formulario en el
+// historial. Si se entró directamente por la URL, no hay a dónde volver y se abre la lista en su lugar
+function RutaCrearVotacion({ sesion }: { sesion: Sesion }) {
+  const { viajeId = "" } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const volverALaLista = () => {
+    if (location.key === "default") navigate(`/viajes/${viajeId}/votaciones`, { replace: true });
+    else navigate(-1);
+  };
+  return (
+    <CrearVotacion
+      key={viajeId}
+      viajeId={viajeId}
+      tokenSesion={sesion.token}
+      onVolver={volverALaLista}
+      onCreada={volverALaLista}
     />
   );
 }
@@ -324,6 +347,12 @@ export default function AppRouter({
         <Route
           path="/viajes/:viajeId/votaciones"
           element={session ? <RutaVotaciones sesion={session} /> : <Navigate to="/login" replace />}
+        />
+
+        {/* Crear una votación del viaje (privada) */}
+        <Route
+          path="/viajes/:viajeId/votaciones/nueva"
+          element={session ? <RutaCrearVotacion sesion={session} /> : <Navigate to="/login" replace />}
         />
 
         <Route
