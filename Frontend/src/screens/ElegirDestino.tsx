@@ -5,7 +5,15 @@ import Icon from "../components/Icon"
 import OpcionVotacion from "../components/OpcionVotacion"
 import { ApiError } from "../services/authApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
-import { cerrarVotacion, listarVotaciones, proponerOpcion, votar, type Votacion } from "../services/votacionesApi"
+import {
+  cerrarVotacion,
+  listarVotaciones,
+  obtenerVotacion,
+  proponerOpcion,
+  votar,
+  type Votacion,
+} from "../services/votacionesApi"
+import { escucharVotaciones } from "../services/votacionesTiempoReal"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
 import { conPorcentajes, enumerar, opcionesGanadoras } from "../utils/votaciones"
@@ -55,6 +63,26 @@ export default function ElegirDestino({ viajeId, tokenSesion, onVolver, onInvita
       vigente = false
     }
   }, [viajeId, tokenSesion])
+
+  // Tiempo real: los votos y propuestas de los demás aparecen sin recargar, y cuando el creador fija el destino
+  // todos pasan al inicio del viaje
+  useEffect(
+    () =>
+      escucharVotaciones(viajeId, tokenSesion, (cambio) => {
+        if (cambio.motivo === "cerrada" && cambio.destino) {
+          const destino = cambio.destino
+          // Si ya estaba fijado (lo ha fijado este mismo usuario) no se cambia, para no volver a redirigir
+          setViaje((actual) =>
+            actual?.pendiente_destino ? { ...actual, destino, pendiente_destino: false } : actual,
+          )
+          return
+        }
+        obtenerVotacion(viajeId, cambio.votacion_id, tokenSesion)
+          .then((actualizada) => setVotacion((actual) => (actual?.id === actualizada.id ? actualizada : actual)))
+          .catch((e) => setErrorVoto(mensajeDeError(e)))
+      }),
+    [viajeId, tokenSesion],
+  )
 
   // Con el destino ya fijado (ahora o antes de entrar) se pasa al inicio del viaje
   const conDestino = viaje !== null && !viaje.pendiente_destino

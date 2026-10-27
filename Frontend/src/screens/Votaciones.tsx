@@ -7,7 +7,15 @@ import Icon from "../components/Icon"
 import OpcionVotacion from "../components/OpcionVotacion"
 import { ApiError } from "../services/authApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
-import { cerrarVotacion, listarVotaciones, votar, type TipoVotacion, type Votacion } from "../services/votacionesApi"
+import {
+  cerrarVotacion,
+  listarVotaciones,
+  obtenerVotacion,
+  votar,
+  type TipoVotacion,
+  type Votacion,
+} from "../services/votacionesApi"
+import { escucharVotaciones } from "../services/votacionesTiempoReal"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
 import { conPorcentajes, enumerar, opcionesGanadoras } from "../utils/votaciones"
@@ -60,6 +68,27 @@ export default function Votaciones({ viajeId, tokenSesion, onVolver, onCrearVota
       vigente = false
     }
   }, [viajeId, tokenSesion])
+
+  // Tiempo real: cuando cambia una votación (votos, opciones, cierre) se vuelve a pedir solo esa; si es nueva,
+  // la lista entera. El aviso no trae los datos para que cada uno reciba su propio «mi_voto»
+  useEffect(
+    () =>
+      escucharVotaciones(viajeId, tokenSesion, (cambio) => {
+        const pedida =
+          cambio.motivo === "creada"
+            ? listarVotaciones(viajeId, tokenSesion).then(({ votaciones: lista }) => setVotaciones(lista))
+            : obtenerVotacion(viajeId, cambio.votacion_id, tokenSesion).then((actualizada) =>
+                setVotaciones((lista) => {
+                  if (lista === null) return lista
+                  return lista.some((v) => v.id === actualizada.id)
+                    ? lista.map((v) => (v.id === actualizada.id ? actualizada : v))
+                    : [actualizada, ...lista]
+                }),
+              )
+        pedida.catch((e) => setError(mensajeDeError(e)))
+      }),
+    [viajeId, tokenSesion],
+  )
 
   const reemplazar = (actualizada: Votacion) =>
     setVotaciones((lista) => (lista ?? []).map((v) => (v.id === actualizada.id ? actualizada : v)))
