@@ -1,60 +1,16 @@
-import { useState } from "react"
-import type { Miembro } from "../components/Avatar"
+import { useEffect, useState } from "react"
 import AvatarStack from "../components/AvatarStack"
 import Badge from "../components/Badge"
+import DialogoConfirmacion from "../components/DialogoConfirmacion"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import OpcionVotacion from "../components/OpcionVotacion"
+import { ApiError } from "../services/authApi"
+import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
+import { cerrarVotacion, listarVotaciones, votar, type TipoVotacion, type Votacion } from "../services/votacionesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
-import { conPorcentajes, elegirAlAzar, opcionesGanadoras, type OpcionConVotos } from "../utils/votaciones"
-
-// ─── Tipos y datos de ejemplo (se sustituirán por los del backend) ────────────
-type TipoVotacion = "fecha" | "actividad" | "otro"
-
-type Votacion = {
-  id: string
-  pregunta: string
-  tipo: TipoVotacion
-  estado: "abierta" | "cerrada"
-  opciones: OpcionConVotos[]
-  votantes: number
-  totalMiembros: number
-  ganadoraId?: string
-}
-
-const MIEMBROS_DEMO: Miembro[] = [
-  { name: "Daniel", initial: "D", color: C.blue },
-  { name: "Berta", initial: "B", color: C.green },
-  { name: "Adriana", initial: "A", color: C.accent },
-]
-
-const VOTACIONES_DEMO: Votacion[] = [
-  {
-    id: "fechas-roma",
-    pregunta: "¿Qué fin de semana preferimos para el viaje a Roma?",
-    tipo: "fecha",
-    estado: "abierta",
-    opciones: [
-      { id: "12-15-mayo", texto: "12 – 15 mayo", votos: 2 },
-      { id: "19-22-mayo", texto: "19 – 22 mayo", votos: 0 },
-    ],
-    votantes: 2,
-    totalMiembros: 3,
-  },
-  {
-    id: "alojamiento",
-    pregunta: "¿Qué tipo de alojamiento preferís?",
-    tipo: "otro",
-    estado: "cerrada",
-    opciones: [
-      { id: "airbnb", texto: "Airbnb compartido", votos: 2 },
-      { id: "hotel", texto: "Hotel", votos: 1 },
-    ],
-    votantes: 3,
-    totalMiembros: 3,
-    ganadoraId: "airbnb",
-  },
-]
+import { aMiembro } from "../utils/formatoViaje"
+import { conPorcentajes, enumerar, opcionesGanadoras } from "../utils/votaciones"
 
 const FILTROS: { texto: string; tipo: TipoVotacion | null }[] = [
   { texto: "Todas", tipo: null },
@@ -62,56 +18,97 @@ const FILTROS: { texto: string; tipo: TipoVotacion | null }[] = [
   { texto: "Actividades", tipo: "actividad" },
 ]
 
+const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
+
+// Usuarios que han votado en la votación
+const votantesDe = (votacion: Votacion) => new Set(votacion.opciones.flatMap((o) => o.votantes))
+
 // ─── Pantalla: Votaciones ─────────────────────────────────────────────────────
 type VotacionesProps = {
+  viajeId: string
+  tokenSesion: string
   onVolver?: () => void
   onCrearVotacion?: () => void
 }
 
-export default function Votaciones({ onVolver, onCrearVotacion }: VotacionesProps) {
+export default function Votaciones({ viajeId, tokenSesion, onVolver, onCrearVotacion }: VotacionesProps) {
+  const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
+  const [votaciones, setVotaciones] = useState<Votacion[] | null>(null)
+  const [error, setError] = useState("")
   const [filtro, setFiltro] = useState<TipoVotacion | null>(null)
-  const [votaciones, setVotaciones] = useState(VOTACIONES_DEMO)
-  // Opción marcada en cada votación y voto ya emitido en cada una
+  // Opción marcada en cada votación (si no se ha marcado ninguna, la que ya votó el usuario)
   const [seleccion, setSeleccion] = useState<Record<string, string>>({})
-  const [misVotos, setMisVotos] = useState<Record<string, string>>({})
+  const [votando, setVotando] = useState<string | null>(null)
+  const [erroresVoto, setErroresVoto] = useState<Record<string, string>>({})
+  // Votación que el creador está a punto de cerrar
+  const [porCerrar, setPorCerrar] = useState<Votacion | null>(null)
+  const [cerrando, setCerrando] = useState(false)
+  const [errorCierre, setErrorCierre] = useState("")
 
-  const visibles = votaciones.filter((v) => filtro === null || v.tipo === filtro)
+  useEffect(() => {
+    let vigente = true
+    Promise.all([obtenerViaje(viajeId, tokenSesion), listarVotaciones(viajeId, tokenSesion)])
+      .then(([datosViaje, { votaciones: lista }]) => {
+        if (!vigente) return
+        setViaje(datosViaje)
+        setVotaciones(lista)
+      })
+      .catch((e) => {
+        if (vigente) setError(mensajeDeError(e))
+      })
+    return () => {
+      vigente = false
+    }
+  }, [viajeId, tokenSesion])
+
+  const reemplazar = (actualizada: Votacion) =>
+    setVotaciones((lista) => (lista ?? []).map((v) => (v.id === actualizada.id ? actualizada : v)))
+
+  // Avatares con el mismo color que en el resto del viaje (según la posición del miembro)
+  const avataresDe = (votacion: Votacion) => {
+    const votantes = votantesDe(votacion)
+    return (viaje?.miembros ?? [])
+      .map((m, i) => ({ miembro: m, avatar: aMiembro(m.nombre, i) }))
+      .filter(({ miembro }) => votantes.has(miembro.usuario_id))
+      .map(({ avatar }) => avatar)
+  }
+
+  const editable = viaje?.estado === "activo"
+  const esCreador = viaje?.rol === "creador"
+
+  const visibles = (votaciones ?? []).filter((v) => filtro === null || v.tipo === filtro)
   const abiertas = visibles.filter((v) => v.estado === "abierta")
   const cerradas = visibles.filter((v) => v.estado === "cerrada")
 
-  const emitirVoto = (votacion: Votacion) => {
-    const nueva = seleccion[votacion.id]
-    const anterior = misVotos[votacion.id]
-    if (!nueva || nueva === anterior) return
-    setVotaciones((lista) =>
-      lista.map((v) =>
-        v.id !== votacion.id
-          ? v
-          : {
-              ...v,
-              votantes: anterior ? v.votantes : v.votantes + 1,
-              opciones: v.opciones.map((o) => {
-                if (o.id === nueva) return { ...o, votos: o.votos + 1 }
-                if (o.id === anterior) return { ...o, votos: o.votos - 1 }
-                return o
-              }),
-            },
-      ),
-    )
-    setMisVotos((votos) => ({ ...votos, [votacion.id]: nueva }))
+  const emitirVoto = async (votacion: Votacion, opcionId: string) => {
+    setVotando(votacion.id)
+    setErroresVoto((errores) => ({ ...errores, [votacion.id]: "" }))
+    try {
+      reemplazar(await votar(viajeId, votacion.id, opcionId, tokenSesion))
+    } catch (e) {
+      setErroresVoto((errores) => ({ ...errores, [votacion.id]: mensajeDeError(e) }))
+    } finally {
+      setVotando(null)
+    }
   }
 
-  // Al cerrar gana la opción más votada; si hay empate, una al azar
-  const cerrarVotacion = (votacion: Votacion) => {
-    const ganadoras = opcionesGanadoras(votacion.opciones)
-    setVotaciones((lista) =>
-      lista.map((v) =>
-        v.id === votacion.id
-          ? { ...v, estado: "cerrada", ganadoraId: ganadoras.length ? elegirAlAzar(ganadoras).id : undefined }
-          : v,
-      ),
-    )
+  // Al cerrar gana la opción más votada; si hay empate, el backend elige una al azar
+  const confirmarCierre = async () => {
+    if (!porCerrar) return
+    setCerrando(true)
+    setErrorCierre("")
+    try {
+      const { votacion } = await cerrarVotacion(viajeId, porCerrar.id, tokenSesion)
+      reemplazar(votacion)
+      setPorCerrar(null)
+    } catch (e) {
+      setErrorCierre(mensajeDeError(e))
+    } finally {
+      setCerrando(false)
+    }
   }
+
+  const ganadorasPorCerrar = porCerrar ? opcionesGanadoras(porCerrar.opciones) : []
 
   return (
     <div style={{ background: C.bg, minHeight: "100vh" }}>
@@ -173,49 +170,70 @@ export default function Votaciones({ onVolver, onCrearVotacion }: VotacionesProp
         </div>
 
         <div style={{ padding: "16px 16px 28px" }}>
-          <button
-            type="button"
-            onClick={onCrearVotacion}
-            style={{
-              width: "100%",
-              background: C.blue,
-              color: "white",
-              border: "none",
-              borderRadius: RADIUS.md,
-              padding: 13,
-              fontFamily: NUNITO,
-              fontWeight: 800,
-              fontSize: 13,
-              cursor: "pointer",
-              marginBottom: 16,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 7,
-              boxShadow: SHADOWS.button,
-            }}
-          >
-            <Icon name="plus" size={16} color="white" strokeWidth={2.5} />
-            Crear nueva votación
-          </button>
+          {error && (
+            <div
+              role="alert"
+              style={{
+                background: C.redBg,
+                border: `1.5px solid ${C.red}55`,
+                borderRadius: 12,
+                padding: "10px 14px",
+                color: C.red,
+                fontFamily: NUNITO,
+                fontSize: 13,
+                fontWeight: 700,
+              }}
+            >
+              No se han podido cargar las votaciones: {error}
+            </div>
+          )}
 
-          {visibles.length === 0 && (
+          {editable && (
+            <button
+              type="button"
+              onClick={onCrearVotacion}
+              style={{
+                width: "100%",
+                background: C.blue,
+                color: "white",
+                border: "none",
+                borderRadius: RADIUS.md,
+                padding: 13,
+                fontFamily: NUNITO,
+                fontWeight: 800,
+                fontSize: 13,
+                cursor: "pointer",
+                marginBottom: 16,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 7,
+                boxShadow: SHADOWS.button,
+              }}
+            >
+              <Icon name="plus" size={16} color="white" strokeWidth={2.5} />
+              Crear nueva votación
+            </button>
+          )}
+
+          {votaciones && visibles.length === 0 && (
             <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 13, textAlign: "center", padding: "24px 0" }}>
-              No hay votaciones de este tipo todavía.
+              {filtro === null ? "Todavía no hay votaciones en este viaje." : "No hay votaciones de este tipo todavía."}
             </div>
           )}
 
           {/* Votaciones abiertas */}
           {abiertas.map((votacion) => {
             const opciones = conPorcentajes(votacion.opciones)
-            const marcada = seleccion[votacion.id]
-            const emitido = misVotos[votacion.id]
-            const yaVotado = marcada !== undefined && marcada === emitido
-            const completa = votacion.votantes >= votacion.totalMiembros
+            const marcada = seleccion[votacion.id] ?? votacion.mi_voto ?? undefined
+            const yaVotado = marcada !== undefined && marcada === votacion.mi_voto
+            const completa = votacion.total_votos >= votacion.total_miembros
+            const enviando = votando === votacion.id
+            const errorVoto = erroresVoto[votacion.id]
             return (
               <section
                 key={votacion.id}
-                aria-label={votacion.pregunta}
+                aria-label={votacion.titulo}
                 style={{
                   background: "white",
                   borderRadius: RADIUS.xl,
@@ -232,7 +250,12 @@ export default function Votaciones({ onVolver, onCrearVotacion }: VotacionesProp
                       Votación activa
                     </Badge>
                   </div>
-                  <Heading size={15}>{votacion.pregunta}</Heading>
+                  <Heading size={15}>{votacion.titulo}</Heading>
+                  {votacion.descripcion && (
+                    <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, marginTop: 4, lineHeight: 1.5 }}>
+                      {votacion.descripcion}
+                    </div>
+                  )}
                 </div>
 
                 <div role="radiogroup" aria-label="Opciones">
@@ -243,7 +266,8 @@ export default function Votaciones({ onVolver, onCrearVotacion }: VotacionesProp
                       votos={opcion.votos}
                       porcentaje={opcion.porcentaje}
                       seleccionada={marcada === opcion.id}
-                      nota={emitido === opcion.id ? "Tu elección" : undefined}
+                      nota={votacion.mi_voto === opcion.id ? "Tu elección" : undefined}
+                      deshabilitada={!editable || enviando}
                       onSeleccionar={() => setSeleccion((s) => ({ ...s, [votacion.id]: opcion.id }))}
                     />
                   ))}
@@ -261,10 +285,10 @@ export default function Votaciones({ onVolver, onCrearVotacion }: VotacionesProp
                     marginBottom: 14,
                   }}
                 >
-                  <AvatarStack members={MIEMBROS_DEMO} size={22} />
+                  <AvatarStack members={avataresDe(votacion)} size={22} />
                   <span style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, flex: 1 }}>
                     <strong style={{ color: C.navy }}>
-                      {votacion.votantes}/{votacion.totalMiembros}
+                      {votacion.total_votos}/{votacion.total_miembros}
                     </strong>{" "}
                     miembros han votado
                   </span>
@@ -275,60 +299,71 @@ export default function Votaciones({ onVolver, onCrearVotacion }: VotacionesProp
                   )}
                 </div>
 
-                <div style={{ display: "flex", gap: 10 }}>
-                  <button
-                    type="button"
-                    onClick={() => emitirVoto(votacion)}
-                    disabled={!marcada || yaVotado}
-                    style={{
-                      flex: 1,
-                      background: C.blue,
-                      color: "white",
-                      border: "none",
-                      borderRadius: 12,
-                      padding: 12,
-                      fontFamily: NUNITO,
-                      fontWeight: 800,
-                      fontSize: 13,
-                      cursor: !marcada || yaVotado ? "default" : "pointer",
-                      opacity: marcada ? 1 : 0.6,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 6,
-                      boxShadow: SHADOWS.button,
-                    }}
-                  >
-                    {yaVotado ? (
-                      <>
-                        <Icon name="check" size={15} color="white" strokeWidth={2.5} />
-                        Voto emitido
-                      </>
-                    ) : emitido ? (
-                      "Cambiar voto"
-                    ) : (
-                      "Emitir voto"
+                {errorVoto && (
+                  <div role="alert" style={{ fontFamily: NUNITO, color: C.red, fontSize: 12, fontWeight: 700, marginBottom: 12 }}>
+                    {errorVoto}
+                  </div>
+                )}
+
+                {editable && (
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button
+                      type="button"
+                      onClick={() => marcada && emitirVoto(votacion, marcada)}
+                      disabled={!marcada || yaVotado || enviando}
+                      style={{
+                        flex: 1,
+                        background: C.blue,
+                        color: "white",
+                        border: "none",
+                        borderRadius: 12,
+                        padding: 12,
+                        fontFamily: NUNITO,
+                        fontWeight: 800,
+                        fontSize: 13,
+                        cursor: !marcada || yaVotado || enviando ? "default" : "pointer",
+                        opacity: marcada ? 1 : 0.6,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                        boxShadow: SHADOWS.button,
+                      }}
+                    >
+                      {enviando && "Enviando voto..."}
+                      {!enviando && yaVotado && (
+                        <>
+                          <Icon name="check" size={15} color="white" strokeWidth={2.5} />
+                          Voto emitido
+                        </>
+                      )}
+                      {!enviando && !yaVotado && (votacion.mi_voto ? "Cambiar voto" : "Emitir voto")}
+                    </button>
+                    {esCreador && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setErrorCierre("")
+                          setPorCerrar(votacion)
+                        }}
+                        style={{
+                          flex: 1,
+                          background: C.redBg,
+                          color: C.red,
+                          border: `1.5px solid ${C.red}`,
+                          borderRadius: 12,
+                          padding: 12,
+                          fontFamily: NUNITO,
+                          fontWeight: 800,
+                          fontSize: 13,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Cerrar votación
+                      </button>
                     )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => cerrarVotacion(votacion)}
-                    style={{
-                      flex: 1,
-                      background: C.redBg,
-                      color: C.red,
-                      border: `1.5px solid ${C.red}`,
-                      borderRadius: 12,
-                      padding: 12,
-                      fontFamily: NUNITO,
-                      fontWeight: 800,
-                      fontSize: 13,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Cerrar votación
-                  </button>
-                </div>
+                  </div>
+                )}
               </section>
             )
           })}
@@ -336,11 +371,11 @@ export default function Votaciones({ onVolver, onCrearVotacion }: VotacionesProp
           {/* Votaciones cerradas */}
           {cerradas.map((votacion) => {
             const opciones = conPorcentajes(votacion.opciones)
-            const ganadora = opciones.find((o) => o.id === votacion.ganadoraId)
+            const ganadora = opciones.find((o) => o.id === votacion.opcion_ganadora_id)
             return (
               <section
                 key={votacion.id}
-                aria-label={votacion.pregunta}
+                aria-label={votacion.titulo}
                 style={{
                   background: "white",
                   borderRadius: 20,
@@ -352,7 +387,7 @@ export default function Votaciones({ onVolver, onCrearVotacion }: VotacionesProp
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                  <Heading size={13}>{votacion.pregunta}</Heading>
+                  <Heading size={13}>{votacion.titulo}</Heading>
                   <Badge bg={C.bg} color={C.muted}>
                     Cerrada
                   </Badge>
@@ -372,6 +407,35 @@ export default function Votaciones({ onVolver, onCrearVotacion }: VotacionesProp
           })}
         </div>
       </div>
+
+      {porCerrar && (
+        <DialogoConfirmacion
+          titulo="¿Cerrar la votación?"
+          icono="vote"
+          color={C.red}
+          colorFondo={C.redBg}
+          textoConfirmar="Cerrar votación"
+          textoConfirmando="Cerrando..."
+          ocupado={cerrando}
+          error={errorCierre}
+          onConfirmar={confirmarCierre}
+          onCancelar={() => setPorCerrar(null)}
+        >
+          {ganadorasPorCerrar.length === 0 && "Nadie ha votado todavía: la votación se cerrará sin ganadora."}
+          {ganadorasPorCerrar.length === 1 && (
+            <>
+              Ganará <strong style={{ color: C.navy }}>{ganadorasPorCerrar[0].texto}</strong>, la opción más votada.
+            </>
+          )}
+          {ganadorasPorCerrar.length > 1 && (
+            <>
+              Hay un empate entre <strong style={{ color: C.navy }}>{enumerar(ganadorasPorCerrar.map((g) => g.texto))}</strong>:
+              se elegirá una de ellas al azar.
+            </>
+          )}{" "}
+          Después ya no se podrá votar.
+        </DialogoConfirmacion>
+      )}
     </div>
   )
 }

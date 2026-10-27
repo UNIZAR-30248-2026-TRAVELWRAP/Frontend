@@ -141,10 +141,17 @@ function RutaCrearViaje({ sesion }: { sesion: Sesion }) {
   );
 }
 
-function RutaVotaciones() {
+function RutaVotaciones({ sesion }: { sesion: Sesion }) {
   const { viajeId = "" } = useParams();
   const navigate = useNavigate();
-  return <Votaciones onVolver={() => navigate(`/viajes/${viajeId}`)} />;
+  return (
+    <Votaciones
+      key={viajeId}
+      viajeId={viajeId}
+      tokenSesion={sesion.token}
+      onVolver={() => navigate(`/viajes/${viajeId}`)}
+    />
+  );
 }
 
 const rutaItinerario = (viajeId: string, fecha: string) =>
@@ -316,7 +323,7 @@ export default function AppRouter({
         {/* Votaciones del viaje (privada) */}
         <Route
           path="/viajes/:viajeId/votaciones"
-          element={session ? <RutaVotaciones /> : <Navigate to="/login" replace />}
+          element={session ? <RutaVotaciones sesion={session} /> : <Navigate to="/login" replace />}
         />
 
         <Route

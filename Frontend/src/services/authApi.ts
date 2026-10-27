@@ -28,7 +28,7 @@ export class ApiError extends Error {
 }
 
 type OpcionesPeticion = {
-  metodo?: "GET" | "POST" | "PATCH" | "DELETE"
+  metodo?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
   cuerpo?: unknown
   token?: string
 }

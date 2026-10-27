@@ -2,46 +2,28 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ElegirDestino from '../src/screens/ElegirDestino'
+import { VIAJE_ID, llamadas, opcion, simularBackendVotaciones, viajeDePrueba, type VotacionGuardada } from './backendVotaciones'
 
-const VIAJE_ID = '123e4567-e89b-12d3-a456-426614174000'
-
-const respuesta = (estado: number, cuerpo: unknown) =>
-  Promise.resolve(
-    new Response(JSON.stringify(cuerpo), {
-      status: estado,
-      headers: { 'Content-Type': 'application/json' },
-    }),
-  )
-
-const viaje = (datos: Record<string, unknown> = {}) => ({
-  id: VIAJE_ID,
-  nombre: 'Verano 2027',
-  destino: null,
-  estado: 'activo',
-  pendiente_destino: true,
-  rol: 'creador',
-  miembros: [
-    { usuario_id: 'u1', nombre: 'Adriana', avatar_url: null, rol: 'creador' },
-    { usuario_id: 'u2', nombre: 'Berta', avatar_url: null, rol: 'miembro' },
-  ],
+// Votación de destino que se abre al crear el viaje sin destino
+const destino = (datos: Partial<VotacionGuardada> = {}): VotacionGuardada => ({
+  id: 'destino',
+  titulo: '¿A dónde queremos ir?',
+  tipo: 'destino',
+  estado: 'abierta',
+  opciones: [],
+  votos: {},
   ...datos,
 })
 
-// GET devuelve el viaje pendiente; PATCH lo devuelve con el destino enviado
-const simularBackend = (datos: Record<string, unknown> = {}) => {
-  const fetchMock = vi.fn((_url: string, opciones?: RequestInit) => {
-    if (opciones?.method === 'PATCH') {
-      const { destino } = JSON.parse(opciones.body as string)
-      return respuesta(200, viaje({ ...datos, destino, pendiente_destino: false }))
-    }
-    return respuesta(200, viaje(datos))
-  })
-  vi.stubGlobal('fetch', fetchMock)
-  return fetchMock
+const abrir = async (opciones: Parameters<typeof simularBackendVotaciones>[0] = {}, props = {}) => {
+  const backend = simularBackendVotaciones({ votaciones: [destino()], ...opciones })
+  render(<ElegirDestino viajeId={VIAJE_ID} tokenSesion="token-acceso" {...props} />)
+  await screen.findByText('Elegir Destino')
+  return backend
 }
 
-const proponer = async (user: ReturnType<typeof userEvent.setup>, destino: string) => {
-  await user.type(screen.getByLabelText('Proponer destino'), destino)
+const proponer = async (user: ReturnType<typeof userEvent.setup>, texto: string) => {
+  await user.type(screen.getByLabelText('Proponer destino'), texto)
   await user.click(screen.getByRole('button', { name: 'Añadir' }))
 }
 
@@ -51,62 +33,84 @@ afterEach(() => {
 })
 
 describe('ElegirDestino', () => {
-  it('muestra el viaje pendiente con sus miembros y sin destinos propuestos todavía', async () => {
-    simularBackend()
-    render(<ElegirDestino viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
+  it('muestra el viaje pendiente y su votación de destino, todavía sin propuestas', async () => {
+    const { fetchMock } = await abrir()
 
-    expect(await screen.findByText('Elegir Destino')).toBeTruthy()
     expect(screen.getByText('Verano 2027')).toBeTruthy()
-    expect(screen.getByText(/Todavía no hay destinos propuestos/)).toBeTruthy()
-    expect(screen.getByText('0/2')).toBeTruthy()
+    expect(await screen.findByText(/Todavía no hay destinos propuestos/)).toBeTruthy()
+    expect(screen.getByText('0/3')).toBeTruthy()
     expect(screen.getByRole('button', { name: /Fijar destino/ })).toHaveProperty('disabled', true)
+    expect(llamadas(fetchMock, 'GET', '/votaciones')[0][0]).toContain('tipo=destino')
   })
 
-  it('permite proponer destinos sin repetirlos y votar uno', async () => {
+  it('propone destinos en el backend sin repetirlos', async () => {
     const user = userEvent.setup()
-    simularBackend()
-    render(<ElegirDestino viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
-    await screen.findByText('Elegir Destino')
+    const { fetchMock } = await abrir()
 
     await proponer(user, 'Lisboa')
-    await proponer(user, 'Praga')
+    expect(await screen.findByRole('radio', { name: /Lisboa/ })).toBeTruthy()
     await proponer(user, ' lisboa ')
-    expect(screen.getByRole('alert').textContent).toBe('Ese destino ya está propuesto')
 
-    await user.click(screen.getByRole('radio', { name: /Praga/ }))
-    expect(screen.getByRole('radio', { name: /Praga/ }).getAttribute('aria-checked')).toBe('true')
-    expect(screen.getByText('1/2')).toBeTruthy()
+    expect(screen.getByRole('alert').textContent).toBe('Ese destino ya está propuesto')
+    const propuestas = llamadas(fetchMock, 'POST', '/votaciones/destino/opciones')
+    expect(propuestas).toHaveLength(1)
+    expect(JSON.parse(propuestas[0][1]?.body as string)).toEqual({ texto: 'Lisboa' })
   })
 
-  it('el creador fija el destino votado tras confirmarlo y se guarda en el viaje', async () => {
+  it('al tocar un destino se vota, y se puede cambiar el voto', async () => {
     const user = userEvent.setup()
-    const fetchMock = simularBackend()
-    const onDestinoFijado = vi.fn()
-    render(<ElegirDestino viajeId={VIAJE_ID} tokenSesion="token-acceso" onDestinoFijado={onDestinoFijado} />)
-    await screen.findByText('Elegir Destino')
+    const { fetchMock } = await abrir({
+      votaciones: [destino({ opciones: [opcion('lisboa', 'Lisboa', 0), opcion('praga', 'Praga', 1)], votos: { u2: 'praga' } })],
+    })
 
-    await proponer(user, 'Lisboa')
-    await user.click(screen.getByRole('radio', { name: /Lisboa/ }))
-    await user.click(screen.getByRole('button', { name: 'Fijar «Lisboa» como destino' }))
-    expect(screen.getByRole('dialog', { name: 'Confirmar destino' }).textContent).toContain('Se fijará Lisboa')
-    await user.click(screen.getByRole('button', { name: 'Confirmar Lisboa' }))
+    await user.click(await screen.findByRole('radio', { name: /Lisboa/ }))
+    await vi.waitFor(() => expect(screen.getByText('2/3')).toBeTruthy())
+    await user.click(screen.getByRole('radio', { name: /Praga/ }))
+
+    await vi.waitFor(() => expect(screen.getByRole('radio', { name: /Praga/ }).getAttribute('aria-checked')).toBe('true'))
+    expect(screen.getByText('2/3')).toBeTruthy()
+    expect(llamadas(fetchMock, 'PUT', '/votaciones/destino/voto')).toHaveLength(2)
+  })
+
+  it('el creador fija el destino cerrando la votación y pasa al inicio del viaje', async () => {
+    const user = userEvent.setup()
+    const onDestinoFijado = vi.fn()
+    const { fetchMock } = await abrir(
+      { votaciones: [destino({ opciones: [opcion('lisboa', 'Lisboa', 0), opcion('praga', 'Praga', 1)], votos: { u1: 'praga', u2: 'praga' } })] },
+      { onDestinoFijado },
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Fijar «Praga» como destino' }))
+    expect(screen.getByRole('dialog', { name: 'Confirmar destino' }).textContent).toContain('Se fijará Praga')
+    await user.click(screen.getByRole('button', { name: 'Confirmar Praga' }))
 
     await vi.waitFor(() => expect(onDestinoFijado).toHaveBeenCalled())
-    const patch = fetchMock.mock.calls.find(([, o]) => o?.method === 'PATCH') as unknown as [string, RequestInit]
-    expect(patch[0]).toMatch(new RegExp(`/viajes/${VIAJE_ID}$`))
-    expect(JSON.parse(patch[1].body as string)).toEqual({ destino: 'Lisboa' })
+    expect(onDestinoFijado.mock.calls[0][0]).toMatchObject({ destino: 'Praga', pendiente_destino: false })
+    expect(llamadas(fetchMock, 'POST', '/votaciones/destino/cerrar')).toHaveLength(1)
+    expect(llamadas(fetchMock, 'PATCH', `/viajes/${VIAJE_ID}`)).toHaveLength(0)
+  })
+
+  it('con empate avisa de que se sorteará antes de confirmar', async () => {
+    const user = userEvent.setup()
+    await abrir({
+      votaciones: [destino({ opciones: [opcion('lisboa', 'Lisboa', 0), opcion('praga', 'Praga', 1)], votos: { u1: 'lisboa', u2: 'praga' } })],
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Fijar destino (hay empate)' }))
+
+    expect(screen.getByRole('dialog', { name: 'Confirmar destino' }).textContent).toContain('Hay un empate entre Lisboa y Praga')
+    expect(screen.getByRole('button', { name: 'Confirmar sorteo' })).toBeTruthy()
   })
 
   it('quien no es el creador no puede fijar el destino', async () => {
-    simularBackend({ rol: 'miembro' })
-    render(<ElegirDestino viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
+    await abrir({ viaje: viajeDePrueba({ rol: 'miembro' }) })
 
-    expect(await screen.findByText(/El creador del viaje fijará el destino/)).toBeTruthy()
+    expect(screen.getByText(/El creador del viaje fijará el destino/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Fijar/ })).toBeNull()
   })
 
   it('si el viaje ya tiene destino pasa directamente al inicio del viaje', async () => {
-    simularBackend({ destino: 'Roma', pendiente_destino: false })
+    simularBackendVotaciones({ viaje: viajeDePrueba({ destino: 'Roma', pendiente_destino: false }) })
     const onDestinoFijado = vi.fn()
     render(<ElegirDestino viajeId={VIAJE_ID} tokenSesion="token-acceso" onDestinoFijado={onDestinoFijado} />)
 

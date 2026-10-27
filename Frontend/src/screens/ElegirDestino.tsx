@@ -4,18 +4,19 @@ import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import OpcionVotacion from "../components/OpcionVotacion"
 import { ApiError } from "../services/authApi"
-import { editarViaje, obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
+import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
+import { cerrarVotacion, listarVotaciones, proponerOpcion, votar, type Votacion } from "../services/votacionesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
-import { conPorcentajes, elegirAlAzar, enumerar, opcionesGanadoras, type OpcionConVotos } from "../utils/votaciones"
+import { conPorcentajes, enumerar, opcionesGanadoras } from "../utils/votaciones"
 
 const MAX_DESTINO = 100
 
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
 
 // ─── Pantalla: Elegir destino ─────────────────────────────────────────────────
-// Es lo único que se ve de un viaje pendiente de destino.
-// De momento las propuestas y el voto son locales (solo cuenta el tuyo); fijar el destino sí se guarda.
+// Es lo único que se ve de un viaje pendiente de destino: su votación de destino, que se abre al crear el viaje.
+// Los miembros proponen destinos y votan; el creador la cierra y el destino ganador queda fijado en el viaje.
 type ElegirDestinoProps = {
   viajeId: string
   tokenSesion: string
@@ -27,20 +28,25 @@ type ElegirDestinoProps = {
 
 export default function ElegirDestino({ viajeId, tokenSesion, onVolver, onInvitar, onDestinoFijado }: ElegirDestinoProps) {
   const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
+  const [votacion, setVotacion] = useState<Votacion | null>(null)
   const [error, setError] = useState("")
-  const [opciones, setOpciones] = useState<OpcionConVotos[]>([])
-  const [miVoto, setMiVoto] = useState<string | null>(null)
   const [nuevoDestino, setNuevoDestino] = useState("")
   const [avisoPropuesta, setAvisoPropuesta] = useState("")
+  const [proponiendo, setProponiendo] = useState(false)
+  const [votando, setVotando] = useState(false)
+  const [errorVoto, setErrorVoto] = useState("")
   const [confirmando, setConfirmando] = useState(false)
   const [fijando, setFijando] = useState(false)
   const [errorFijar, setErrorFijar] = useState("")
 
   useEffect(() => {
     let vigente = true
-    obtenerViaje(viajeId, tokenSesion)
-      .then((datos) => {
-        if (vigente) setViaje(datos)
+    Promise.all([obtenerViaje(viajeId, tokenSesion), listarVotaciones(viajeId, tokenSesion, { tipo: "destino" })])
+      .then(([datosViaje, { votaciones }]) => {
+        if (!vigente) return
+        setViaje(datosViaje)
+        setVotacion(votaciones[0] ?? null)
+        if (datosViaje.pendiente_destino && !votaciones[0]) setError("No se ha encontrado la votación del destino")
       })
       .catch((e) => {
         if (vigente) setError(mensajeDeError(e))
@@ -59,36 +65,58 @@ export default function ElegirDestino({ viajeId, tokenSesion, onVolver, onInvita
   const miembros = (viaje?.miembros ?? []).map((m, i) => aMiembro(m.nombre, i))
   const esCreador = viaje?.rol === "creador"
 
-  // Votos de cada opción: por ahora solo se cuenta el del usuario
-  const conVotos = conPorcentajes(opciones.map((o) => ({ ...o, votos: o.votos + (miVoto === o.id ? 1 : 0) })))
+  const conVotos = conPorcentajes(votacion?.opciones ?? [])
   const ganadoras = opcionesGanadoras(conVotos)
   const hayEmpate = ganadoras.length > 1
-  const votantes = miVoto ? 1 : 0
+  const miVoto = votacion?.mi_voto ?? null
+  const puedeProponer = nuevoDestino.trim() !== "" && !proponiendo
 
-  const proponer = (event: FormEvent) => {
+  const proponer = async (event: FormEvent) => {
     event.preventDefault()
     const texto = nuevoDestino.trim()
-    if (!texto) return
+    if (!texto || !votacion) return
     if (texto.length > MAX_DESTINO) {
       setAvisoPropuesta(`El destino tiene un máximo de ${MAX_DESTINO} caracteres`)
       return
     }
-    if (opciones.some((o) => o.texto.toLowerCase() === texto.toLowerCase())) {
+    if (votacion.opciones.some((o) => o.texto.toLowerCase() === texto.toLowerCase())) {
       setAvisoPropuesta("Ese destino ya está propuesto")
       return
     }
-    setOpciones((lista) => [...lista, { id: `propuesta-${lista.length + 1}`, texto, votos: 0 }])
-    setNuevoDestino("")
-    setAvisoPropuesta("")
+    setProponiendo(true)
+    try {
+      setVotacion(await proponerOpcion(viajeId, votacion.id, { texto }, tokenSesion))
+      setNuevoDestino("")
+      setAvisoPropuesta("")
+    } catch (e) {
+      setAvisoPropuesta(mensajeDeError(e))
+    } finally {
+      setProponiendo(false)
+    }
   }
 
+  // Al tocar un destino se vota (o se cambia el voto) directamente
+  const votarDestino = async (opcionId: string) => {
+    if (!votacion || opcionId === miVoto) return
+    setVotando(true)
+    setErrorVoto("")
+    try {
+      setVotacion(await votar(viajeId, votacion.id, opcionId, tokenSesion))
+    } catch (e) {
+      setErrorVoto(mensajeDeError(e))
+    } finally {
+      setVotando(false)
+    }
+  }
+
+  // Cerrar la votación fija el destino en el viaje; con empate, el backend elige uno al azar
   const fijarDestino = async () => {
-    if (ganadoras.length === 0) return
-    const destino = elegirAlAzar(ganadoras).texto
+    if (!viaje || !votacion || ganadoras.length === 0) return
     setFijando(true)
     setErrorFijar("")
     try {
-      setViaje(await editarViaje(viajeId, { destino }, tokenSesion))
+      const { destino } = await cerrarVotacion(viajeId, votacion.id, tokenSesion)
+      setViaje({ ...viaje, destino, pendiente_destino: false })
     } catch (e) {
       setErrorFijar(mensajeDeError(e))
       setFijando(false)
@@ -255,9 +283,16 @@ export default function ElegirDestino({ viajeId, tokenSesion, onVolver, onInvita
                         seleccionada={miVoto === opcion.id}
                         destacada={!hayEmpate && ganadoras[0]?.id === opcion.id}
                         nota={miVoto === opcion.id ? "Tu elección" : undefined}
-                        onSeleccionar={() => setMiVoto(opcion.id)}
+                        deshabilitada={votando}
+                        onSeleccionar={() => votarDestino(opcion.id)}
                       />
                     ))}
+                  </div>
+                )}
+
+                {errorVoto && (
+                  <div role="alert" style={{ fontFamily: NUNITO, color: C.red, fontSize: 12, fontWeight: 700, marginBottom: 12 }}>
+                    {errorVoto}
                   </div>
                 )}
 
@@ -275,7 +310,7 @@ export default function ElegirDestino({ viajeId, tokenSesion, onVolver, onInvita
                   <AvatarStack members={miembros} size={22} />
                   <span style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, flex: 1 }}>
                     <strong style={{ color: C.navy }}>
-                      {votantes}/{miembros.length}
+                      {votacion?.total_votos ?? 0}/{votacion?.total_miembros ?? miembros.length}
                     </strong>{" "}
                     miembros han votado
                   </span>
@@ -322,15 +357,15 @@ export default function ElegirDestino({ viajeId, tokenSesion, onVolver, onInvita
                     />
                     <button
                       type="submit"
-                      disabled={!nuevoDestino.trim()}
+                      disabled={!puedeProponer}
                       style={{
                         background: C.blue,
                         color: "white",
                         border: "none",
                         borderRadius: 12,
                         padding: "10px 14px",
-                        cursor: nuevoDestino.trim() ? "pointer" : "not-allowed",
-                        opacity: nuevoDestino.trim() ? 1 : 0.6,
+                        cursor: puedeProponer ? "pointer" : "not-allowed",
+                        opacity: puedeProponer ? 1 : 0.6,
                         fontFamily: NUNITO,
                         fontWeight: 700,
                         fontSize: 13,
