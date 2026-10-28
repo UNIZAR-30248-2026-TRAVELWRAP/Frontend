@@ -35,8 +35,9 @@ jobs:
         run: npm run build
         working-directory: ./Frontend
 
-      - name: Ejecutar pruebas automatizadas (si existen)
-        run: npm test --if-present
+      # Genera Frontend/coverage/lcov.info, que SonarCloud usa para medir la cobertura
+      - name: Ejecutar pruebas automatizadas con cobertura
+        run: npm run test:coverage
         working-directory: ./Frontend
 
       - name: Analizar código con SonarCloud

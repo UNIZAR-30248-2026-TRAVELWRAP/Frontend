@@ -9,6 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:acceptance": "node --import tsx node_modules/@cucumber/cucumber/bin/cucumber.js"
   },
@@ -29,6 +30,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
+    "@vitest/coverage-v8": "^5.0.3",
     "jsdom": "^29.1.1",
     "oxlint": "^1.81.0",
     "ts-node": "^10.9.2",
