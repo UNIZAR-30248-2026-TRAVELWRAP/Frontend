@@ -5,12 +5,14 @@ import DialogoConfirmacion from "../components/DialogoConfirmacion"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import OpcionVotacion from "../components/OpcionVotacion"
+import ProponerOpcion from "../components/ProponerOpcion"
 import { ApiError } from "../services/authApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import {
   cerrarVotacion,
   listarVotaciones,
   obtenerVotacion,
+  proponerOpcion,
   votar,
   type TipoVotacion,
   type Votacion,
@@ -19,6 +21,7 @@ import { escucharVotaciones } from "../services/votacionesTiempoReal"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
 import { conPorcentajes, enumerar, opcionesGanadoras } from "../utils/votaciones"
+import BotonVolver from "../components/BotonVolver"
 
 const FILTROS: { texto: string; tipo: TipoVotacion | null }[] = [
   { texto: "Todas", tipo: null },
@@ -145,24 +148,7 @@ export default function Votaciones({ viajeId, tokenSesion, onVolver, onCrearVota
         {/* Cabecera con filtros */}
         <div style={{ background: GRADIENTS.header, padding: "20px 20px 22px", borderRadius: RADIUS.header }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-            <button
-              type="button"
-              onClick={onVolver}
-              aria-label="Volver"
-              style={{
-                background: "rgba(255,255,255,0.18)",
-                border: "none",
-                borderRadius: 12,
-                width: 38,
-                height: 38,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-              }}
-            >
-              <Icon name="arrow_left" size={20} color="white" strokeWidth={2.5} />
-            </button>
+            <BotonVolver onClick={onVolver} />
             <Heading size={22} color="white">
               Votaciones
             </Heading>
@@ -286,6 +272,12 @@ export default function Votaciones({ viajeId, tokenSesion, onVolver, onCrearVota
                   )}
                 </div>
 
+                {opciones.length === 0 && (
+                  <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 13, marginBottom: 14, lineHeight: 1.5 }}>
+                    Todavía no hay opciones. Propón la primera.
+                  </div>
+                )}
+
                 <div role="radiogroup" aria-label="Opciones">
                   {opciones.map((opcion) => (
                     <OpcionVotacion
@@ -399,6 +391,19 @@ export default function Votaciones({ viajeId, tokenSesion, onVolver, onCrearVota
                 {editable && esCreador && !votacion.todos_han_votado && (
                   <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, marginTop: 10, textAlign: "center" }}>
                     Podrás cerrarla cuando hayan votado todos los miembros.
+                  </div>
+                )}
+
+                {/* Cualquier miembro propone opciones mientras la votación está abierta */}
+                {editable && (
+                  <div style={{ marginTop: 14 }}>
+                    <ProponerOpcion
+                      etiqueta="Proponer opción"
+                      placeholder="Ej. Otro fin de semana, otra actividad..."
+                      existentes={votacion.opciones.map((o) => o.texto)}
+                      avisoRepetida="Esa opción ya está propuesta"
+                      onProponer={async (texto) => reemplazar(await proponerOpcion(viajeId, votacion.id, { texto }, tokenSesion))}
+                    />
                   </div>
                 )}
               </section>

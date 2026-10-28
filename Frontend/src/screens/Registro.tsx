@@ -1,6 +1,6 @@
 import { useState, type CSSProperties, type FormEvent } from "react"
-import appLogo from "../assets/travelwrap-logo.png"
 import { C, NUNITO } from "../styles/tokens"
+import PortadaAcceso from "../components/PortadaAcceso"
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const LONGITUD_MINIMA = 8
@@ -70,238 +70,182 @@ export default function Registro({ onRegistro, onIrALogin, error, aviso, loading
   }
 
   return (
-    <div
-      style={{
-        background: `linear-gradient(160deg, ${C.navy} 0%, ${C.blue} 100%)`,
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        padding: "40px 24px",
-        boxSizing: "border-box",
-      }}
-    >
-      <div style={{ width: "100%", maxWidth: 420, margin: "0 auto" }}>
-        <div style={{ textAlign: "center", marginBottom: 36 }}>
-          <div
-            style={{
-              background: "white",
-              width: 92,
-              height: 92,
-              borderRadius: 24,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 16px",
-              boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
-              overflow: "hidden",
-            }}
-          >
-            <img
-              src={appLogo}
-              alt="Logo de TravelWrap"
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
-          </div>
-          <div
-            style={{
-              fontFamily: NUNITO,
-              fontSize: 32,
-              fontWeight: 800,
-              color: "white",
-              lineHeight: 1.15,
-            }}
-          >
-            Crea tu cuenta
-          </div>
-          <div
-            style={{
-              color: "rgba(255,255,255,0.7)",
-              fontFamily: NUNITO,
-              marginTop: 8,
-              fontSize: 15,
-            }}
-          >
-            Empieza a organizar tus viajes en grupo
-          </div>
+    <PortadaAcceso titulo="Crea tu cuenta" subtitulo="Empieza a organizar tus viajes en grupo">
+      <form
+        onSubmit={handleSubmit}
+        noValidate
+        style={{ display: "flex", flexDirection: "column", gap: 16 }}
+      >
+        <div>
+          <label htmlFor="registro-nombre" style={labelStyle}>
+            Nombre
+          </label>
+          <input
+            id="registro-nombre"
+            type="text"
+            autoComplete="name"
+            value={nombre}
+            onChange={(event) => setNombre(event.target.value)}
+            placeholder="Tu nombre"
+            style={inputStyle}
+          />
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          noValidate
-          style={{ display: "flex", flexDirection: "column", gap: 16 }}
-        >
-          <div>
-            <label htmlFor="registro-nombre" style={labelStyle}>
-              Nombre
-            </label>
-            <input
-              id="registro-nombre"
-              type="text"
-              autoComplete="name"
-              value={nombre}
-              onChange={(event) => setNombre(event.target.value)}
-              placeholder="Tu nombre"
-              style={inputStyle}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="registro-email" style={labelStyle}>
-              Email
-            </label>
-            <input
-              id="registro-email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="tu@email.com"
-              aria-invalid={avisoEmail !== ""}
-              aria-describedby={avisoEmail ? "registro-email-aviso" : undefined}
-              style={inputStyle}
-            />
-            {avisoEmail && (
-              <div id="registro-email-aviso" style={avisoStyle}>
-                {avisoEmail}
-              </div>
-            )}
-          </div>
-
-          <div>
-            <label htmlFor="registro-password" style={labelStyle}>
-              Contraseña
-            </label>
-            <input
-              id="registro-password"
-              type="password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder={`Mínimo ${LONGITUD_MINIMA} caracteres`}
-              aria-invalid={avisoPassword !== ""}
-              aria-describedby={avisoPassword ? "registro-password-aviso" : undefined}
-              style={inputStyle}
-            />
-            {avisoPassword && (
-              <div id="registro-password-aviso" style={avisoStyle}>
-                {avisoPassword}
-              </div>
-            )}
-          </div>
-
-          <div>
-            <label htmlFor="registro-confirmacion" style={labelStyle}>
-              Repite la contraseña
-            </label>
-            <input
-              id="registro-confirmacion"
-              type="password"
-              autoComplete="new-password"
-              value={confirmacion}
-              onChange={(event) => setConfirmacion(event.target.value)}
-              placeholder="Vuelve a escribirla"
-              aria-invalid={avisoConfirmacion !== ""}
-              aria-describedby={avisoConfirmacion ? "registro-confirmacion-aviso" : undefined}
-              style={inputStyle}
-            />
-            {avisoConfirmacion && (
-              <div id="registro-confirmacion-aviso" style={avisoStyle}>
-                {avisoConfirmacion}
-              </div>
-            )}
-          </div>
-
-          {error && (
-            <div
-              role="alert"
-              style={{
-                background: C.redBg,
-                border: `1.5px solid ${C.red}55`,
-                borderRadius: 12,
-                padding: "10px 14px",
-                color: C.red,
-                fontFamily: NUNITO,
-                fontSize: 13,
-                fontWeight: 700,
-              }}
-            >
-              {error}
+        <div>
+          <label htmlFor="registro-email" style={labelStyle}>
+            Email
+          </label>
+          <input
+            id="registro-email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="tu@email.com"
+            aria-invalid={avisoEmail !== ""}
+            aria-describedby={avisoEmail ? "registro-email-aviso" : undefined}
+            style={inputStyle}
+          />
+          {avisoEmail && (
+            <div id="registro-email-aviso" style={avisoStyle}>
+              {avisoEmail}
             </div>
           )}
+        </div>
 
-          {aviso && (
-            <div
-              role="status"
-              style={{
-                background: C.greenBg,
-                border: `1.5px solid ${C.green}55`,
-                borderRadius: 12,
-                padding: "10px 14px",
-                color: C.green,
-                fontFamily: NUNITO,
-                fontSize: 13,
-                fontWeight: 700,
-              }}
-            >
-              {aviso}
+        <div>
+          <label htmlFor="registro-password" style={labelStyle}>
+            Contraseña
+          </label>
+          <input
+            id="registro-password"
+            type="password"
+            autoComplete="new-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder={`Mínimo ${LONGITUD_MINIMA} caracteres`}
+            aria-invalid={avisoPassword !== ""}
+            aria-describedby={avisoPassword ? "registro-password-aviso" : undefined}
+            style={inputStyle}
+          />
+          {avisoPassword && (
+            <div id="registro-password-aviso" style={avisoStyle}>
+              {avisoPassword}
             </div>
           )}
+        </div>
 
-          <button
-            type="submit"
-            disabled={!canSubmit}
-            style={{
-              width: "100%",
-              background: "white",
-              border: `1.5px solid ${C.border}`,
-              borderRadius: 15,
-              padding: "14px 16px",
-              color: C.navy,
-              fontFamily: NUNITO,
-              fontSize: 15,
-              fontWeight: 800,
-              cursor: canSubmit ? "pointer" : "not-allowed",
-              opacity: canSubmit ? 1 : 0.7,
-              boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-              marginTop: 4,
-            }}
-          >
-            {loading ? "Creando cuenta..." : "Crear cuenta"}
-          </button>
-        </form>
+        <div>
+          <label htmlFor="registro-confirmacion" style={labelStyle}>
+            Repite la contraseña
+          </label>
+          <input
+            id="registro-confirmacion"
+            type="password"
+            autoComplete="new-password"
+            value={confirmacion}
+            onChange={(event) => setConfirmacion(event.target.value)}
+            placeholder="Vuelve a escribirla"
+            aria-invalid={avisoConfirmacion !== ""}
+            aria-describedby={avisoConfirmacion ? "registro-confirmacion-aviso" : undefined}
+            style={inputStyle}
+          />
+          {avisoConfirmacion && (
+            <div id="registro-confirmacion-aviso" style={avisoStyle}>
+              {avisoConfirmacion}
+            </div>
+          )}
+        </div>
 
-        {onIrALogin && (
+        {error && (
           <div
+            role="alert"
             style={{
-              textAlign: "center",
-              marginTop: 22,
-              color: "rgba(255,255,255,0.75)",
+              background: C.redBg,
+              border: `1.5px solid ${C.red}55`,
+              borderRadius: 12,
+              padding: "10px 14px",
+              color: C.red,
               fontFamily: NUNITO,
-              fontSize: 14,
+              fontSize: 13,
+              fontWeight: 700,
             }}
           >
-            ¿Ya tienes cuenta?{" "}
-            <button
-              type="button"
-              onClick={onIrALogin}
-              style={{
-                background: "none",
-                border: "none",
-                padding: 0,
-                color: "white",
-                fontFamily: NUNITO,
-                fontSize: 14,
-                fontWeight: 800,
-                textDecoration: "underline",
-                cursor: "pointer",
-              }}
-            >
-              Inicia sesión
-            </button>
+            {error}
           </div>
         )}
-      </div>
-    </div>
+
+        {aviso && (
+          <div
+            role="status"
+            style={{
+              background: C.greenBg,
+              border: `1.5px solid ${C.green}55`,
+              borderRadius: 12,
+              padding: "10px 14px",
+              color: C.green,
+              fontFamily: NUNITO,
+              fontSize: 13,
+              fontWeight: 700,
+            }}
+          >
+            {aviso}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={!canSubmit}
+          style={{
+            width: "100%",
+            background: "white",
+            border: `1.5px solid ${C.border}`,
+            borderRadius: 15,
+            padding: "14px 16px",
+            color: C.navy,
+            fontFamily: NUNITO,
+            fontSize: 15,
+            fontWeight: 800,
+            cursor: canSubmit ? "pointer" : "not-allowed",
+            opacity: canSubmit ? 1 : 0.7,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+            marginTop: 4,
+          }}
+        >
+          {loading ? "Creando cuenta..." : "Crear cuenta"}
+        </button>
+      </form>
+
+      {onIrALogin && (
+        <div
+          style={{
+            textAlign: "center",
+            marginTop: 22,
+            color: "rgba(255,255,255,0.75)",
+            fontFamily: NUNITO,
+            fontSize: 14,
+          }}
+        >
+          ¿Ya tienes cuenta?{" "}
+          <button
+            type="button"
+            onClick={onIrALogin}
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              color: "white",
+              fontFamily: NUNITO,
+              fontSize: 14,
+              fontWeight: 800,
+              textDecoration: "underline",
+              cursor: "pointer",
+            }}
+          >
+            Inicia sesión
+          </button>
+        </div>
+      )}
+    </PortadaAcceso>
   )
 }

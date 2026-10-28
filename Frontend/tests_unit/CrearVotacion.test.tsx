@@ -30,19 +30,18 @@ afterEach(() => {
 })
 
 describe('CrearVotacion', () => {
-  it('empieza con el tipo Fechas, dos opciones vacías y todos los miembros como votantes', async () => {
+  it('empieza con el tipo Fechas, dos opciones en blanco y todos los miembros como votantes', async () => {
     await abrir()
 
     expect(screen.getByRole('radio', { name: 'Fechas' }).getAttribute('aria-checked')).toBe('true')
     expect(screen.getByLabelText('Opción A')).toBeTruthy()
     expect(screen.getByLabelText('Opción B')).toBeTruthy()
     expect(screen.queryByLabelText('Opción C')).toBeNull()
-    // Con dos opciones no se puede quitar ninguna
-    expect(screen.queryByRole('button', { name: /Quitar opción/ })).toBeNull()
+    expect(screen.getByText(/Opcionales: puedes dejarlas en blanco/)).toBeTruthy()
     expect(screen.getByText('Todos los miembros del viaje')).toBeTruthy()
   })
 
-  it('permite añadir y quitar opciones, sin bajar de dos', async () => {
+  it('permite añadir opciones y quitarlas todas', async () => {
     const user = userEvent.setup()
     await abrir()
 
@@ -50,8 +49,33 @@ describe('CrearVotacion', () => {
     expect(screen.getByLabelText('Opción C')).toBeTruthy()
 
     await user.click(screen.getByRole('button', { name: 'Quitar opción C' }))
-    expect(screen.queryByLabelText('Opción C')).toBeNull()
-    expect(screen.queryByRole('button', { name: /Quitar opción/ })).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Quitar opción B' }))
+    await user.click(screen.getByRole('button', { name: 'Quitar opción A' }))
+    expect(screen.queryByLabelText(/^Opción [A-Z]$/)).toBeNull()
+  })
+
+  it('las opciones son opcionales: se crea sin ninguna y las filas en blanco no se envían', async () => {
+    const user = userEvent.setup()
+    const onCreada = vi.fn()
+    const { fetchMock } = await abrir({ onCreada })
+
+    await rellenar(user, '¿Dónde cenamos el sábado?', [])
+    await user.click(screen.getByRole('button', { name: 'Publicar votación' }))
+
+    await vi.waitFor(() => expect(onCreada).toHaveBeenCalled())
+    expect(enviada(fetchMock)).toEqual({ titulo: '¿Dónde cenamos el sábado?', tipo: 'fecha', opciones: [] })
+    expect(onCreada.mock.calls[0][0].opciones).toEqual([])
+  })
+
+  it('con una sola opción escrita se envía solo esa', async () => {
+    const user = userEvent.setup()
+    const { fetchMock } = await abrir({ onCreada: vi.fn() })
+
+    await rellenar(user, '¿Hotel?', ['Hotel Roma'])
+    await user.click(screen.getByRole('button', { name: 'Publicar votación' }))
+
+    await vi.waitFor(() => expect(llamadas(fetchMock, 'POST', '/votaciones')).toHaveLength(1))
+    expect(enviada(fetchMock).opciones).toEqual([{ texto: 'Hotel Roma', valor_fecha: null }])
   })
 
   it('publica la votación con la pregunta, el tipo y las opciones limpias', async () => {
@@ -104,7 +128,6 @@ describe('CrearVotacion', () => {
 
   for (const [caso, pregunta, opciones, mensaje] of [
     ['sin pregunta', '', ['Hotel', 'Apartamento'], 'Escribe la pregunta de la votación'],
-    ['con una opción vacía', '¿Dónde dormimos?', ['Hotel'], 'Ninguna opción puede quedar vacía'],
     ['con opciones repetidas', '¿Dónde dormimos?', ['Hotel', ' hotel '], 'Las opciones no se pueden repetir'],
   ] as const) {
     it(`no envía una votación ${caso}`, async () => {

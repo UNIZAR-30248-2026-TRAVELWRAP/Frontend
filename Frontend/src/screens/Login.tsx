@@ -1,5 +1,5 @@
 import { useState, type CSSProperties, type FormEvent } from "react"
-import appLogo from "../assets/travelwrap-logo.png"
+import PortadaAcceso from "../components/PortadaAcceso"
 
 const C = {
   navy: "#1A365D",
@@ -97,236 +97,180 @@ export default function Login({
   }
 
   return (
-    <div
-      style={{
-        background: `linear-gradient(160deg, ${C.navy} 0%, ${C.blue} 100%)`,
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        padding: "40px 24px",
-        boxSizing: "border-box",
-      }}
-    >
-      <div style={{ width: "100%", maxWidth: 420, margin: "0 auto" }}>
-        <div style={{ textAlign: "center", marginBottom: 36 }}>
-          <div
-            style={{
-              background: "white",
-              width: 92,
-              height: 92,
-              borderRadius: 24,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 16px",
-              boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
-              overflow: "hidden",
-            }}
-          >
-            <img
-              src={appLogo}
-              alt="Logo de TravelWrap"
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
-          </div>
-          <div
-            style={{
-              fontFamily: NUNITO,
-              fontSize: 32,
-              fontWeight: 800,
-              color: "white",
-              lineHeight: 1.15,
-            }}
-          >
-            TravelWrap
-          </div>
-          <div
-            style={{
-              color: "rgba(255,255,255,0.7)",
-              fontFamily: NUNITO,
-              marginTop: 8,
-              fontSize: 15,
-            }}
-          >
-            Organiza tus viajes en grupo
-          </div>
+    <PortadaAcceso titulo="TravelWrap" subtitulo="Organiza tus viajes en grupo">
+      <form
+        onSubmit={handleSubmit}
+        noValidate
+        style={{ display: "flex", flexDirection: "column", gap: 16 }}
+      >
+        <div>
+          <label htmlFor="login-email" style={labelStyle}>
+            Email
+          </label>
+          <input
+            id="login-email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="tu@email.com"
+            style={inputStyle}
+          />
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          noValidate
-          style={{ display: "flex", flexDirection: "column", gap: 16 }}
-        >
-          <div>
-            <label htmlFor="login-email" style={labelStyle}>
-              Email
-            </label>
-            <input
-              id="login-email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="tu@email.com"
-              style={inputStyle}
-            />
-          </div>
+        <div>
+          <label htmlFor="login-password" style={labelStyle}>
+            Contraseña
+          </label>
+          <input
+            id="login-password"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder="Tu contraseña"
+            style={inputStyle}
+          />
+        </div>
 
-          <div>
-            <label htmlFor="login-password" style={labelStyle}>
-              Contraseña
-            </label>
-            <input
-              id="login-password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="Tu contraseña"
-              style={inputStyle}
-            />
-          </div>
-
-          {error && (
-            <div
-              role="alert"
-              style={{
-                background: C.redBg,
-                border: `1.5px solid ${C.red}55`,
-                borderRadius: 12,
-                padding: "10px 14px",
-                color: C.red,
-                fontFamily: NUNITO,
-                fontSize: 13,
-                fontWeight: 700,
-              }}
-            >
-              {error}
-              {onReenviarConfirmacion && (
-                <div style={{ marginTop: 8 }}>
-                  <button
-                    type="button"
-                    onClick={onReenviarConfirmacion}
-                    disabled={loading}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      padding: 0,
-                      color: C.red,
-                      fontFamily: NUNITO,
-                      fontSize: 13,
-                      fontWeight: 800,
-                      textDecoration: "underline",
-                      cursor: loading ? "not-allowed" : "pointer",
-                    }}
-                  >
-                    Reenviar correo de confirmación
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {aviso && (
-            <div
-              role="status"
-              style={{
-                background: C.greenBg,
-                border: `1.5px solid ${C.green}55`,
-                borderRadius: 12,
-                padding: "10px 14px",
-                color: C.green,
-                fontFamily: NUNITO,
-                fontSize: 13,
-                fontWeight: 700,
-              }}
-            >
-              {aviso}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={!canSubmit}
+        {error && (
+          <div
+            role="alert"
             style={{
-              ...buttonStyle,
-              cursor: canSubmit ? "pointer" : "not-allowed",
-              opacity: canSubmit ? 1 : 0.7,
-              marginTop: 4,
-            }}
-          >
-            {loading ? "Entrando..." : "Iniciar sesión"}
-          </button>
-        </form>
-
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            margin: "20px 0",
-          }}
-        >
-          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.3)" }} />
-          <span
-            style={{
-              color: "rgba(255,255,255,0.7)",
+              background: C.redBg,
+              border: `1.5px solid ${C.red}55`,
+              borderRadius: 12,
+              padding: "10px 14px",
+              color: C.red,
               fontFamily: NUNITO,
               fontSize: 13,
               fontWeight: 700,
             }}
           >
-            o
-          </span>
-          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.3)" }} />
-        </div>
-
-        <button
-          type="button"
-          onClick={onGoogleLogin}
-          disabled={loading}
-          style={{
-            ...buttonStyle,
-            cursor: loading ? "not-allowed" : "pointer",
-            opacity: loading ? 0.7 : 1,
-          }}
-        >
-          <GoogleLogo />
-          Continuar con Google
-        </button>
-
-        {onIrARegistro && (
-          <div
-            style={{
-              textAlign: "center",
-              marginTop: 22,
-              color: "rgba(255,255,255,0.75)",
-              fontFamily: NUNITO,
-              fontSize: 14,
-            }}
-          >
-            ¿No tienes cuenta?{" "}
-            <button
-              type="button"
-              onClick={onIrARegistro}
-              style={{
-                background: "none",
-                border: "none",
-                padding: 0,
-                color: "white",
-                fontFamily: NUNITO,
-                fontSize: 14,
-                fontWeight: 800,
-                textDecoration: "underline",
-                cursor: "pointer",
-              }}
-            >
-              Regístrate
-            </button>
+            {error}
+            {onReenviarConfirmacion && (
+              <div style={{ marginTop: 8 }}>
+                <button
+                  type="button"
+                  onClick={onReenviarConfirmacion}
+                  disabled={loading}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    color: C.red,
+                    fontFamily: NUNITO,
+                    fontSize: 13,
+                    fontWeight: 800,
+                    textDecoration: "underline",
+                    cursor: loading ? "not-allowed" : "pointer",
+                  }}
+                >
+                  Reenviar correo de confirmación
+                </button>
+              </div>
+            )}
           </div>
         )}
+
+        {aviso && (
+          <div
+            role="status"
+            style={{
+              background: C.greenBg,
+              border: `1.5px solid ${C.green}55`,
+              borderRadius: 12,
+              padding: "10px 14px",
+              color: C.green,
+              fontFamily: NUNITO,
+              fontSize: 13,
+              fontWeight: 700,
+            }}
+          >
+            {aviso}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={!canSubmit}
+          style={{
+            ...buttonStyle,
+            cursor: canSubmit ? "pointer" : "not-allowed",
+            opacity: canSubmit ? 1 : 0.7,
+            marginTop: 4,
+          }}
+        >
+          {loading ? "Entrando..." : "Iniciar sesión"}
+        </button>
+      </form>
+
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          margin: "20px 0",
+        }}
+      >
+        <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.3)" }} />
+        <span
+          style={{
+            color: "rgba(255,255,255,0.7)",
+            fontFamily: NUNITO,
+            fontSize: 13,
+            fontWeight: 700,
+          }}
+        >
+          o
+        </span>
+        <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.3)" }} />
       </div>
-    </div>
+
+      <button
+        type="button"
+        onClick={onGoogleLogin}
+        disabled={loading}
+        style={{
+          ...buttonStyle,
+          cursor: loading ? "not-allowed" : "pointer",
+          opacity: loading ? 0.7 : 1,
+        }}
+      >
+        <GoogleLogo />
+        Continuar con Google
+      </button>
+
+      {onIrARegistro && (
+        <div
+          style={{
+            textAlign: "center",
+            marginTop: 22,
+            color: "rgba(255,255,255,0.75)",
+            fontFamily: NUNITO,
+            fontSize: 14,
+          }}
+        >
+          ¿No tienes cuenta?{" "}
+          <button
+            type="button"
+            onClick={onIrARegistro}
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              color: "white",
+              fontFamily: NUNITO,
+              fontSize: 14,
+              fontWeight: 800,
+              textDecoration: "underline",
+              cursor: "pointer",
+            }}
+          >
+            Regístrate
+          </button>
+        </div>
+      )}
+    </PortadaAcceso>
   )
 }

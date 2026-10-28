@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import AvatarStack from "../components/AvatarStack"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
@@ -8,6 +8,8 @@ import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { crearVotacion, type NuevaVotacion, type Votacion } from "../services/votacionesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
+import BotonVolver from "../components/BotonVolver"
+import { estiloCampo, estiloEtiqueta } from "../styles/formulario"
 
 type TipoCreable = NonNullable<NuevaVotacion["tipo"]>
 
@@ -20,7 +22,6 @@ const TIPOS: { tipo: TipoCreable; texto: string }[] = [
 
 const MAX_PREGUNTA = 200
 const MAX_OPCION = 100
-const MIN_OPCIONES = 2
 const MAX_OPCIONES = 20
 
 type OpcionEnEdicion = { texto: string; fecha: string }
@@ -30,37 +31,15 @@ const opcionVacia = (): OpcionEnEdicion => ({ texto: "", fecha: "" })
 // Opción A, B, C...
 const letra = (indice: number) => String.fromCharCode(65 + indice)
 
-const inputStyle: CSSProperties = {
-  width: "100%",
-  background: "white",
-  border: `1.5px solid ${C.border}`,
-  borderRadius: RADIUS.md,
-  padding: "13px 16px",
-  fontFamily: NUNITO,
-  fontSize: 16,
-  color: C.navy,
-  outline: "none",
-  boxSizing: "border-box",
-}
-
-const labelStyle: CSSProperties = {
-  fontFamily: NUNITO,
-  fontSize: 11,
-  fontWeight: 700,
-  color: C.muted,
-  letterSpacing: 0.8,
-  textTransform: "uppercase",
-  marginBottom: 6,
-  display: "block",
-}
-
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
 
 // Comprueba el formulario antes de enviarlo. Devuelve el motivo por el que no es válido, o "" si lo es
+// Opciones escritas: las filas en blanco no se envían (las opciones son opcionales y se pueden proponer después)
+const conTexto = (opciones: OpcionEnEdicion[]) => opciones.filter((o) => o.texto.trim() !== "")
+
 const validar = (pregunta: string, opciones: OpcionEnEdicion[]) => {
   if (pregunta.trim() === "") return "Escribe la pregunta de la votación"
-  const textos = opciones.map((o) => o.texto.trim())
-  if (textos.some((texto) => texto === "")) return "Ninguna opción puede quedar vacía"
+  const textos = conTexto(opciones).map((o) => o.texto.trim())
   if (new Set(textos.map((texto) => texto.toLowerCase())).size !== textos.length) {
     return "Las opciones no se pueden repetir"
   }
@@ -121,7 +100,7 @@ export default function CrearVotacion({ viajeId, tokenSesion, onVolver, onCreada
         {
           titulo: pregunta.trim(),
           tipo,
-          opciones: opciones.map((o) => ({
+          opciones: conTexto(opciones).map((o) => ({
             texto: o.texto.trim(),
             valor_fecha: tipo === "fecha" && o.fecha ? o.fecha : null,
           })),
@@ -141,25 +120,7 @@ export default function CrearVotacion({ viajeId, tokenSesion, onVolver, onCreada
         {/* Cabecera con el tipo de votación */}
         <div style={{ background: GRADIENTS.header, padding: "20px 20px 24px", borderRadius: RADIUS.header }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-            <button
-              type="button"
-              onClick={onVolver}
-              aria-label="Volver"
-              style={{
-                background: "rgba(255,255,255,0.18)",
-                border: "none",
-                borderRadius: 12,
-                width: 38,
-                height: 38,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                flexShrink: 0,
-              }}
-            >
-              <Icon name="arrow_left" size={20} color="white" strokeWidth={2.5} />
-            </button>
+            <BotonVolver onClick={onVolver} />
             <div>
               <div
                 style={{
@@ -212,7 +173,7 @@ export default function CrearVotacion({ viajeId, tokenSesion, onVolver, onCreada
 
         <form onSubmit={handleSubmit} noValidate style={{ padding: "20px 16px 32px" }}>
           <div style={{ marginBottom: 22 }}>
-            <label htmlFor="votacion-pregunta" style={labelStyle}>
+            <label htmlFor="votacion-pregunta" style={estiloEtiqueta}>
               Pregunta de la votación
             </label>
             <textarea
@@ -225,11 +186,14 @@ export default function CrearVotacion({ viajeId, tokenSesion, onVolver, onCreada
               maxLength={MAX_PREGUNTA}
               placeholder="Ej. ¿Qué fin de semana preferimos para el viaje?"
               rows={3}
-              style={{ ...inputStyle, resize: "none", lineHeight: 1.6 }}
+              style={{ ...estiloCampo, resize: "none", lineHeight: 1.6 }}
             />
           </div>
 
           <SectionLabel>Opciones de respuesta</SectionLabel>
+          <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, marginTop: -4, marginBottom: 12, lineHeight: 1.5 }}>
+            Opcionales: puedes dejarlas en blanco y que el grupo proponga opciones después.
+          </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 12 }}>
             {opciones.map((opcion, i) => (
               <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
@@ -260,7 +224,7 @@ export default function CrearVotacion({ viajeId, tokenSesion, onVolver, onCreada
                     onChange={(event) => cambiarOpcion(i, { texto: event.target.value })}
                     maxLength={MAX_OPCION}
                     placeholder={`Opción ${i + 1}`}
-                    style={inputStyle}
+                    style={estiloCampo}
                   />
                   {/* En las votaciones de fechas cada opción puede llevar su fecha */}
                   {tipo === "fecha" && (
@@ -269,11 +233,11 @@ export default function CrearVotacion({ viajeId, tokenSesion, onVolver, onCreada
                       aria-label={`Fecha de la opción ${letra(i)}`}
                       value={opcion.fecha}
                       onChange={(event) => cambiarOpcion(i, { fecha: event.target.value })}
-                      style={{ ...inputStyle, padding: "9px 14px", color: opcion.fecha ? C.navy : C.muted }}
+                      style={{ ...estiloCampo, padding: "9px 14px", color: opcion.fecha ? C.navy : C.muted }}
                     />
                   )}
                 </div>
-                {opciones.length > MIN_OPCIONES && (
+                {opciones.length > 0 && (
                   <button
                     type="button"
                     aria-label={`Quitar opción ${letra(i)}`}
