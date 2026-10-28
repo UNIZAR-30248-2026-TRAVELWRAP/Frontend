@@ -1,46 +1,13 @@
-import { useEffect, useState, type CSSProperties, type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import { ApiError } from "../services/authApi"
 import { editarViaje, obtenerViaje, type CambiosViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
+import BotonVolver from "../components/BotonVolver"
+import { estiloAlerta, estiloCampo, estiloEtiqueta } from "../styles/formulario"
 
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
-
-const inputStyle: CSSProperties = {
-  width: "100%",
-  background: "white",
-  border: `1.5px solid ${C.border}`,
-  borderRadius: RADIUS.md,
-  padding: "13px 16px",
-  fontFamily: NUNITO,
-  fontSize: 16,
-  color: C.navy,
-  outline: "none",
-  boxSizing: "border-box",
-}
-
-const labelStyle: CSSProperties = {
-  fontFamily: NUNITO,
-  fontSize: 11,
-  fontWeight: 700,
-  color: C.muted,
-  letterSpacing: 0.8,
-  textTransform: "uppercase",
-  marginBottom: 6,
-  display: "block",
-}
-
-const alertaStyle: CSSProperties = {
-  background: C.redBg,
-  border: `1.5px solid ${C.red}55`,
-  borderRadius: 12,
-  padding: "10px 14px",
-  color: C.red,
-  fontFamily: NUNITO,
-  fontSize: 13,
-  fontWeight: 700,
-}
 
 type Formulario = {
   nombre: string
@@ -145,24 +112,7 @@ export default function EditarViaje({ viajeId, tokenSesion, onVolver, onGuardado
         {/* Cabecera */}
         <div style={{ background: GRADIENTS.header, padding: "20px 20px 24px", borderRadius: RADIUS.header }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <button
-              type="button"
-              onClick={onVolver}
-              aria-label="Volver"
-              style={{
-                background: "rgba(255,255,255,0.18)",
-                border: "none",
-                borderRadius: 12,
-                width: 38,
-                height: 38,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-              }}
-            >
-              <Icon name="arrow_left" size={20} color="white" strokeWidth={2.5} />
-            </button>
+            <BotonVolver onClick={onVolver} />
             <div>
               <Heading size={22} color="white">
                 Editar viaje
@@ -176,13 +126,13 @@ export default function EditarViaje({ viajeId, tokenSesion, onVolver, onGuardado
 
         <div style={{ padding: "22px 16px 32px" }}>
           {errorCarga && (
-            <div role="alert" style={alertaStyle}>
+            <div role="alert" style={estiloAlerta}>
               No se ha podido cargar el viaje: {errorCarga}
             </div>
           )}
 
           {viaje && !editable && (
-            <div role="alert" style={alertaStyle}>
+            <div role="alert" style={estiloAlerta}>
               {viaje.rol !== "creador"
                 ? "Solo el creador del viaje puede editar sus datos"
                 : "El viaje está cerrado y ya no se puede modificar"}
@@ -192,7 +142,7 @@ export default function EditarViaje({ viajeId, tokenSesion, onVolver, onGuardado
           {formulario && viaje && editable && (
             <form onSubmit={handleSubmit} noValidate style={{ display: "flex", flexDirection: "column", gap: 18 }}>
               <div>
-                <label htmlFor="editar-nombre" style={labelStyle}>
+                <label htmlFor="editar-nombre" style={estiloEtiqueta}>
                   Nombre del viaje
                 </label>
                 <input
@@ -200,13 +150,13 @@ export default function EditarViaje({ viajeId, tokenSesion, onVolver, onGuardado
                   value={formulario.nombre}
                   onChange={(event) => cambiar("nombre")(event.target.value)}
                   placeholder="Ej. Escapada de primavera"
-                  style={inputStyle}
+                  style={estiloCampo}
                 />
               </div>
 
               {viaje.destino !== null && (
                 <div>
-                  <label htmlFor="editar-destino" style={labelStyle}>
+                  <label htmlFor="editar-destino" style={estiloEtiqueta}>
                     Destino
                   </label>
                   <input
@@ -214,7 +164,7 @@ export default function EditarViaje({ viajeId, tokenSesion, onVolver, onGuardado
                     value={formulario.destino}
                     onChange={(event) => cambiar("destino")(event.target.value)}
                     placeholder="Ciudad o país"
-                    style={inputStyle}
+                    style={estiloCampo}
                   />
                 </div>
               )}
@@ -222,7 +172,7 @@ export default function EditarViaje({ viajeId, tokenSesion, onVolver, onGuardado
               <div>
                 <div style={{ display: "flex", gap: 10 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <label htmlFor="editar-fecha-inicio" style={labelStyle}>
+                    <label htmlFor="editar-fecha-inicio" style={estiloEtiqueta}>
                       Fecha de inicio
                     </label>
                     <input
@@ -230,11 +180,11 @@ export default function EditarViaje({ viajeId, tokenSesion, onVolver, onGuardado
                       type="date"
                       value={formulario.fechaInicio}
                       onChange={(event) => cambiar("fechaInicio")(event.target.value)}
-                      style={{ ...inputStyle, padding: "13px 10px" }}
+                      style={{ ...estiloCampo, padding: "13px 10px" }}
                     />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <label htmlFor="editar-fecha-fin" style={labelStyle}>
+                    <label htmlFor="editar-fecha-fin" style={estiloEtiqueta}>
                       Fecha de fin
                     </label>
                     <input
@@ -245,7 +195,7 @@ export default function EditarViaje({ viajeId, tokenSesion, onVolver, onGuardado
                       onChange={(event) => cambiar("fechaFin")(event.target.value)}
                       aria-invalid={avisoFechas !== ""}
                       aria-describedby={avisoFechas ? "editar-fechas-aviso" : undefined}
-                      style={{ ...inputStyle, padding: "13px 10px" }}
+                      style={{ ...estiloCampo, padding: "13px 10px" }}
                     />
                   </div>
                 </div>
@@ -261,7 +211,7 @@ export default function EditarViaje({ viajeId, tokenSesion, onVolver, onGuardado
               </div>
 
               <div>
-                <label htmlFor="editar-presupuesto" style={labelStyle}>
+                <label htmlFor="editar-presupuesto" style={estiloEtiqueta}>
                   Presupuesto total (€)
                 </label>
                 <input
@@ -271,7 +221,7 @@ export default function EditarViaje({ viajeId, tokenSesion, onVolver, onGuardado
                   value={formulario.presupuesto}
                   onChange={(event) => cambiar("presupuesto")(event.target.value)}
                   placeholder="0"
-                  style={inputStyle}
+                  style={estiloCampo}
                 />
               </div>
 
@@ -292,7 +242,7 @@ export default function EditarViaje({ viajeId, tokenSesion, onVolver, onGuardado
               </div>
 
               {error && (
-                <div role="alert" style={alertaStyle}>
+                <div role="alert" style={estiloAlerta}>
                   {error}
                 </div>
               )}

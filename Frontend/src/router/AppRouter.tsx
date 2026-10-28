@@ -163,8 +163,8 @@ function RutaCrearVotacion({ sesion }: { sesion: Sesion }) {
   const navigate = useNavigate();
   const location = useLocation();
   const volverALaLista = () => {
-    if (location.key === "default") navigate(`/viajes/${viajeId}/votaciones`, { replace: true });
-    else navigate(-1);
+    if (location.key === "default") void navigate(`/viajes/${viajeId}/votaciones`, { replace: true });
+    else void navigate(-1);
   };
   return (
     <CrearVotacion

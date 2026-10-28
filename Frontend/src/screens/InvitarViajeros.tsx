@@ -5,6 +5,7 @@ import { ApiError } from "../services/authApi"
 import { obtenerEnlaceInvitacion } from "../services/invitacionesApi"
 import { obtenerViaje } from "../services/viajesApi"
 import { aMiembro } from "../utils/formatoViaje"
+import BotonVolver from "../components/BotonVolver"
 
 // ─── Tokens de diseño ──────────────────────────────────
 const C = {
@@ -164,15 +165,6 @@ export default function InvitarViajeros({ viajeId, tokenSesion, onBack }: Invita
     }
   }, [viajeId, tokenSesion])
 
-  useEffect(() => {
-    if (!qrAmpliado) return
-    const cerrarConEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setQrAmpliado(false)
-    }
-    window.addEventListener("keydown", cerrarConEscape)
-    return () => window.removeEventListener("keydown", cerrarConEscape)
-  }, [qrAmpliado])
-
   const handleCopy = async () => {
     if (!datos) return
     try {
@@ -206,24 +198,7 @@ export default function InvitarViajeros({ viajeId, tokenSesion, onBack }: Invita
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <button
-              type="button"
-              onClick={onBack}
-              aria-label="Volver"
-              style={{
-                background: "rgba(255,255,255,0.18)",
-                border: "none",
-                borderRadius: 12,
-                width: 38,
-                height: 38,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-              }}
-            >
-              <Icon name="arrow_left" size={20} color="white" strokeWidth={2.5} />
-            </button>
+            <BotonVolver onClick={onBack} />
             <div>
               <SectionLabel>
                 <span style={{ color: "rgba(255,255,255,0.55)" }}>{nombreViaje}</span>
@@ -420,7 +395,12 @@ export default function InvitarViajeros({ viajeId, tokenSesion, onBack }: Invita
       {/* Popup con el QR ampliado */}
       {qrAmpliado && (
         <div
-          onClick={() => setQrAmpliado(false)}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setQrAmpliado(false)
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setQrAmpliado(false)
+          }}
           style={{
             position: "fixed",
             inset: 0,
@@ -436,7 +416,6 @@ export default function InvitarViajeros({ viajeId, tokenSesion, onBack }: Invita
             role="dialog"
             aria-modal="true"
             aria-label="Codigo QR del viaje"
-            onClick={(e) => e.stopPropagation()}
             style={{
               ...cardStyle,
               position: "relative",

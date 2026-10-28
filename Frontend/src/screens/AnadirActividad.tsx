@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import SectionLabel from "../components/SectionLabel"
@@ -17,43 +17,10 @@ import { ApiError } from "../services/authApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { diasDelItinerario } from "../utils/formatoViaje"
+import BotonVolver from "../components/BotonVolver"
+import { estiloAlerta, estiloCampo, estiloEtiqueta } from "../styles/formulario"
 
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
-
-const inputStyle: CSSProperties = {
-  width: "100%",
-  background: "white",
-  border: `1.5px solid ${C.border}`,
-  borderRadius: 14,
-  padding: "13px 16px",
-  fontFamily: NUNITO,
-  fontSize: 16,
-  color: C.navy,
-  outline: "none",
-  boxSizing: "border-box",
-}
-
-const labelStyle: CSSProperties = {
-  fontFamily: NUNITO,
-  fontSize: 11,
-  fontWeight: 700,
-  color: C.muted,
-  letterSpacing: 0.8,
-  textTransform: "uppercase",
-  marginBottom: 6,
-  display: "block",
-}
-
-const alertaStyle: CSSProperties = {
-  background: C.redBg,
-  border: `1.5px solid ${C.red}55`,
-  borderRadius: 12,
-  padding: "10px 14px",
-  color: C.red,
-  fontFamily: NUNITO,
-  fontSize: 13,
-  fontWeight: 700,
-}
 
 type AnadirActividadProps = {
   viajeId: string
@@ -235,25 +202,7 @@ export default function AnadirActividad({
       <div style={{ maxWidth: 480, margin: "0 auto" }}>
         <div style={{ background: GRADIENTS.header, padding: "20px 20px 24px", borderRadius: RADIUS.header }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: dias.length > 0 ? 16 : 0 }}>
-            <button
-              type="button"
-              onClick={onVolver}
-              aria-label="Volver"
-              style={{
-                background: "rgba(255,255,255,0.18)",
-                border: "none",
-                borderRadius: 12,
-                width: 38,
-                height: 38,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                flexShrink: 0,
-              }}
-            >
-              <Icon name="arrow_left" size={20} color="white" strokeWidth={2.5} />
-            </button>
+            <BotonVolver onClick={onVolver} />
             <div style={{ minWidth: 0 }}>
               <SectionLabel>
                 <span style={{ color: "rgba(255,255,255,0.55)" }}>
@@ -300,13 +249,13 @@ export default function AnadirActividad({
 
         <div style={{ padding: "20px 16px 32px" }}>
           {errorCarga && (
-            <div role="alert" style={alertaStyle}>
+            <div role="alert" style={estiloAlerta}>
               No se ha podido cargar el viaje: {errorCarga}
             </div>
           )}
 
           {viaje && !editable && (
-            <div role="alert" style={alertaStyle}>
+            <div role="alert" style={estiloAlerta}>
               {edicion
                 ? "El viaje está cerrado y ya no se pueden modificar actividades"
                 : "El viaje está cerrado y ya no se pueden añadir actividades"}
@@ -316,7 +265,7 @@ export default function AnadirActividad({
           {viaje && editable && (!edicion || original !== null) && (
             <form onSubmit={handleSubmit} noValidate>
               <div style={{ marginBottom: 16 }}>
-                <label htmlFor="actividad-titulo" style={labelStyle}>
+                <label htmlFor="actividad-titulo" style={estiloEtiqueta}>
                   Nombre de la actividad
                 </label>
                 <input
@@ -325,13 +274,13 @@ export default function AnadirActividad({
                   maxLength={200}
                   onChange={(event) => setTitulo(event.target.value)}
                   placeholder="Ej. Visita al Coliseo"
-                  style={inputStyle}
+                  style={estiloCampo}
                 />
               </div>
 
               {dias.length === 0 && (
                 <div style={{ marginBottom: 16 }}>
-                  <label htmlFor="actividad-fecha" style={labelStyle}>
+                  <label htmlFor="actividad-fecha" style={estiloEtiqueta}>
                     Fecha
                   </label>
                   <input
@@ -339,13 +288,13 @@ export default function AnadirActividad({
                     type="date"
                     value={fecha}
                     onChange={(event) => setFecha(event.target.value)}
-                    style={inputStyle}
+                    style={estiloCampo}
                   />
                 </div>
               )}
 
               <div style={{ marginBottom: 16 }}>
-                <label htmlFor="actividad-lugar" style={labelStyle}>
+                <label htmlFor="actividad-lugar" style={estiloEtiqueta}>
                   Lugar / Dirección
                 </label>
                 <div style={{ display: "flex", gap: 8 }}>
@@ -356,10 +305,10 @@ export default function AnadirActividad({
                     onKeyDown={(event) => {
                       if (event.key !== "Enter" || !onBuscarDirecciones) return
                       event.preventDefault()
-                      handleBuscar()
+                      void handleBuscar()
                     }}
                     placeholder="Ej. Piazza del Colosseo"
-                    style={{ ...inputStyle, flex: 1, minWidth: 0, width: "auto" }}
+                    style={{ ...estiloCampo, flex: 1, minWidth: 0, width: "auto" }}
                   />
                   {onBuscarDirecciones && (
                     <button
@@ -393,7 +342,7 @@ export default function AnadirActividad({
                 )}
 
                 {errorBusqueda && (
-                  <div role="alert" style={{ ...alertaStyle, marginTop: 8 }}>
+                  <div role="alert" style={{ ...estiloAlerta, marginTop: 8 }}>
                     {errorBusqueda}
                   </div>
                 )}
@@ -485,7 +434,7 @@ export default function AnadirActividad({
 
               <div style={{ display: "flex", gap: 10, marginBottom: avisoHoras ? 6 : 24 }}>
                 <div style={{ flex: 1 }}>
-                  <label htmlFor="actividad-hora" style={labelStyle}>
+                  <label htmlFor="actividad-hora" style={estiloEtiqueta}>
                     Hora
                   </label>
                   <input
@@ -493,11 +442,11 @@ export default function AnadirActividad({
                     type="time"
                     value={hora}
                     onChange={(event) => setHora(event.target.value)}
-                    style={inputStyle}
+                    style={estiloCampo}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label htmlFor="actividad-hora-fin" style={labelStyle}>
+                  <label htmlFor="actividad-hora-fin" style={estiloEtiqueta}>
                     Hasta (opcional)
                   </label>
                   <input
@@ -509,7 +458,7 @@ export default function AnadirActividad({
                     onChange={(event) => setHoraFin(event.target.value)}
                     aria-invalid={avisoHoras !== ""}
                     aria-describedby={avisoHoras ? "actividad-horas-aviso" : undefined}
-                    style={{ ...inputStyle, opacity: hora === "" ? 0.6 : 1 }}
+                    style={{ ...estiloCampo, opacity: hora === "" ? 0.6 : 1 }}
                   />
                 </div>
               </div>
@@ -524,7 +473,7 @@ export default function AnadirActividad({
               )}
 
               <div style={{ marginBottom: 24 }}>
-                <span id="actividad-tipo" style={labelStyle}>
+                <span id="actividad-tipo" style={estiloEtiqueta}>
                   Tipo (opcional)
                 </span>
                 <div role="group" aria-labelledby="actividad-tipo" style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -560,7 +509,7 @@ export default function AnadirActividad({
               </div>
 
               {error && (
-                <div role="alert" style={{ ...alertaStyle, marginBottom: 16 }}>
+                <div role="alert" style={{ ...estiloAlerta, marginBottom: 16 }}>
                   {error}
                 </div>
               )}

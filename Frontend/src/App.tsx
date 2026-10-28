@@ -50,14 +50,14 @@ export default function App() {
   useEffect(() => {
     const guardada = guardadaAlAbrir
     if (!guardada) return
-    renovarSesion(guardada).finally(() => setComprobando(false))
+    void renovarSesion(guardada).finally(() => setComprobando(false))
   }, [guardadaAlAbrir, renovarSesion])
 
   useEffect(() => {
     if (!sinVerificar) return
     const alVolverLaRed = () => {
       const guardada = leerSesion()
-      if (guardada) renovarSesion(guardada)
+      if (guardada) void renovarSesion(guardada)
     }
     window.addEventListener("online", alVolverLaRed)
     return () => window.removeEventListener("online", alVolverLaRed)

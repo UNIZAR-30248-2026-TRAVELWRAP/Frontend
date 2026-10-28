@@ -19,10 +19,10 @@ export default function AuthCallback({ onSesion, onError }: AuthCallbackProps) {
     const resultado = leerResultadoGoogle(window.location.hash)
     if ("sesion" in resultado) {
       onSesion(resultado.sesion)
-      navigate(rutaTrasLogin(), { replace: true })
+      void navigate(rutaTrasLogin(), { replace: true })
     } else {
       onError(resultado.error)
-      navigate("/login", { replace: true })
+      void navigate("/login", { replace: true })
     }
   }, [navigate, onSesion, onError])
 

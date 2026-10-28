@@ -141,7 +141,7 @@ export default function MisViajes({
     ...(mostrarEjemplos ? [VIAJE_ACTIVO_DEMO] : []),
   ]
   const anteriores = [
-    ...viajes.filter((v) => v.estado === "finalizado").map(aTarjetaAnterior),
+    ...viajes.filter((v) => v.estado === "finalizado").map((viaje, indice) => aTarjetaAnterior(viaje, indice)),
     ...(mostrarEjemplos ? VIAJES_ANTERIORES_DEMO : []),
   ]
   const sinViajes = !cargando && !error && activos.length === 0 && anteriores.length === 0

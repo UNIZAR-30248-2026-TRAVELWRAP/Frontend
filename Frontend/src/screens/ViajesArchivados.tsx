@@ -8,6 +8,7 @@ import { ApiError } from "../services/authApi"
 import { eliminarViaje, listarViajes, type ViajeDelUsuario } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { formatearFechasAnterior, formatearImporte } from "../utils/formatoViaje"
+import BotonVolver from "../components/BotonVolver"
 
 const ICONOS = ["map", "route", "flight"]
 
@@ -68,24 +69,7 @@ export default function ViajesArchivados({ tokenSesion, onVolver, onVerViaje }: 
         {/* Cabecera */}
         <div style={{ background: GRADIENTS.header, padding: "20px 20px 26px", borderRadius: RADIUS.header }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <button
-              type="button"
-              onClick={onVolver}
-              aria-label="Volver"
-              style={{
-                background: "rgba(255,255,255,0.18)",
-                border: "none",
-                borderRadius: 12,
-                width: 38,
-                height: 38,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-              }}
-            >
-              <Icon name="arrow_left" size={20} color="white" strokeWidth={2.5} />
-            </button>
+            <BotonVolver onClick={onVolver} />
             <div>
               <Heading size={22} color="white">
                 Viajes archivados

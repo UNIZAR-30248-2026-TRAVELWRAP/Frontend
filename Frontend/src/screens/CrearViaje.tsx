@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type FormEvent } from "react"
+import { useState, type FormEvent } from "react"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import SectionLabel from "../components/SectionLabel"
@@ -6,6 +6,8 @@ import { ApiError } from "../services/authApi"
 import { crearViaje, type Viaje } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { sugerirNombreViaje } from "../utils/formatoViaje"
+import BotonVolver from "../components/BotonVolver"
+import { estiloCampo, estiloEtiqueta } from "../styles/formulario"
 
 type ModoDestino = "votar" | "elegido"
 
@@ -14,30 +16,6 @@ const MODOS_DESTINO: { modo: ModoDestino; texto: string; icono: string }[] = [
   { modo: "votar", texto: "Votar destino", icono: "vote" },
   { modo: "elegido", texto: "Destino ya elegido", icono: "pin" },
 ]
-
-const inputStyle: CSSProperties = {
-  width: "100%",
-  background: "white",
-  border: `1.5px solid ${C.border}`,
-  borderRadius: RADIUS.md,
-  padding: "13px 16px",
-  fontFamily: NUNITO,
-  fontSize: 16,
-  color: C.navy,
-  outline: "none",
-  boxSizing: "border-box",
-}
-
-const labelStyle: CSSProperties = {
-  fontFamily: NUNITO,
-  fontSize: 11,
-  fontWeight: 700,
-  color: C.muted,
-  letterSpacing: 0.8,
-  textTransform: "uppercase",
-  marginBottom: 6,
-  display: "block",
-}
 
 // ─── Pantalla: Nuevo viaje ────────────────────────────────────────────────────
 type CrearViajeProps = {
@@ -109,24 +87,7 @@ export default function CrearViaje({ tokenSesion, onBack, onCreated }: CrearViaj
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <button
-              type="button"
-              onClick={onBack}
-              aria-label="Volver"
-              style={{
-                background: "rgba(255,255,255,0.18)",
-                border: "none",
-                borderRadius: 12,
-                width: 38,
-                height: 38,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-              }}
-            >
-              <Icon name="arrow_left" size={20} color="white" strokeWidth={2.5} />
-            </button>
+            <BotonVolver onClick={onBack} />
             <Heading size={22} color="white">
               Nuevo Viaje
             </Heading>
@@ -135,7 +96,7 @@ export default function CrearViaje({ tokenSesion, onBack, onCreated }: CrearViaj
 
         <form onSubmit={handleSubmit} noValidate style={{ padding: "20px 16px 32px" }}>
           <div style={{ marginBottom: 16 }}>
-            <label htmlFor="viaje-nombre" style={labelStyle}>
+            <label htmlFor="viaje-nombre" style={estiloEtiqueta}>
               Nombre del viaje
             </label>
             <input
@@ -143,13 +104,13 @@ export default function CrearViaje({ tokenSesion, onBack, onCreated }: CrearViaj
               value={nombre}
               onChange={(event) => setNombre(event.target.value)}
               placeholder="Ej. Verano 2027"
-              style={inputStyle}
+              style={estiloCampo}
             />
           </div>
 
           <div style={{ display: "flex", gap: 10, marginBottom: avisoFechas ? 6 : 16 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <label htmlFor="viaje-fecha-inicio" style={labelStyle}>
+              <label htmlFor="viaje-fecha-inicio" style={estiloEtiqueta}>
                 Fecha inicio
               </label>
               <input
@@ -157,11 +118,11 @@ export default function CrearViaje({ tokenSesion, onBack, onCreated }: CrearViaj
                 type="date"
                 value={fechaInicio}
                 onChange={(event) => setFechaInicio(event.target.value)}
-                style={{ ...inputStyle, padding: "13px 10px" }}
+                style={{ ...estiloCampo, padding: "13px 10px" }}
               />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <label htmlFor="viaje-fecha-fin" style={labelStyle}>
+              <label htmlFor="viaje-fecha-fin" style={estiloEtiqueta}>
                 Fecha fin
               </label>
               <input
@@ -172,7 +133,7 @@ export default function CrearViaje({ tokenSesion, onBack, onCreated }: CrearViaj
                 onChange={(event) => setFechaFin(event.target.value)}
                 aria-invalid={avisoFechas !== ""}
                 aria-describedby={avisoFechas ? "viaje-fechas-aviso" : undefined}
-                style={{ ...inputStyle, padding: "13px 10px" }}
+                style={{ ...estiloCampo, padding: "13px 10px" }}
               />
             </div>
           </div>
@@ -193,7 +154,7 @@ export default function CrearViaje({ tokenSesion, onBack, onCreated }: CrearViaj
           )}
 
           <div style={{ marginBottom: 22 }}>
-            <label htmlFor="viaje-presupuesto" style={labelStyle}>
+            <label htmlFor="viaje-presupuesto" style={estiloEtiqueta}>
               Presupuesto estimado (€)
             </label>
             <input
@@ -203,7 +164,7 @@ export default function CrearViaje({ tokenSesion, onBack, onCreated }: CrearViaj
               value={presupuesto}
               onChange={(event) => setPresupuesto(event.target.value)}
               placeholder="Ej. 850"
-              style={inputStyle}
+              style={estiloCampo}
             />
           </div>
 
@@ -250,7 +211,7 @@ export default function CrearViaje({ tokenSesion, onBack, onCreated }: CrearViaj
                 value={destino}
                 onChange={(event) => setDestino(event.target.value)}
                 placeholder="Ciudad o país"
-                style={inputStyle}
+                style={estiloCampo}
               />
             </div>
           )}

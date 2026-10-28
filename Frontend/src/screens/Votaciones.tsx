@@ -19,6 +19,7 @@ import { escucharVotaciones } from "../services/votacionesTiempoReal"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
 import { conPorcentajes, enumerar, opcionesGanadoras } from "../utils/votaciones"
+import BotonVolver from "../components/BotonVolver"
 
 const FILTROS: { texto: string; tipo: TipoVotacion | null }[] = [
   { texto: "Todas", tipo: null },
@@ -145,24 +146,7 @@ export default function Votaciones({ viajeId, tokenSesion, onVolver, onCrearVota
         {/* Cabecera con filtros */}
         <div style={{ background: GRADIENTS.header, padding: "20px 20px 22px", borderRadius: RADIUS.header }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-            <button
-              type="button"
-              onClick={onVolver}
-              aria-label="Volver"
-              style={{
-                background: "rgba(255,255,255,0.18)",
-                border: "none",
-                borderRadius: 12,
-                width: 38,
-                height: 38,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-              }}
-            >
-              <Icon name="arrow_left" size={20} color="white" strokeWidth={2.5} />
-            </button>
+            <BotonVolver onClick={onVolver} />
             <Heading size={22} color="white">
               Votaciones
             </Heading>
