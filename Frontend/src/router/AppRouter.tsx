@@ -16,6 +16,7 @@ import Votaciones from "../screens/Votaciones";
 import CrearVotacion from "../screens/CrearVotacion";
 import ElegirDestino from "../screens/ElegirDestino";
 import AnadirActividad from "../screens/AnadirActividad";
+import AnadirGasto from "../screens/AnadirGasto";
 import Itinerario from "../screens/Itinerario";
 import { buscarDirecciones } from "../services/actividadesApi";
 import type { SeccionViaje } from "../components/BarraInferior";
@@ -236,6 +237,23 @@ function RutaEditarActividad({ sesion }: { sesion: Sesion }) {
   );
 }
 
+// Al registrar el gasto (o al volver) se regresa al inicio del viaje, sin dejar el formulario en el historial
+function RutaAnadirGasto({ sesion }: { sesion: Sesion }) {
+  const { viajeId = "" } = useParams();
+  const navigate = useNavigate();
+  const volverAlViaje = () => navigate(`/viajes/${viajeId}`, { replace: true });
+  return (
+    <AnadirGasto
+      key={viajeId}
+      viajeId={viajeId}
+      tokenSesion={sesion.token}
+      usuarioId={sesion.usuario.id}
+      onVolver={volverAlViaje}
+      onRegistrado={volverAlViaje}
+    />
+  );
+}
+
 // Viaje pendiente de destino. Al fijarlo (o si ya lo tenía) se pasa al inicio del viaje
 function RutaElegirDestino({ sesion }: { sesion: Sesion }) {
   const { viajeId = "" } = useParams();
@@ -368,6 +386,12 @@ export default function AppRouter({
         <Route
           path="/viajes/:viajeId/actividades/nueva"
           element={session ? <RutaAnadirActividad sesion={session} /> : <Navigate to="/login" replace />}
+        />
+
+        {/* Registrar un gasto compartido del viaje (privada) */}
+        <Route
+          path="/viajes/:viajeId/gastos/nuevo"
+          element={session ? <RutaAnadirGasto sesion={session} /> : <Navigate to="/login" replace />}
         />
 
         {/* Votación del destino de un viaje que aún no lo tiene (privada) */}

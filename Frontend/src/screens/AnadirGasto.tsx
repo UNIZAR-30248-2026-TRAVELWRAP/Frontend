@@ -4,21 +4,11 @@ import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import SectionLabel from "../components/SectionLabel"
 import { ApiError } from "../services/authApi"
+import { crearGasto, type CategoriaGasto, type Gasto } from "../services/gastosApi"
 import { obtenerViaje, type MiembroDelViaje } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
 import { conEuros, leerImporte, repartirAPartesIguales } from "../utils/gastos"
-
-export type CategoriaGasto = "comida" | "transporte" | "entradas" | "alojamiento" | "ocio" | "otros"
-
-// Datos que espera POST /viajes/:viajeId/gastos
-export type NuevoGasto = {
-  concepto: string
-  importe: number
-  categoria: CategoriaGasto
-  pagado_por: string
-  participantes: string[]
-}
 
 const CATEGORIAS: { categoria: CategoriaGasto; icono: string; texto: string }[] = [
   { categoria: "comida", icono: "restaurant", texto: "Comida" },
@@ -73,10 +63,10 @@ type AnadirGastoProps = {
   // Usuario de la sesión: por defecto es quien ha pagado
   usuarioId: string
   onVolver?: () => void
-  onRegistrar?: (gasto: NuevoGasto) => Promise<void>
+  onRegistrado?: (gasto: Gasto) => void
 }
 
-export default function AnadirGasto({ viajeId, tokenSesion, usuarioId, onVolver, onRegistrar }: AnadirGastoProps) {
+export default function AnadirGasto({ viajeId, tokenSesion, usuarioId, onVolver, onRegistrado }: AnadirGastoProps) {
   const [miembros, setMiembros] = useState<MiembroDelViaje[]>([])
   const [cargando, setCargando] = useState(true)
   const [importe, setImporte] = useState("")
@@ -134,16 +124,21 @@ export default function AnadirGasto({ viajeId, tokenSesion, usuarioId, onVolver,
     setEnviando(true)
     setError("")
     try {
-      await onRegistrar?.({
-        concepto: concepto.trim(),
-        importe: importeValido as number,
-        categoria,
-        pagado_por: pagadoPor,
-        participantes,
-      })
+      const gasto = await crearGasto(
+        viajeId,
+        {
+          concepto: concepto.trim(),
+          importe: importeValido as number,
+          categoria,
+          pagado_por: pagadoPor,
+          participantes,
+        },
+        tokenSesion,
+      )
+      onRegistrado?.(gasto)
     } catch (e) {
+      // El backend explica el motivo (viaje cerrado, alguien que ya no es miembro...)
       setError(mensajeDeError(e))
-    } finally {
       setEnviando(false)
     }
   }
