@@ -73,21 +73,28 @@ export default function Votaciones({ viajeId, tokenSesion, onVolver, onCrearVota
   }, [viajeId, tokenSesion])
 
   // Tiempo real: cuando cambia una votación (votos, opciones, cierre) se vuelve a pedir solo esa; si es nueva,
-  // la lista entera. El aviso no trae los datos para que cada uno reciba su propio «mi_voto»
+  // la lista entera. Si se une alguien al viaje, el viaje y todas las votaciones, porque cambia quién puede votar.
+  // El aviso no trae los datos para que cada uno reciba su propio «mi_voto»
   useEffect(
     () =>
       escucharVotaciones(viajeId, tokenSesion, (cambio) => {
-        const pedida =
-          cambio.motivo === "creada"
-            ? listarVotaciones(viajeId, tokenSesion).then(({ votaciones: lista }) => setVotaciones(lista))
-            : obtenerVotacion(viajeId, cambio.votacion_id, tokenSesion).then((actualizada) =>
-                setVotaciones((lista) => {
-                  if (lista === null) return lista
-                  return lista.some((v) => v.id === actualizada.id)
-                    ? lista.map((v) => (v.id === actualizada.id ? actualizada : v))
-                    : [actualizada, ...lista]
-                }),
-              )
+        const recargarLista = () =>
+          listarVotaciones(viajeId, tokenSesion).then(({ votaciones: lista }) => setVotaciones(lista))
+        let pedida: Promise<unknown>
+        if (cambio.motivo === "miembros") {
+          pedida = Promise.all([obtenerViaje(viajeId, tokenSesion).then(setViaje), recargarLista()])
+        } else if (cambio.motivo === "creada") {
+          pedida = recargarLista()
+        } else {
+          pedida = obtenerVotacion(viajeId, cambio.votacion_id, tokenSesion).then((actualizada) =>
+            setVotaciones((lista) => {
+              if (lista === null) return lista
+              return lista.some((v) => v.id === actualizada.id)
+                ? lista.map((v) => (v.id === actualizada.id ? actualizada : v))
+                : [actualizada, ...lista]
+            }),
+          )
+        }
         pedida.catch((e) => setError(mensajeDeError(e)))
       }),
     [viajeId, tokenSesion],
