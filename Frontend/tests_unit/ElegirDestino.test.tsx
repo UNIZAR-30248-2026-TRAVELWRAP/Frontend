@@ -184,3 +184,21 @@ describe('ElegirDestino en tiempo real', () => {
     expect(onDestinoFijado).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('ElegirDestino · miembros nuevos', () => {
+  it('quien se une al viaje aparece sin recargar y ya no han votado todos', async () => {
+    const { estado } = await abrir({
+      votaciones: [destino({ opciones: [opcion('praga', 'Praga')], votos: { u1: 'praga', u2: 'praga', u3: 'praga' } })],
+    })
+    expect(await screen.findByText('3/3')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Fijar «Praga» como destino' })).toHaveProperty('disabled', false)
+
+    estado.viaje = { ...estado.viaje, miembros: [...estado.viaje.miembros, { usuario_id: 'u4', nombre: 'Carla', avatar_url: null, rol: 'miembro' as const }] }
+    await avisarCambio({ motivo: 'miembros' })
+
+    expect(await screen.findByText('3/4')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Fijar «Praga» como destino' })).toHaveProperty('disabled', true)
+    // La cabecera muestra 3 avatares y el resto como «+N»: el cuarto miembro aparece en el contador
+    expect(screen.getAllByLabelText('1 miembros más').length).toBeGreaterThan(0)
+  })
+})

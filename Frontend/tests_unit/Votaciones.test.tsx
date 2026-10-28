@@ -241,3 +241,22 @@ describe('Votaciones · proponer opciones', () => {
     expect(screen.queryByLabelText('Proponer opción')).toBeNull()
   })
 })
+
+describe('Votaciones · miembros nuevos', () => {
+  it('cuando se une alguien al viaje cuenta para el recuento y el creador ya no puede cerrar', async () => {
+    const { estado } = await abrir({
+      viaje: viajeConDestino,
+      votaciones: [{ ...fechas(), votos: { u1: 'mayo-12', u2: 'mayo-12', u3: 'mayo-19' } }],
+    })
+    const abierta = screen.getByRole('region', { name: PREGUNTA_ABIERTA })
+    expect(within(abierta).getByText('3/3')).toBeTruthy()
+    expect(within(abierta).getByRole('button', { name: 'Cerrar votación' })).toHaveProperty('disabled', false)
+
+    estado.viaje = { ...estado.viaje, miembros: [...estado.viaje.miembros, { usuario_id: 'u4', nombre: 'Carla', avatar_url: null, rol: 'miembro' as const }] }
+    await avisarCambio({ motivo: 'miembros' })
+
+    expect(await within(abierta).findByText('3/4')).toBeTruthy()
+    expect(within(abierta).getByRole('button', { name: 'Cerrar votación' })).toHaveProperty('disabled', true)
+    expect(within(abierta).getByText('Podrás cerrarla cuando hayan votado todos los miembros.')).toBeTruthy()
+  })
+})

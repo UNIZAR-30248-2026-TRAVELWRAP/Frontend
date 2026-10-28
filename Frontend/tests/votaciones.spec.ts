@@ -311,6 +311,11 @@ test.describe('Votaciones en tiempo real', () => {
     await expect(roma).toContainText('1 voto');
     await expect(page.getByRole('radio', { name: /Praga/ })).toContainText('0 votos');
 
+    // Se une Daniel con el enlace: aparece sin recargar y ya no han votado todos
+    viaje.miembros.push({ usuario_id: 'u3', nombre: 'Daniel', avatar_url: null, rol: 'miembro' });
+    servidor.avisar({ viaje_id: 'verano', motivo: 'miembros' });
+    await expect(page.getByText('1/3')).toBeVisible();
+
     // El creador fija Roma: quien está en «Elegir destino» pasa solo al inicio del viaje
     Object.assign(viaje, { destino: 'Roma', pendiente_destino: false });
     servidor.avisar({ viaje_id: 'verano', votacion_id: 'destino', motivo: 'cerrada', destino: 'Roma' });
