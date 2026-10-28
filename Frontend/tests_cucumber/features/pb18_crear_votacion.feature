@@ -31,6 +31,15 @@ Característica: Crear una votación (PB-18)
     Entonces estoy en las votaciones del viaje
     Y el servidor ha recibido la votación "¿Qué visitamos el primer día?" de tipo "actividad" con 3 opciones
 
+  Escenario: Crear una votación sin opciones para que el grupo las proponga después
+    Cuando abro las votaciones del viaje "Roma 2027"
+    Y pulso el botón "Crear nueva votación"
+    Y escribo la pregunta "¿Dónde cenamos el sábado?"
+    Y pulso el botón "Publicar votación"
+    Entonces estoy en las votaciones del viaje
+    Y veo el texto "Todavía no hay opciones. Propón la primera."
+    Y el servidor ha recibido la votación "¿Dónde cenamos el sábado?" de tipo "fecha" con 0 opciones
+
   Escenario: No se puede crear una votación sin pregunta
     Cuando abro las votaciones del viaje "Roma 2027"
     Y pulso el botón "Crear nueva votación"

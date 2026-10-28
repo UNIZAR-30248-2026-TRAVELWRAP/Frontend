@@ -5,12 +5,14 @@ import DialogoConfirmacion from "../components/DialogoConfirmacion"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import OpcionVotacion from "../components/OpcionVotacion"
+import ProponerOpcion from "../components/ProponerOpcion"
 import { ApiError } from "../services/authApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import {
   cerrarVotacion,
   listarVotaciones,
   obtenerVotacion,
+  proponerOpcion,
   votar,
   type TipoVotacion,
   type Votacion,
@@ -270,6 +272,12 @@ export default function Votaciones({ viajeId, tokenSesion, onVolver, onCrearVota
                   )}
                 </div>
 
+                {opciones.length === 0 && (
+                  <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 13, marginBottom: 14, lineHeight: 1.5 }}>
+                    Todavía no hay opciones. Propón la primera.
+                  </div>
+                )}
+
                 <div role="radiogroup" aria-label="Opciones">
                   {opciones.map((opcion) => (
                     <OpcionVotacion
@@ -383,6 +391,19 @@ export default function Votaciones({ viajeId, tokenSesion, onVolver, onCrearVota
                 {editable && esCreador && !votacion.todos_han_votado && (
                   <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, marginTop: 10, textAlign: "center" }}>
                     Podrás cerrarla cuando hayan votado todos los miembros.
+                  </div>
+                )}
+
+                {/* Cualquier miembro propone opciones mientras la votación está abierta */}
+                {editable && (
+                  <div style={{ marginTop: 14 }}>
+                    <ProponerOpcion
+                      etiqueta="Proponer opción"
+                      placeholder="Ej. Otro fin de semana, otra actividad..."
+                      existentes={votacion.opciones.map((o) => o.texto)}
+                      avisoRepetida="Esa opción ya está propuesta"
+                      onProponer={async (texto) => reemplazar(await proponerOpcion(viajeId, votacion.id, { texto }, tokenSesion))}
+                    />
                   </div>
                 )}
               </section>

@@ -1,8 +1,9 @@
-import { useEffect, useState, type FormEvent } from "react"
+import { useEffect, useState } from "react"
 import AvatarStack from "../components/AvatarStack"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import OpcionVotacion from "../components/OpcionVotacion"
+import ProponerOpcion from "../components/ProponerOpcion"
 import { ApiError } from "../services/authApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import {
@@ -17,8 +18,6 @@ import { escucharVotaciones } from "../services/votacionesTiempoReal"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
 import { conPorcentajes, enumerar, opcionesGanadoras } from "../utils/votaciones"
-
-const MAX_DESTINO = 100
 
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
 
@@ -38,9 +37,6 @@ export default function ElegirDestino({ viajeId, tokenSesion, onVolver, onInvita
   const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
   const [votacion, setVotacion] = useState<Votacion | null>(null)
   const [error, setError] = useState("")
-  const [nuevoDestino, setNuevoDestino] = useState("")
-  const [avisoPropuesta, setAvisoPropuesta] = useState("")
-  const [proponiendo, setProponiendo] = useState(false)
   const [votando, setVotando] = useState(false)
   const [errorVoto, setErrorVoto] = useState("")
   const [confirmando, setConfirmando] = useState(false)
@@ -100,31 +96,6 @@ export default function ElegirDestino({ viajeId, tokenSesion, onVolver, onInvita
   const todosHanVotado = votacion?.todos_han_votado ?? false
   const puedeFijar = todosHanVotado && ganadoras.length > 0
   const miVoto = votacion?.mi_voto ?? null
-  const puedeProponer = nuevoDestino.trim() !== "" && !proponiendo
-
-  const proponer = async (event: FormEvent) => {
-    event.preventDefault()
-    const texto = nuevoDestino.trim()
-    if (!texto || !votacion) return
-    if (texto.length > MAX_DESTINO) {
-      setAvisoPropuesta(`El destino tiene un máximo de ${MAX_DESTINO} caracteres`)
-      return
-    }
-    if (votacion.opciones.some((o) => o.texto.toLowerCase() === texto.toLowerCase())) {
-      setAvisoPropuesta("Ese destino ya está propuesto")
-      return
-    }
-    setProponiendo(true)
-    try {
-      setVotacion(await proponerOpcion(viajeId, votacion.id, { texto }, tokenSesion))
-      setNuevoDestino("")
-      setAvisoPropuesta("")
-    } catch (e) {
-      setAvisoPropuesta(mensajeDeError(e))
-    } finally {
-      setProponiendo(false)
-    }
-  }
 
   // Al tocar un destino se vota (o se cambia el voto) directamente
   const votarDestino = async (opcionId: string) => {
@@ -348,73 +319,15 @@ export default function ElegirDestino({ viajeId, tokenSesion, onVolver, onInvita
                 </div>
 
                 {/* Proponer destino */}
-                <form onSubmit={proponer} style={{ borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
-                  <label
-                    htmlFor="nuevo-destino"
-                    style={{
-                      display: "block",
-                      color: C.muted,
-                      fontSize: 10,
-                      fontWeight: 700,
-                      fontFamily: NUNITO,
-                      letterSpacing: 1,
-                      textTransform: "uppercase",
-                      marginBottom: 8,
-                    }}
-                  >
-                    Proponer destino
-                  </label>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <input
-                      id="nuevo-destino"
-                      value={nuevoDestino}
-                      onChange={(event) => {
-                        setNuevoDestino(event.target.value)
-                        setAvisoPropuesta("")
-                      }}
-                      placeholder="Ej. Berlín, Estambul..."
-                      style={{
-                        flex: 1,
-                        minWidth: 0,
-                        background: C.bg,
-                        border: `1.5px solid ${C.border}`,
-                        borderRadius: 12,
-                        padding: "10px 14px",
-                        fontFamily: NUNITO,
-                        fontSize: 16,
-                        color: C.navy,
-                        outline: "none",
-                      }}
-                    />
-                    <button
-                      type="submit"
-                      disabled={!puedeProponer}
-                      style={{
-                        background: C.blue,
-                        color: "white",
-                        border: "none",
-                        borderRadius: 12,
-                        padding: "10px 14px",
-                        cursor: puedeProponer ? "pointer" : "not-allowed",
-                        opacity: puedeProponer ? 1 : 0.6,
-                        fontFamily: NUNITO,
-                        fontWeight: 700,
-                        fontSize: 13,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 5,
-                      }}
-                    >
-                      <Icon name="plus" size={14} color="white" strokeWidth={2.5} />
-                      Añadir
-                    </button>
-                  </div>
-                  {avisoPropuesta && (
-                    <div role="alert" style={{ fontFamily: NUNITO, color: C.red, fontSize: 12, fontWeight: 700, marginTop: 8 }}>
-                      {avisoPropuesta}
-                    </div>
-                  )}
-                </form>
+                {votacion && (
+                  <ProponerOpcion
+                    etiqueta="Proponer destino"
+                    placeholder="Ej. Berlín, Estambul..."
+                    existentes={votacion.opciones.map((o) => o.texto)}
+                    avisoRepetida="Ese destino ya está propuesto"
+                    onProponer={async (texto) => setVotacion(await proponerOpcion(viajeId, votacion.id, { texto }, tokenSesion))}
+                  />
+                )}
               </section>
 
               {/* Fijar destino: solo el creador */}

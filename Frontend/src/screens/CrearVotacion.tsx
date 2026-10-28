@@ -22,7 +22,6 @@ const TIPOS: { tipo: TipoCreable; texto: string }[] = [
 
 const MAX_PREGUNTA = 200
 const MAX_OPCION = 100
-const MIN_OPCIONES = 2
 const MAX_OPCIONES = 20
 
 type OpcionEnEdicion = { texto: string; fecha: string }
@@ -35,10 +34,12 @@ const letra = (indice: number) => String.fromCharCode(65 + indice)
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
 
 // Comprueba el formulario antes de enviarlo. Devuelve el motivo por el que no es válido, o "" si lo es
+// Opciones escritas: las filas en blanco no se envían (las opciones son opcionales y se pueden proponer después)
+const conTexto = (opciones: OpcionEnEdicion[]) => opciones.filter((o) => o.texto.trim() !== "")
+
 const validar = (pregunta: string, opciones: OpcionEnEdicion[]) => {
   if (pregunta.trim() === "") return "Escribe la pregunta de la votación"
-  const textos = opciones.map((o) => o.texto.trim())
-  if (textos.some((texto) => texto === "")) return "Ninguna opción puede quedar vacía"
+  const textos = conTexto(opciones).map((o) => o.texto.trim())
   if (new Set(textos.map((texto) => texto.toLowerCase())).size !== textos.length) {
     return "Las opciones no se pueden repetir"
   }
@@ -99,7 +100,7 @@ export default function CrearVotacion({ viajeId, tokenSesion, onVolver, onCreada
         {
           titulo: pregunta.trim(),
           tipo,
-          opciones: opciones.map((o) => ({
+          opciones: conTexto(opciones).map((o) => ({
             texto: o.texto.trim(),
             valor_fecha: tipo === "fecha" && o.fecha ? o.fecha : null,
           })),
@@ -190,6 +191,9 @@ export default function CrearVotacion({ viajeId, tokenSesion, onVolver, onCreada
           </div>
 
           <SectionLabel>Opciones de respuesta</SectionLabel>
+          <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, marginTop: -4, marginBottom: 12, lineHeight: 1.5 }}>
+            Opcionales: puedes dejarlas en blanco y que el grupo proponga opciones después.
+          </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 12 }}>
             {opciones.map((opcion, i) => (
               <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
@@ -233,7 +237,7 @@ export default function CrearVotacion({ viajeId, tokenSesion, onVolver, onCreada
                     />
                   )}
                 </div>
-                {opciones.length > MIN_OPCIONES && (
+                {opciones.length > 0 && (
                   <button
                     type="button"
                     aria-label={`Quitar opción ${letra(i)}`}

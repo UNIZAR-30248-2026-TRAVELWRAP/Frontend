@@ -205,3 +205,39 @@ describe('Votaciones en tiempo real', () => {
     expect(screen.queryByRole('button', { name: 'Emitir voto' })).toBeNull()
   })
 })
+
+describe('Votaciones · proponer opciones', () => {
+  it('en una votación sin opciones se propone la primera y ya se puede votar', async () => {
+    const user = userEvent.setup()
+    const vacia: VotacionGuardada = { ...fechas(), opciones: [], votos: {} }
+    const { fetchMock } = await abrir({ viaje: viajeConDestino, votaciones: [vacia] })
+    const abierta = screen.getByRole('region', { name: PREGUNTA_ABIERTA })
+    expect(within(abierta).getByText('Todavía no hay opciones. Propón la primera.')).toBeTruthy()
+
+    await user.type(within(abierta).getByLabelText('Proponer opción'), '  2 – 5 junio ')
+    await user.click(within(abierta).getByRole('button', { name: 'Añadir' }))
+
+    expect(await within(abierta).findByRole('radio', { name: /2 – 5 junio/ })).toBeTruthy()
+    expect(within(abierta).queryByText('Todavía no hay opciones. Propón la primera.')).toBeNull()
+    const [[, peticion]] = llamadas(fetchMock, 'POST', '/votaciones/fechas/opciones')
+    expect(JSON.parse(peticion?.body as string)).toEqual({ texto: '2 – 5 junio' })
+  })
+
+  it('no deja proponer una opción repetida', async () => {
+    const user = userEvent.setup()
+    const { fetchMock } = await abrir()
+    const abierta = screen.getByRole('region', { name: PREGUNTA_ABIERTA })
+
+    await user.type(within(abierta).getByLabelText('Proponer opción'), '12 – 15 MAYO')
+    await user.click(within(abierta).getByRole('button', { name: 'Añadir' }))
+
+    expect(within(abierta).getByRole('alert').textContent).toBe('Esa opción ya está propuesta')
+    expect(llamadas(fetchMock, 'POST', '/votaciones/fechas/opciones')).toHaveLength(0)
+  })
+
+  it('en un viaje archivado no se pueden proponer opciones', async () => {
+    await abrir({ viaje: { ...viajeConDestino, estado: 'archivado' }, votaciones: [fechas()] })
+
+    expect(screen.queryByLabelText('Proponer opción')).toBeNull()
+  })
+})
