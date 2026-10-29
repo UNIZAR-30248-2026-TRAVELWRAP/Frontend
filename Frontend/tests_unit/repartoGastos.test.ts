@@ -1,6 +1,13 @@
 // Test unitario de las funciones de reparto de gastos
 import { describe, expect, it } from 'vitest'
-import { conEuros, leerImporte, repartirAPartesIguales } from '../src/utils/gastos'
+import {
+  CATEGORIAS_GASTO,
+  conEuros,
+  fechaDelGasto,
+  iconoDeCategoriaGasto,
+  leerImporte,
+  repartirAPartesIguales,
+} from '../src/utils/gastos'
 
 describe('leerImporte', () => {
   it.each([
@@ -47,5 +54,34 @@ describe('conEuros', () => {
   it('muestra dos decimales con coma y el símbolo del euro', () => {
     expect(conEuros(3.5)).toBe('3,50 €')
     expect(conEuros(3.34)).toBe('3,34 €')
+  })
+})
+
+describe('fechaDelGasto', () => {
+  it.each([
+    ['2027-05-12', '12 may'],
+    ['2027-01-01', '1 ene'],
+    ['2026-12-31', '31 dic'],
+  ])('muestra %s como «%s»', (fecha, texto) => {
+    expect(fechaDelGasto(fecha)).toBe(texto)
+  })
+})
+
+describe('categorías de gasto', () => {
+  it('son las seis del backend, en el orden del prototipo', () => {
+    expect(CATEGORIAS_GASTO.map((c) => c.categoria)).toEqual([
+      'comida',
+      'transporte',
+      'entradas',
+      'alojamiento',
+      'ocio',
+      'otros',
+    ])
+  })
+
+  it('cada categoría tiene su icono', () => {
+    expect(iconoDeCategoriaGasto('comida')).toBe('restaurant')
+    expect(iconoDeCategoriaGasto('transporte')).toBe('flight')
+    expect(iconoDeCategoriaGasto('otros')).toBe('document')
   })
 })

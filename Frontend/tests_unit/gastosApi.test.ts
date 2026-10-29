@@ -1,7 +1,7 @@
 // Test unitario de la función crearGasto de gastosApi.ts
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../src/services/authApi'
-import { crearGasto, type NuevoGasto } from '../src/services/gastosApi'
+import { crearGasto, listarGastos, type NuevoGasto } from '../src/services/gastosApi'
 
 const VIAJE_ID = '123e4567-e89b-12d3-a456-426614174000'
 const ADRIANA = 'df77cba6-4be5-4cbc-814b-1e228dd73dcc'
@@ -86,5 +86,35 @@ describe('gastosApi · crear gasto', () => {
 
     expect(error).toBeInstanceOf(ApiError)
     expect((error as ApiError).codigo).toBe('sin_conexion')
+  })
+})
+
+describe('gastosApi · listar gastos', () => {
+  it('pide el historial con GET a /viajes/:id/gastos y devuelve los gastos y el total', async () => {
+    const lista = { gastos: [{ id: 'g1', concepto: 'Cena', importe: 60.5 }], total: 60.5 }
+    const fetchMock = vi.fn(() => respuesta(200, lista))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const resultado = await listarGastos(VIAJE_ID, 'token-acceso')
+
+    expect(resultado).toEqual(lista)
+    const [url, opciones] = llamada(fetchMock)
+    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/gastos$`))
+    expect(opciones.method).toBe('GET')
+    expect(opciones.headers.Authorization).toBe('Bearer token-acceso')
+    expect(opciones.body).toBeUndefined()
+  })
+
+  it('propaga el 404 de un viaje que no existe o del que no se es miembro', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => respuesta(404, { error: { codigo: 'viaje_no_encontrado', mensaje: 'El viaje no existe o no perteneces a él' } })),
+    )
+
+    const error = await listarGastos(VIAJE_ID, 'token-acceso').catch((e: unknown) => e)
+
+    expect(error).toBeInstanceOf(ApiError)
+    expect((error as ApiError).estado).toBe(404)
+    expect((error as ApiError).codigo).toBe('viaje_no_encontrado')
   })
 })

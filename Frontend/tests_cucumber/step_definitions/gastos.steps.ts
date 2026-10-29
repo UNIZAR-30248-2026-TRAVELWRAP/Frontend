@@ -18,23 +18,38 @@ type GastoRecibido = {
   participantes: string[];
 };
 
+type GastoGuardado = GastoRecibido & { fecha: string };
+
 // Gastos que ha recibido el backend simulado en cada escenario
 let gastos: GastoRecibido[] = [];
+// Gastos que ya tenía el viaje al empezar el escenario
+let previos: GastoGuardado[] = [];
 let rechazaPorViajeCerrado = false;
 
 Before(() => {
   gastos = [];
+  previos = [];
   rechazaPorViajeCerrado = false;
 });
+
+// Fecha de los gastos registrados en el escenario: posterior a la de los previos, así que salen primero
+const FECHA_NUEVOS = '2027-05-15';
+
+// Historial como lo devuelve el backend: del más reciente al más antiguo, con el total sumado en céntimos
+const historial = () => {
+  const nuevos = gastos.map((gasto) => ({ ...gasto, fecha: FECHA_NUEVOS })).reverse();
+  const anteriores = [...previos].sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const lista = [...nuevos, ...anteriores].map((gasto, i) => ({ id: `gasto-${i + 1}`, ...gasto, repartos: [] }));
+  const total = lista.reduce((suma, gasto) => suma + Math.round(gasto.importe * 100), 0) / 100;
+  return { gastos: lista, total };
+};
 
 // Se registra después de la ruta de viajes, así que tiene prioridad para /viajes/:id/gastos
 const simularGastos = async () => {
   await paginaActual().route('**/api/viajes/*/gastos', (route) => {
     // Historial de Control de Gastos con lo registrado en el escenario
     if (route.request().method() === 'GET') {
-      const lista = gastos.map((gasto, i) => ({ id: `gasto-${i + 1}`, fecha: '2027-05-12', ...gasto, repartos: [] }));
-      const total = lista.reduce((suma, gasto) => suma + Math.round(gasto.importe * 100), 0) / 100;
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ gastos: lista, total }) });
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(historial()) });
     }
     if (rechazaPorViajeCerrado) {
       return route.fulfill({
@@ -115,4 +130,43 @@ Then(
 
 Then('el servidor no ha guardado ningún gasto', () => {
   expect(gastos).toEqual([]);
+});
+
+// Historial (PB-24)
+
+// Filas del historial de Control de Gastos
+const filasDelHistorial = () =>
+  paginaActual().getByRole('list', { name: 'Historial de gastos' }).getByRole('listitem');
+
+Given(
+  'que en el viaje {string} hay un gasto {string} de {float} pagado por {string} el {string}',
+  (viaje: string, concepto: string, importe: number, pagador: string, fecha: string) => {
+    expect(idDelViaje(viaje), `el viaje "${viaje}" no está preparado`).toBeDefined();
+    previos.push({ concepto, importe, categoria: 'comida', pagado_por: ID_DE[pagador], participantes: [], fecha });
+  },
+);
+
+When('abro el control de gastos del viaje {string}', async (nombre: string) => {
+  const id = idDelViaje(nombre);
+  expect(id, `el viaje "${nombre}" no está preparado`).toBeDefined();
+  await simularGastos();
+  await paginaActual().goto(new URL(`/viajes/${id}/gastos`, paginaActual().url()).toString());
+  await expect(paginaActual().getByRole('region', { name: 'Total gastado' })).toBeVisible();
+});
+
+Then('el total gastado es {string}', async (total: string) => {
+  await expect(paginaActual().getByRole('region', { name: 'Total gastado' })).toContainText(total);
+});
+
+// Conceptos separados por comas, en el orden en que deben aparecer
+Then('veo en el historial de gastos, por este orden, {string}', async (conceptos: string) => {
+  const esperados = conceptos.split(', ');
+  await expect(filasDelHistorial()).toHaveCount(esperados.length);
+  for (const [i, concepto] of esperados.entries()) {
+    await expect(filasDelHistorial().nth(i)).toContainText(concepto);
+  }
+});
+
+Then('el gasto {string} lo pagó {string} el {string}', async (concepto: string, pagador: string, fecha: string) => {
+  await expect(filasDelHistorial().filter({ hasText: concepto })).toContainText(`Pagó ${pagador} · ${fecha}`);
 });

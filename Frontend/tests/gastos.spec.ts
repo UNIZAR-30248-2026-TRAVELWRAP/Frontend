@@ -211,3 +211,111 @@ test.describe('Añadir gasto', () => {
     await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}/gastos$`));
   });
 });
+
+// Control de Gastos
+
+const gastoGuardado = (datos: Record<string, unknown>) => ({
+  id: 'g1',
+  viaje_id: VIAJE_ID,
+  concepto: 'Cena en el Trastevere',
+  importe: 60.5,
+  categoria: 'comida',
+  pagado_por: USUARIO_ID,
+  fecha: '2027-05-12',
+  creado_por: USUARIO_ID,
+  creado_en: '2026-10-29T10:00:00Z',
+  actualizado_en: '2026-10-29T10:00:00Z',
+  repartos: [],
+  ...datos,
+});
+
+// Backend con historial: guarda en memoria los gastos que se registran y los devuelve en GET, el más reciente
+// primero, con su total. Se registra después de la ruta general, así que tiene prioridad para /gastos
+const simularHistorial = async (page: Page, iniciales: Record<string, unknown>[], datosViaje: Record<string, unknown> = {}) => {
+  const gastos = iniciales.map(gastoGuardado);
+  await page.route('**/api/viajes/**', (route) => {
+    const peticion = route.request();
+    const ruta = new URL(peticion.url()).pathname.replace(/^.*\/api/, '');
+    if (ruta !== `/viajes/${VIAJE_ID}/gastos`) return json(route, 200, { ...viaje, ...datosViaje });
+    if (peticion.method() === 'POST') {
+      gastos.unshift(gastoGuardado({ id: `g${gastos.length + 1}`, ...peticion.postDataJSON() }));
+      return json(route, 201, gastos[0]);
+    }
+    const total = gastos.reduce((suma, g) => suma + Math.round((g.importe as number) * 100), 0) / 100;
+    return json(route, 200, { gastos, total });
+  });
+};
+
+const rutaControl = `/viajes/${VIAJE_ID}/gastos`;
+const historial = (page: Page) => page.getByRole('list', { name: 'Historial de gastos' }).getByRole('listitem');
+
+test.describe('Control de Gastos', () => {
+  test('muestra el total gastado y el historial con quién pagó, fecha e importe', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularHistorial(page, [
+      { id: 'g2', concepto: 'Taxi al aeropuerto', importe: 35, categoria: 'transporte', pagado_por: BERTA_ID, fecha: '2027-05-13' },
+      { id: 'g1' },
+    ]);
+
+    await page.goto(rutaControl);
+
+    await expect(page.getByRole('region', { name: 'Total gastado' })).toContainText('95,50 €');
+    await expect(historial(page)).toHaveCount(2);
+    await expect(historial(page).nth(0)).toContainText('Taxi al aeropuerto');
+    await expect(historial(page).nth(0)).toContainText('Pagó Berta · 13 may');
+    await expect(historial(page).nth(0)).toContainText('35,00 €');
+    await expect(historial(page).nth(1)).toContainText('Cena en el Trastevere');
+    await expect(historial(page).nth(1)).toContainText('Pagó Adriana · 12 may');
+    await expect(page.getByRole('button', { name: 'Gastos' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  test('sin gastos muestra el aviso y un total de 0', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularHistorial(page, []);
+
+    await page.goto(rutaControl);
+
+    await expect(page.getByText('Todavía no hay gastos en este viaje.')).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Total gastado' })).toContainText('0,00 €');
+  });
+
+  test('un gasto registrado desde Control de Gastos aparece el primero y suma al total', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularHistorial(page, [{ id: 'g1' }]);
+
+    await page.goto(rutaControl);
+    await page.getByRole('button', { name: 'Añadir Gasto' }).click();
+    await expect(page).toHaveURL(new RegExp(`${rutaFormulario}$`));
+    await page.getByLabel('Importe').fill('12,34');
+    await page.getByLabel('Concepto').fill('Entradas del Coliseo');
+    await page.getByRole('button', { name: 'Registrar gasto' }).click();
+
+    await expect(page).toHaveURL(new RegExp(`${rutaControl}$`));
+    await expect(historial(page)).toHaveCount(2);
+    await expect(historial(page).nth(0)).toContainText('Entradas del Coliseo');
+    await expect(page.getByRole('region', { name: 'Total gastado' })).toContainText('72,84 €');
+  });
+
+  test('la pestaña Gastos de la barra inferior abre Control de Gastos desde el itinerario', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularHistorial(page, [{ id: 'g1' }]);
+    await page.route(`**/api/viajes/${VIAJE_ID}/actividades*`, (route) => json(route, 200, { actividades: [] }));
+
+    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
+    await page.getByRole('button', { name: 'Gastos' }).click();
+
+    await expect(page).toHaveURL(new RegExp(`${rutaControl}$`));
+    await expect(historial(page)).toHaveCount(1);
+  });
+
+  test('en un viaje archivado se consultan los gastos pero no se pueden añadir', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularHistorial(page, [{ id: 'g1' }], { estado: 'archivado' });
+
+    await page.goto(rutaControl);
+
+    await expect(historial(page)).toHaveCount(1);
+    await expect(page.getByRole('button', { name: 'Añadir Gasto' })).toHaveCount(0);
+    await expect(page.getByText(/se pueden consultar sus gastos, pero ya no se pueden añadir/)).toBeVisible();
+  });
+});
