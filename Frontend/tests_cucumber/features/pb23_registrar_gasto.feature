@@ -15,7 +15,7 @@ Característica: Registrar un gasto compartido (PB-23)
     Entonces la parte de "Berta" es "30,25 €"
     Y la parte de "Adriana" es "30,25 €"
     Cuando pulso el botón "Registrar gasto"
-    Entonces estoy en el inicio del viaje
+    Entonces estoy en el control de gastos del viaje
     Y el servidor ha guardado el gasto "Cena en el Trastevere" de 60.5 pagado por "Adriana" entre "Berta, Adriana"
 
   Escenario: Registrar un gasto que ha pagado otra persona y solo me corresponde a mí
@@ -24,7 +24,7 @@ Característica: Registrar un gasto compartido (PB-23)
     Y elijo que ha pagado "Berta"
     Y quito del reparto a "Berta"
     Y pulso el botón "Registrar gasto"
-    Entonces estoy en el inicio del viaje
+    Entonces estoy en el control de gastos del viaje
     Y el servidor ha guardado el gasto "Entradas del Coliseo" de 12 pagado por "Berta" entre "Adriana"
 
   Escenario: No se puede registrar un gasto con un importe no válido

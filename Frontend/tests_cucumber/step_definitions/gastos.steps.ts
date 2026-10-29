@@ -27,9 +27,15 @@ Before(() => {
   rechazaPorViajeCerrado = false;
 });
 
-// Se registra después de la ruta de viajes, así que tiene prioridad para POST /viajes/:id/gastos
+// Se registra después de la ruta de viajes, así que tiene prioridad para /viajes/:id/gastos
 const simularGastos = async () => {
   await paginaActual().route('**/api/viajes/*/gastos', (route) => {
+    // Historial de Control de Gastos con lo registrado en el escenario
+    if (route.request().method() === 'GET') {
+      const lista = gastos.map((gasto, i) => ({ id: `gasto-${i + 1}`, fecha: '2027-05-12', ...gasto, repartos: [] }));
+      const total = lista.reduce((suma, gasto) => suma + Math.round(gasto.importe * 100), 0) / 100;
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ gastos: lista, total }) });
+    }
     if (rechazaPorViajeCerrado) {
       return route.fulfill({
         status: 409,
@@ -81,6 +87,11 @@ When('quito del reparto a {string}', async (nombre: string) => {
 
 Then('la parte de {string} es {string}', async (nombre: string, parte: string) => {
   await expect(filaDelReparto(nombre).getByText(/€$/)).toHaveText(parte);
+});
+
+Then('estoy en el control de gastos del viaje', async () => {
+  await expect(paginaActual()).toHaveURL(/\/viajes\/viaje-\d+\/gastos$/);
+  await expect(paginaActual().getByText('Control de Gastos', { exact: true })).toBeVisible();
 });
 
 Then('sigo en la pantalla de añadir gasto', async () => {

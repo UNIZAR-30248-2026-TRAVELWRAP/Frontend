@@ -73,6 +73,10 @@ const simularBackend = async (
     const peticion = route.request();
     const ruta = new URL(peticion.url()).pathname.replace(/^.*\/api/, '');
 
+    // Control de Gastos, al que se vuelve después de registrar
+    if (ruta === `/viajes/${VIAJE_ID}/gastos` && peticion.method() === 'GET') {
+      return json(route, 200, { gastos: [], total: 0 });
+    }
     if (ruta === `/viajes/${VIAJE_ID}/gastos` && peticion.method() === 'POST') {
       const cuerpo = peticion.postDataJSON();
       recibidos.push({ cabecera: peticion.headers()['authorization'], cuerpo });
@@ -92,7 +96,7 @@ const parteDe = (page: Page, nombre: string) =>
   page.locator('label').filter({ has: page.getByLabel(`Dividir con ${nombre}`) }).getByText(/€$/);
 
 test.describe('Añadir gasto', () => {
-  test('se registra un gasto dividido entre todos y se vuelve al viaje', async ({ page }) => {
+  test('se registra un gasto dividido entre todos y se vuelve a Control de Gastos', async ({ page }) => {
     await entrarConSesion(page);
     const { recibidos } = await simularBackend(page);
 
@@ -102,7 +106,7 @@ test.describe('Añadir gasto', () => {
     await page.getByLabel('Concepto').fill('Cena en el Trastevere');
     await page.getByRole('button', { name: 'Registrar gasto' }).click();
 
-    await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}$`));
+    await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}/gastos$`));
     expect(recibidos).toHaveLength(1);
     expect(recibidos[0].cabecera).toBe('Bearer token-acceso');
     expect(recibidos[0].cuerpo).toEqual({
@@ -126,7 +130,7 @@ test.describe('Añadir gasto', () => {
     await page.getByLabel('Dividir con Daniel').uncheck();
     await page.getByRole('button', { name: 'Registrar gasto' }).click();
 
-    await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}$`));
+    await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}/gastos$`));
     expect(recibidos[0].cuerpo).toEqual({
       concepto: 'Taxi',
       importe: 35,
@@ -197,13 +201,13 @@ test.describe('Añadir gasto', () => {
     await expect(page).toHaveURL(new RegExp(`${rutaFormulario}$`));
   });
 
-  test('el botón de volver lleva al inicio del viaje', async ({ page }) => {
+  test('el botón de volver lleva a Control de Gastos', async ({ page }) => {
     await entrarConSesion(page);
     await simularBackend(page);
 
     await page.goto(rutaFormulario);
     await page.getByRole('button', { name: 'Volver' }).click();
 
-    await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}$`));
+    await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}/gastos$`));
   });
 });

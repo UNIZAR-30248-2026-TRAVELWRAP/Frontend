@@ -8,16 +8,7 @@ import { crearGasto, type CategoriaGasto, type Gasto } from "../services/gastosA
 import { obtenerViaje, type MiembroDelViaje } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
-import { conEuros, leerImporte, repartirAPartesIguales } from "../utils/gastos"
-
-const CATEGORIAS: { categoria: CategoriaGasto; icono: string; texto: string }[] = [
-  { categoria: "comida", icono: "restaurant", texto: "Comida" },
-  { categoria: "transporte", icono: "flight", texto: "Transporte" },
-  { categoria: "entradas", icono: "ticket", texto: "Entradas" },
-  { categoria: "alojamiento", icono: "house", texto: "Alojamiento" },
-  { categoria: "ocio", icono: "gallery", texto: "Ocio" },
-  { categoria: "otros", icono: "document", texto: "Otros" },
-]
+import { CATEGORIAS_GASTO, conEuros, leerImporte, repartirAPartesIguales } from "../utils/gastos"
 
 const MAX_CONCEPTO = 100
 
@@ -256,7 +247,7 @@ export default function AnadirGasto({ viajeId, tokenSesion, usuarioId, onVolver,
             aria-label="Categoría"
             style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 18 }}
           >
-            {CATEGORIAS.map(({ categoria: valor, icono, texto }) => {
+            {CATEGORIAS_GASTO.map(({ categoria: valor, icono, texto }) => {
               const activa = categoria === valor
               return (
                 <button

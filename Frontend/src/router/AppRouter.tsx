@@ -17,6 +17,7 @@ import CrearVotacion from "../screens/CrearVotacion";
 import ElegirDestino from "../screens/ElegirDestino";
 import AnadirActividad from "../screens/AnadirActividad";
 import AnadirGasto from "../screens/AnadirGasto";
+import ControlGastos from "../screens/ControlGastos";
 import Itinerario from "../screens/Itinerario";
 import { buscarDirecciones } from "../services/actividadesApi";
 import type { SeccionViaje } from "../components/BarraInferior";
@@ -73,8 +74,10 @@ function RutaPerfil(props: Omit<ComponentProps<typeof Perfil>, "onVolver" | "onV
   return <Perfil {...props} onVolver={() => navigate("/")} onVerArchivados={() => navigate("/viajes/archivados")} />;
 }
 
+const RUTAS_DE_SECCION: Partial<Record<SeccionViaje, string>> = { itinerario: "itinerario", gastos: "gastos" };
+
 const rutaDeSeccion = (viajeId: string, seccion: SeccionViaje) =>
-  seccion === "itinerario" ? `/viajes/${viajeId}/itinerario` : `/viajes/${viajeId}`;
+  RUTAS_DE_SECCION[seccion] ? `/viajes/${viajeId}/${RUTAS_DE_SECCION[seccion]}` : `/viajes/${viajeId}`;
 
 // Inicio del viaje de la URL. Al cerrarlo queda archivado y se va a «Viajes archivados»
 function RutaInicioViaje({ sesion }: { sesion: Sesion }) {
@@ -237,19 +240,35 @@ function RutaEditarActividad({ sesion }: { sesion: Sesion }) {
   );
 }
 
-// Al registrar el gasto (o al volver) se regresa al inicio del viaje, sin dejar el formulario en el historial
+function RutaControlGastos({ sesion }: { sesion: Sesion }) {
+  const { viajeId = "" } = useParams();
+  const navigate = useNavigate();
+  return (
+    <ControlGastos
+      key={viajeId}
+      viajeId={viajeId}
+      tokenSesion={sesion.token}
+      onVolver={() => navigate("/")}
+      onAnadirGasto={() => navigate(`/viajes/${viajeId}/gastos/nuevo`)}
+      onCambiarSeccion={(seccion) => navigate(rutaDeSeccion(viajeId, seccion))}
+    />
+  );
+}
+
+// Al registrar el gasto (o al volver) se regresa a Control de Gastos, que vuelve a pedir el historial,
+// sin dejar el formulario en el historial del navegador
 function RutaAnadirGasto({ sesion }: { sesion: Sesion }) {
   const { viajeId = "" } = useParams();
   const navigate = useNavigate();
-  const volverAlViaje = () => navigate(`/viajes/${viajeId}`, { replace: true });
+  const volverAControlGastos = () => navigate(`/viajes/${viajeId}/gastos`, { replace: true });
   return (
     <AnadirGasto
       key={viajeId}
       viajeId={viajeId}
       tokenSesion={sesion.token}
       usuarioId={sesion.usuario.id}
-      onVolver={volverAlViaje}
-      onRegistrado={volverAlViaje}
+      onVolver={volverAControlGastos}
+      onRegistrado={volverAControlGastos}
     />
   );
 }
@@ -386,6 +405,12 @@ export default function AppRouter({
         <Route
           path="/viajes/:viajeId/actividades/nueva"
           element={session ? <RutaAnadirActividad sesion={session} /> : <Navigate to="/login" replace />}
+        />
+
+        {/* Control de Gastos: total e historial de gastos del viaje (privada) */}
+        <Route
+          path="/viajes/:viajeId/gastos"
+          element={session ? <RutaControlGastos sesion={session} /> : <Navigate to="/login" replace />}
         />
 
         {/* Registrar un gasto compartido del viaje (privada) */}

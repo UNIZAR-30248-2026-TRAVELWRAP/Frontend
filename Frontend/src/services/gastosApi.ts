@@ -35,7 +35,17 @@ export type NuevoGasto = {
   participantes: string[]
 }
 
+export type ListaGastos = {
+  // Del más reciente al más antiguo
+  gastos: Gasto[]
+  total: number
+}
+
 const rutaGastos = (viajeId: string) => `/viajes/${encodeURIComponent(viajeId)}/gastos`
+
+// Historial de gastos del viaje con el total gastado
+export const listarGastos = (viajeId: string, tokenSesion: string) =>
+  peticion<ListaGastos>(rutaGastos(viajeId), { token: tokenSesion })
 
 // Registra el gasto y su reparto a partes iguales. Devuelve el gasto con la parte de cada participante
 export const crearGasto = (viajeId: string, gasto: NuevoGasto, tokenSesion: string) =>
