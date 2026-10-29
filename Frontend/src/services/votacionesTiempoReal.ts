@@ -5,16 +5,20 @@ const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000/api"
 // El servidor de WebSocket es el mismo que el de la API, sin el /api
 const URL_SOCKET = new URL(API_URL).origin
 
-export type MotivoCambio = "creada" | "opcion" | "voto" | "cerrada"
+// Aviso del servidor de que ha cambiado una votación del viaje o sus miembros. No trae los datos: hay que
+// volver a pedirlos
+export type CambioVotacion =
+  | {
+      viaje_id: string
+      motivo: "creada" | "opcion" | "voto" | "cerrada"
+      votacion_id: string
+      // Solo al cerrar la votación de destino: el destino fijado en el viaje
+      destino?: string | null
+    }
+  // Se ha unido alguien al viaje: cambia quién puede votar en todas sus votaciones
+  | { viaje_id: string; motivo: "miembros" }
 
-// Aviso del servidor de que ha cambiado una votación del viaje. No trae sus datos: hay que volver a pedirla
-export type CambioVotacion = {
-  viaje_id: string
-  votacion_id: string
-  motivo: MotivoCambio
-  // Solo al cerrar la votación de destino: el destino fijado en el viaje
-  destino?: string | null
-}
+export type MotivoCambio = CambioVotacion["motivo"]
 
 // Escucha los cambios de las votaciones de un viaje mientras la pantalla está abierta.
 // Devuelve la función que deja de escuchar (para el cleanup de useEffect)

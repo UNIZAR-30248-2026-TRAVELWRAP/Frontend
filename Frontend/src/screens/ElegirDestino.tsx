@@ -60,8 +60,8 @@ export default function ElegirDestino({ viajeId, tokenSesion, onVolver, onInvita
     }
   }, [viajeId, tokenSesion])
 
-  // Tiempo real: los votos y propuestas de los demás aparecen sin recargar, y cuando el creador fija el destino
-  // todos pasan al inicio del viaje
+  // Tiempo real: los votos y propuestas de los demás y los miembros que se unen aparecen sin recargar, y cuando el
+  // creador fija el destino todos pasan al inicio del viaje
   useEffect(
     () =>
       escucharVotaciones(viajeId, tokenSesion, (cambio) => {
@@ -71,6 +71,17 @@ export default function ElegirDestino({ viajeId, tokenSesion, onVolver, onInvita
           setViaje((actual) =>
             actual?.pendiente_destino ? { ...actual, destino, pendiente_destino: false } : actual,
           )
+          return
+        }
+        if (cambio.motivo === "miembros") {
+          // Alguien se ha unido: aparece en la cabecera y cuenta para el «N/M miembros han votado»
+          Promise.all([obtenerViaje(viajeId, tokenSesion), listarVotaciones(viajeId, tokenSesion, { tipo: "destino" })])
+            .then(([datosViaje, { votaciones }]) => {
+              // Si ya estaba fijado el destino no se cambia el viaje, para no volver a redirigir
+              setViaje((actual) => (actual?.pendiente_destino ? datosViaje : actual))
+              setVotacion((actual) => votaciones[0] ?? actual)
+            })
+            .catch((e) => setErrorVoto(mensajeDeError(e)))
           return
         }
         obtenerVotacion(viajeId, cambio.votacion_id, tokenSesion)

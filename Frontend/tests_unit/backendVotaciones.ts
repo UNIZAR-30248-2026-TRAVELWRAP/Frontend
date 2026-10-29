@@ -173,7 +173,10 @@ export const llamadas = (fetchMock: ReturnType<typeof vi.fn>, metodo: string, fi
 
 // Simula un aviso del servidor por WebSocket a la pantalla abierta. Los tests que lo usan simulan el módulo con
 // vi.mock('../src/services/votacionesTiempoReal')
-export const avisarCambio = async (cambio: Omit<CambioVotacion, 'viaje_id'>) => {
+// (Omit sobre cada caso de la unión, para que se comprueben los campos de cada tipo de aviso)
+type SinViaje<T> = T extends unknown ? Omit<T, 'viaje_id'> : never
+
+export const avisarCambio = async (cambio: SinViaje<CambioVotacion>) => {
   const alCambiar = vi.mocked(escucharVotaciones).mock.calls.at(-1)?.[2]
   if (!alCambiar) throw new Error('La pantalla no está escuchando los cambios de las votaciones')
   await act(async () => alCambiar({ viaje_id: VIAJE_ID, ...cambio }))
