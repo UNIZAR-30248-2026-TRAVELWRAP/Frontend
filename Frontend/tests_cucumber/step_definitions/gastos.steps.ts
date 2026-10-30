@@ -44,8 +44,33 @@ const historial = () => {
   return { gastos: lista, total };
 };
 
+// Saldo de cada miembro a partir del historial: lo pagado menos su parte, repartida a partes iguales en
+// céntimos (los que sobran, para los primeros), como hace el backend
+const balance = () => {
+  const cuentas = new Map(Object.entries(ID_DE).map(([nombre, id]) => [id, { nombre, pagado: 0, parte: 0 }]));
+  for (const gasto of historial().gastos) {
+    const centimos = Math.round(gasto.importe * 100);
+    cuentas.get(gasto.pagado_por)!.pagado += centimos;
+    gasto.participantes.forEach((id, i) => {
+      const base = Math.floor(centimos / gasto.participantes.length);
+      cuentas.get(id)!.parte += base + (i < centimos % gasto.participantes.length ? 1 : 0);
+    });
+  }
+  const saldos = [...cuentas].map(([id, { nombre, pagado, parte }]) => ({
+    usuario_id: id,
+    nombre,
+    pagado: pagado / 100,
+    parte: parte / 100,
+    saldo: (pagado - parte) / 100,
+  }));
+  return { saldos };
+};
+
 // Se registra después de la ruta de viajes, así que tiene prioridad para /viajes/:id/gastos
 const simularGastos = async () => {
+  await paginaActual().route('**/api/viajes/*/gastos/balance', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(balance()) }),
+  );
   await paginaActual().route('**/api/viajes/*/gastos', (route) => {
     // Historial de Control de Gastos con lo registrado en el escenario
     if (route.request().method() === 'GET') {

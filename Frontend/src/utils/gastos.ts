@@ -43,3 +43,12 @@ export const fechaDelGasto = (fecha: string) => {
   const [, mes, dia] = fecha.split("-").map(Number)
   return `${dia} ${MESES[mes - 1]}`
 }
+
+export const conSigno = (cantidad: number) => `${cantidad > 0 ? "+" : ""}${conEuros(cantidad)}`
+
+// Cómo queda un miembro según su saldo, con el color con el que se muestra
+export const estadoDelSaldo = (saldo: number) => {
+  if (saldo > 0) return { texto: "Te deben", color: "green" as const }
+  if (saldo < 0) return { texto: "Debes", color: "accent" as const }
+  return { texto: "Al día", color: "muted" as const }
+}

@@ -1,4 +1,4 @@
-// Test unitario de la pantalla Control de Gastos (total e historial)
+// Test unitario para la pantalla Control de Gastos (total e historial)
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -40,14 +40,18 @@ const json = (estado: number, cuerpo: unknown) =>
 const simularBackend = ({
   viaje = (): Promise<Response> => json(200, { id: VIAJE_ID, nombre: 'Roma 2027', estado: 'activo', miembros }),
   historial = (): Promise<Response> => json(200, { gastos: HISTORIAL, total: 95.5 }),
+  balance = (): Promise<Response> => json(200, { saldos: [] }),
 } = {}) => {
-  const fetchMock = vi.fn((url: string) => (url.endsWith('/gastos') ? historial() : viaje()))
+  const fetchMock = vi.fn((url: string) => {
+    if (url.endsWith('/gastos/balance')) return balance()
+    return url.endsWith('/gastos') ? historial() : viaje()
+  })
   vi.stubGlobal('fetch', fetchMock)
   return fetchMock
 }
 
 const abrir = async (props = {}) => {
-  render(<ControlGastos viajeId={VIAJE_ID} tokenSesion="token-acceso" {...props} />)
+  render(<ControlGastos viajeId={VIAJE_ID} tokenSesion="token-acceso" usuarioId={ADRIANA} {...props} />)
   await screen.findByRole('region', { name: 'Total gastado' })
 }
 
@@ -133,7 +137,7 @@ describe('ControlGastos', () => {
     simularBackend({
       historial: () => json(404, { error: { codigo: 'viaje_no_encontrado', mensaje: 'El viaje no existe o no perteneces a él' } }),
     })
-    render(<ControlGastos viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
+    render(<ControlGastos viajeId={VIAJE_ID} tokenSesion="token-acceso" usuarioId={ADRIANA} />)
 
     expect((await screen.findByRole('alert')).textContent).toBe(
       'No se han podido cargar los gastos: El viaje no existe o no perteneces a él',

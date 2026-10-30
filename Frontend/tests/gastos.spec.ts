@@ -74,6 +74,9 @@ const simularBackend = async (
     const ruta = new URL(peticion.url()).pathname.replace(/^.*\/api/, '');
 
     // Control de Gastos, al que se vuelve después de registrar
+    if (ruta === `/viajes/${VIAJE_ID}/gastos/balance`) {
+      return json(route, 200, { saldos: [] });
+    }
     if (ruta === `/viajes/${VIAJE_ID}/gastos` && peticion.method() === 'GET') {
       return json(route, 200, { gastos: [], total: 0 });
     }
@@ -230,12 +233,13 @@ const gastoGuardado = (datos: Record<string, unknown>) => ({
 });
 
 // Backend con historial: guarda en memoria los gastos que se registran y los devuelve en GET, el más reciente
-// primero, con su total. Se registra después de la ruta general, así que tiene prioridad para /gastos
+// primero, con su total. 
 const simularHistorial = async (page: Page, iniciales: Record<string, unknown>[], datosViaje: Record<string, unknown> = {}) => {
   const gastos = iniciales.map(gastoGuardado);
   await page.route('**/api/viajes/**', (route) => {
     const peticion = route.request();
     const ruta = new URL(peticion.url()).pathname.replace(/^.*\/api/, '');
+    if (ruta === `/viajes/${VIAJE_ID}/gastos/balance`) return json(route, 200, { saldos: [] });
     if (ruta !== `/viajes/${VIAJE_ID}/gastos`) return json(route, 200, { ...viaje, ...datosViaje });
     if (peticion.method() === 'POST') {
       gastos.unshift(gastoGuardado({ id: `g${gastos.length + 1}`, ...peticion.postDataJSON() }));

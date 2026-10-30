@@ -248,6 +248,7 @@ function RutaControlGastos({ sesion }: { sesion: Sesion }) {
       key={viajeId}
       viajeId={viajeId}
       tokenSesion={sesion.token}
+      usuarioId={sesion.usuario.id}
       onVolver={() => navigate("/")}
       onAnadirGasto={() => navigate(`/viajes/${viajeId}/gastos/nuevo`)}
       onCambiarSeccion={(seccion) => navigate(rutaDeSeccion(viajeId, seccion))}

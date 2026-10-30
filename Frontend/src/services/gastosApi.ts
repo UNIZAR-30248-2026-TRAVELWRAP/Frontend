@@ -41,11 +41,30 @@ export type ListaGastos = {
   total: number
 }
 
+// Saldo de un miembro, lo que ha pagado menos su parte. Positivo, le deben y negativo, debe
+export type SaldoMiembro = {
+  usuario_id: string
+  // null si ya abandonó el viaje
+  nombre: string | null
+  pagado: number
+  parte: number
+  saldo: number
+}
+
+export type Balance = {
+  // Primero los miembros actuales, en el orden del viaje. Entre todos suman 0
+  saldos: SaldoMiembro[]
+}
+
 const rutaGastos = (viajeId: string) => `/viajes/${encodeURIComponent(viajeId)}/gastos`
 
 // Historial de gastos del viaje con el total gastado
 export const listarGastos = (viajeId: string, tokenSesion: string) =>
   peticion<ListaGastos>(rutaGastos(viajeId), { token: tokenSesion })
+
+// Saldo de cada miembro del viaje
+export const obtenerBalance = (viajeId: string, tokenSesion: string) =>
+  peticion<Balance>(`${rutaGastos(viajeId)}/balance`, { token: tokenSesion })
 
 // Registra el gasto y su reparto a partes iguales. Devuelve el gasto con la parte de cada participante
 export const crearGasto = (viajeId: string, gasto: NuevoGasto, tokenSesion: string) =>

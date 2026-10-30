@@ -1,22 +1,28 @@
 import { useEffect, useState } from "react"
+import Avatar from "../components/Avatar"
 import BarraInferior, { ALTO_BARRA_INFERIOR, type SeccionViaje } from "../components/BarraInferior"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import SectionLabel from "../components/SectionLabel"
 import { ApiError } from "../services/authApi"
-import { listarGastos, type Gasto } from "../services/gastosApi"
+import { listarGastos, obtenerBalance, type Gasto, type SaldoMiembro } from "../services/gastosApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { estiloAlerta } from "../styles/formulario"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
-import { conEuros, fechaDelGasto, iconoDeCategoriaGasto } from "../utils/gastos"
+import { conEuros, conSigno, estadoDelSaldo, fechaDelGasto, iconoDeCategoriaGasto } from "../utils/gastos"
 
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
+
+const COLORES_SALDO = { green: C.green, accent: C.accent, muted: C.muted }
+const FONDOS_SALDO = { green: C.greenBg, accent: C.lightAccent, muted: C.bg }
 
 // Pantalla: Control de Gastos 
 type ControlGastosProps = {
   viajeId: string
   tokenSesion: string
+  // Usuario de la sesión, para destacar su saldo
+  usuarioId: string
   onVolver?: () => void
   onAnadirGasto?: () => void
   onCambiarSeccion?: (seccion: SeccionViaje) => void
@@ -25,6 +31,7 @@ type ControlGastosProps = {
 export default function ControlGastos({
   viajeId,
   tokenSesion,
+  usuarioId,
   onVolver,
   onAnadirGasto,
   onCambiarSeccion,
@@ -32,18 +39,24 @@ export default function ControlGastos({
   const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
   const [gastos, setGastos] = useState<Gasto[]>([])
   const [total, setTotal] = useState(0)
+  const [saldos, setSaldos] = useState<SaldoMiembro[]>([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState("")
 
   // El viaje hace falta para saber quién pagó cada gasto y si aún se pueden añadir
   useEffect(() => {
     let vigente = true
-    Promise.all([obtenerViaje(viajeId, tokenSesion), listarGastos(viajeId, tokenSesion)])
-      .then(([datosViaje, lista]) => {
+    Promise.all([
+      obtenerViaje(viajeId, tokenSesion),
+      listarGastos(viajeId, tokenSesion),
+      obtenerBalance(viajeId, tokenSesion),
+    ])
+      .then(([datosViaje, lista, balance]) => {
         if (!vigente) return
         setViaje(datosViaje)
         setGastos(lista.gastos)
         setTotal(lista.total)
+        setSaldos(balance.saldos)
       })
       .catch((e) => {
         if (vigente) setError(`No se han podido cargar los gastos: ${mensajeDeError(e)}`)
@@ -63,6 +76,8 @@ export default function ControlGastos({
     return indice === -1 ? { name: "Un antiguo miembro", color: C.muted } : aMiembro(miembros[indice].nombre, indice)
   }
   const activo = viaje?.estado === "activo"
+  const miSaldo = saldos.find((s) => s.usuario_id === usuarioId)
+  const estadoMio = miSaldo ? estadoDelSaldo(miSaldo.saldo) : null
 
   return (
     <div style={{ background: C.bg, minHeight: "100vh" }}>
@@ -141,7 +156,92 @@ export default function ControlGastos({
                 >
                   Total gastado
                 </div>
-                <div style={{ fontFamily: NUNITO, fontSize: 34, fontWeight: 900, color: C.navy }}>{conEuros(total)}</div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                  <div style={{ fontFamily: NUNITO, fontSize: 34, fontWeight: 900, color: C.navy }}>{conEuros(total)}</div>
+
+                  {/* Saldo de quien usa la app */}
+                  {miSaldo && estadoMio && (
+                    <div
+                      role="group"
+                      aria-label="Tu saldo"
+                      style={{
+                        background: FONDOS_SALDO[estadoMio.color],
+                        border: `1.5px solid ${COLORES_SALDO[estadoMio.color]}55`,
+                        borderRadius: RADIUS.md,
+                        padding: "10px 14px",
+                        textAlign: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontFamily: NUNITO,
+                          fontSize: 10,
+                          fontWeight: 700,
+                          color: C.muted,
+                          letterSpacing: 0.8,
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        Tu saldo
+                      </div>
+                      <div style={{ fontFamily: NUNITO, fontSize: 17, fontWeight: 900, color: COLORES_SALDO[estadoMio.color] }}>
+                        {conSigno(miSaldo.saldo)}
+                      </div>
+                      <div
+                        style={{
+                          fontFamily: NUNITO,
+                          fontSize: 10,
+                          fontWeight: 800,
+                          color: COLORES_SALDO[estadoMio.color],
+                          textTransform: "uppercase",
+                          marginTop: 2,
+                        }}
+                      >
+                        {estadoMio.texto}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Saldo de cada miembro: positivo, le deben; negativo, debe */}
+                {saldos.length > 0 && (
+                  <ul
+                    aria-label="Saldo de cada miembro"
+                    style={{
+                      listStyle: "none",
+                      margin: "16px 0 0",
+                      padding: "12px 8px",
+                      background: C.bg,
+                      borderRadius: RADIUS.md,
+                      display: "flex",
+                      flexWrap: "wrap",
+                      justifyContent: "space-around",
+                      gap: 8,
+                    }}
+                  >
+                    {saldos.map((s) => {
+                      const indice = miembros.findIndex((m) => m.usuario_id === s.usuario_id)
+                      const miembro =
+                        indice === -1 ? { name: "Antiguo miembro", initial: "?", color: C.muted } : aMiembro(s.nombre, indice)
+                      const estado = estadoDelSaldo(s.saldo)
+                      return (
+                        <li
+                          key={s.usuario_id}
+                          style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, minWidth: 72 }}
+                        >
+                          <span aria-hidden="true">
+                            <Avatar member={miembro} size={30} showBorder={false} />
+                          </span>
+                          <span style={{ fontFamily: NUNITO, fontSize: 11, fontWeight: 700, color: C.navy }}>{miembro.name}</span>
+                          <span style={{ fontFamily: NUNITO, fontSize: 12, fontWeight: 800, color: COLORES_SALDO[estado.color] }}>
+                            {conSigno(s.saldo)}
+                          </span>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
               </section>
 
               {/* Solo se añaden gastos mientras el viaje está activo */}
