@@ -195,3 +195,34 @@ Then('veo en el historial de gastos, por este orden, {string}', async (conceptos
 Then('el gasto {string} lo pagó {string} el {string}', async (concepto: string, pagador: string, fecha: string) => {
   await expect(filasDelHistorial().filter({ hasText: concepto })).toContainText(`Pagó ${pagador} · ${fecha}`);
 });
+
+// Balance (PB 25)
+
+Given(
+  'que en el viaje {string} hay un gasto {string} de {float} pagado por {string} entre {string}',
+  (viaje: string, concepto: string, importe: number, pagador: string, participantes: string) => {
+    expect(idDelViaje(viaje), `el viaje "${viaje}" no está preparado`).toBeDefined();
+    previos.push({
+      concepto,
+      importe,
+      categoria: 'comida',
+      pagado_por: ID_DE[pagador],
+      participantes: participantes.split(', ').map((nombre) => ID_DE[nombre]),
+      fecha: '2027-05-12',
+    });
+  },
+);
+
+Then('mi saldo es {string} y {string}', async (saldo: string, estado: string) => {
+  const tuSaldo = paginaActual().getByRole('group', { name: 'Tu saldo' });
+  await expect(tuSaldo).toContainText(saldo);
+  await expect(tuSaldo).toContainText(estado);
+});
+
+Then('el saldo de {string} es {string}', async (nombre: string, saldo: string) => {
+  const fila = paginaActual()
+    .getByRole('list', { name: 'Saldo de cada miembro' })
+    .getByRole('listitem')
+    .filter({ hasText: nombre });
+  await expect(fila).toContainText(saldo);
+});

@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest'
 import {
   CATEGORIAS_GASTO,
   conEuros,
+  conSigno,
+  estadoDelSaldo,
   fechaDelGasto,
   iconoDeCategoriaGasto,
   leerImporte,
@@ -83,5 +85,30 @@ describe('categorías de gasto', () => {
     expect(iconoDeCategoriaGasto('comida')).toBe('restaurant')
     expect(iconoDeCategoriaGasto('transporte')).toBe('flight')
     expect(iconoDeCategoriaGasto('otros')).toBe('document')
+  })
+})
+
+describe('conSigno', () => {
+  it.each([
+    [40, '+40,00 €'],
+    [0.05, '+0,05 €'],
+    [-25, '-25,00 €'],
+    [0, '0,00 €'],
+  ])('muestra %d como «%s»', (cantidad, texto) => {
+    expect(conSigno(cantidad)).toBe(texto)
+  })
+})
+
+describe('estadoDelSaldo', () => {
+  it('con saldo positivo te deben, en verde', () => {
+    expect(estadoDelSaldo(0.01)).toEqual({ texto: 'Te deben', color: 'green' })
+  })
+
+  it('con saldo negativo debes, en naranja', () => {
+    expect(estadoDelSaldo(-0.01)).toEqual({ texto: 'Debes', color: 'accent' })
+  })
+
+  it('con saldo 0 estás al día, en gris', () => {
+    expect(estadoDelSaldo(0)).toEqual({ texto: 'Al día', color: 'muted' })
   })
 })

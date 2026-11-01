@@ -168,3 +168,99 @@ describe('ControlGastos', () => {
     expect(onVolver).toHaveBeenCalledTimes(1)
   })
 })
+
+// Balance (PB-25): Tu saldo y el saldo de cada miembro
+describe('ControlGastos · balance', () => {
+  const saldo = (usuarioId: string, nombre: string | null, valor: number) => ({
+    usuario_id: usuarioId,
+    nombre,
+    pagado: Math.max(valor, 0),
+    parte: Math.max(-valor, 0),
+    saldo: valor,
+  })
+
+  const conSaldos = (saldos: unknown[]) => simularBackend({ balance: () => json(200, { saldos }) })
+
+  const tuSaldo = () => screen.getByRole('group', { name: 'Tu saldo' })
+  const saldoDe = (nombre: string) =>
+    within(screen.getByRole('list', { name: 'Saldo de cada miembro' }))
+      .getAllByRole('listitem')
+      .find((fila) => fila.textContent?.includes(nombre))
+
+  it('pide el balance del viaje con el token de la sesión', async () => {
+    const fetchMock = conSaldos([])
+    await abrir()
+
+    const [url, init] = fetchMock.mock.calls.find(([u]) => u.endsWith('/gastos/balance')) as unknown as [string, RequestInit]
+    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/gastos/balance$`))
+    expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer token-acceso')
+  })
+
+  it('muestra en positivo «Tu saldo» cuando te deben', async () => {
+    conSaldos([saldo(BERTA, 'Berta', -30), saldo(ADRIANA, 'Adriana', 30)])
+    await abrir()
+
+    expect(tuSaldo().textContent).toContain('+30,00 €')
+    expect(tuSaldo().textContent).toContain('Te deben')
+  })
+
+  it('muestra en negativo «Tu saldo» cuando debes', async () => {
+    conSaldos([saldo(BERTA, 'Berta', 25), saldo(ADRIANA, 'Adriana', -25)])
+    await abrir()
+
+    expect(tuSaldo().textContent).toContain('-25,00 €')
+    expect(tuSaldo().textContent).toContain('Debes')
+  })
+
+  it('con saldo 0 indica que estás al día', async () => {
+    conSaldos([saldo(BERTA, 'Berta', 0), saldo(ADRIANA, 'Adriana', 0)])
+    await abrir()
+
+    expect(tuSaldo().textContent).toContain('0,00 €')
+    expect(tuSaldo().textContent).toContain('Al día')
+  })
+
+  it('muestra el saldo de cada miembro con su signo, en el orden del backend', async () => {
+    conSaldos([saldo(BERTA, 'Berta', 40), saldo(ADRIANA, 'Adriana', -40)])
+    await abrir()
+
+    const filasSaldo = within(screen.getByRole('list', { name: 'Saldo de cada miembro' })).getAllByRole('listitem')
+    expect(filasSaldo.map((fila) => fila.textContent)).toEqual([
+      expect.stringContaining('Berta+40,00 €'),
+      expect.stringContaining('Adriana-40,00 €'),
+    ])
+  })
+
+  it('a quien ya dejó el viaje lo muestra como antiguo miembro', async () => {
+    conSaldos([saldo(BERTA, 'Berta', -10), saldo(ADRIANA, 'Adriana', 0), saldo('antiguo', null, 10)])
+    await abrir()
+
+    expect(saldoDe('Antiguo miembro')?.textContent).toContain('+10,00 €')
+  })
+
+  it('si quien usa la app no aparece en el balance no muestra «Tu saldo»', async () => {
+    conSaldos([saldo(BERTA, 'Berta', 0)])
+    await abrir()
+
+    expect(screen.queryByRole('group', { name: 'Tu saldo' })).toBeNull()
+    expect(saldoDe('Berta')?.textContent).toContain('0,00 €')
+  })
+
+  it('sin saldos no muestra la lista de saldos', async () => {
+    conSaldos([])
+    await abrir()
+
+    expect(screen.queryByRole('list', { name: 'Saldo de cada miembro' })).toBeNull()
+  })
+
+  it('si no se puede calcular el balance lo explica', async () => {
+    simularBackend({
+      balance: () => json(502, { error: { codigo: 'error_gasto', mensaje: 'No se ha podido calcular el balance' } }),
+    })
+    render(<ControlGastos viajeId={VIAJE_ID} tokenSesion="token-acceso" usuarioId={ADRIANA} />)
+
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'No se han podido cargar los gastos: No se ha podido calcular el balance',
+    )
+  })
+})

@@ -323,3 +323,88 @@ test.describe('Control de Gastos', () => {
     await expect(page.getByText(/se pueden consultar sus gastos, pero ya no se pueden añadir/)).toBeVisible();
   });
 });
+
+// Balance 
+
+// Saldos que devuelve GET /gastos/balance. Se registra después del resto de rutas, así que tiene prioridad.
+// Devuelve cuántas veces se ha pedido el balance
+const simularBalance = async (page: Page, saldos: Record<string, unknown>[]) => {
+  let peticiones = 0;
+  await page.route(`**/api/viajes/${VIAJE_ID}/gastos/balance`, (route) => {
+    peticiones += 1;
+    return json(route, 200, { saldos });
+  });
+  return { peticiones: () => peticiones };
+};
+
+const saldo = (usuarioId: string, nombre: string, valor: number) => ({
+  usuario_id: usuarioId,
+  nombre,
+  pagado: Math.max(valor, 0),
+  parte: Math.max(-valor, 0),
+  saldo: valor,
+});
+
+const saldoDe = (page: Page, nombre: string) =>
+  page.getByRole('list', { name: 'Saldo de cada miembro' }).getByRole('listitem').filter({ hasText: nombre });
+
+test.describe('Balance de cada miembro', () => {
+  test('muestra «Tu saldo» y el saldo de cada miembro con su signo', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularHistorial(page, [{ id: 'g1' }]);
+    await simularBalance(page, [
+      saldo(DANIEL_ID, 'Daniel', 40),
+      saldo(BERTA_ID, 'Berta', 20),
+      saldo(USUARIO_ID, 'Adriana', -60),
+    ]);
+
+    await page.goto(rutaControl);
+
+    await expect(page.getByRole('group', { name: 'Tu saldo' })).toContainText('-60,00 €');
+    await expect(page.getByRole('group', { name: 'Tu saldo' })).toContainText('Debes');
+    await expect(saldoDe(page, 'Daniel')).toContainText('+40,00 €');
+    await expect(saldoDe(page, 'Berta')).toContainText('+20,00 €');
+    await expect(saldoDe(page, 'Adriana')).toContainText('-60,00 €');
+  });
+
+  test('cuando te deben, «Tu saldo» sale en positivo', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularHistorial(page, [{ id: 'g1' }]);
+    await simularBalance(page, [saldo(BERTA_ID, 'Berta', -30.25), saldo(USUARIO_ID, 'Adriana', 30.25)]);
+
+    await page.goto(rutaControl);
+
+    await expect(page.getByRole('group', { name: 'Tu saldo' })).toContainText('+30,25 €');
+    await expect(page.getByRole('group', { name: 'Tu saldo' })).toContainText('Te deben');
+  });
+
+  test('sin deudas, «Tu saldo» está al día', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularHistorial(page, []);
+    await simularBalance(page, [saldo(USUARIO_ID, 'Adriana', 0)]);
+
+    await page.goto(rutaControl);
+
+    await expect(page.getByRole('group', { name: 'Tu saldo' })).toContainText('0,00 €');
+    await expect(page.getByRole('group', { name: 'Tu saldo' })).toContainText('Al día');
+  });
+
+  test('al registrar un gasto se vuelve a pedir el balance', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularHistorial(page, []);
+    const balance = await simularBalance(page, [saldo(USUARIO_ID, 'Adriana', 0)]);
+
+    await page.goto(rutaControl);
+    await expect(page.getByRole('group', { name: 'Tu saldo' })).toBeVisible();
+    // En desarrollo React puede pedirlo dos veces al cargar: se comprueba que vuelve a pedirse, no cuántas veces
+    const alAbrir = balance.peticiones();
+    await page.getByRole('button', { name: 'Añadir Gasto' }).click();
+    await page.getByLabel('Importe').fill('10');
+    await page.getByLabel('Concepto').fill('Cena');
+    await page.getByRole('button', { name: 'Registrar gasto' }).click();
+
+    await expect(page).toHaveURL(new RegExp(`${rutaControl}$`));
+    await expect(page.getByRole('group', { name: 'Tu saldo' })).toBeVisible();
+    await expect.poll(() => balance.peticiones()).toBeGreaterThan(alAbrir);
+  });
+});
