@@ -66,7 +66,7 @@ export const editarViaje = (viajeId: string, cambios: CambiosViaje, tokenSesion:
     token: tokenSesion,
   })
 
-// Cierra el viaje y lo deja archivado, de solo lectura (solo el creador)
+// Finaliza el viaje y lo deja archivado, de solo lectura (solo el creador)
 export const archivarViaje = (viajeId: string, tokenSesion: string) =>
   peticion<ViajeDelUsuario>(`/viajes/${encodeURIComponent(viajeId)}/archivar`, {
     metodo: "POST",

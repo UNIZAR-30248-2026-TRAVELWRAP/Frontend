@@ -70,7 +70,7 @@ export const simularActividades = async () => {
         status: 409,
         contentType: 'application/json',
         body: JSON.stringify({
-          error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está cerrado y ya no se puede modificar' },
+          error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está finalizado y ya no se puede modificar' },
         }),
       });
     }
@@ -105,7 +105,7 @@ export const simularActividades = async () => {
         status: 409,
         contentType: 'application/json',
         body: JSON.stringify({
-          error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está cerrado y ya no se puede modificar' },
+          error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está finalizado y ya no se puede modificar' },
         }),
       });
     }
@@ -125,7 +125,7 @@ export const simularActividades = async () => {
   });
 };
 
-Given('que el servidor rechaza las actividades porque el viaje está cerrado', () => {
+Given('que el servidor rechaza las actividades porque el viaje está finalizado', () => {
   rechazaPorViajeCerrado = true;
 });
 

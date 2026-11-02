@@ -81,7 +81,7 @@ const simularGastos = async () => {
         status: 409,
         contentType: 'application/json',
         body: JSON.stringify({
-          error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está cerrado y ya no se puede modificar' },
+          error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está finalizado y ya no se puede modificar' },
         }),
       });
     }
@@ -99,7 +99,7 @@ const simularGastos = async () => {
 const filaDelReparto = (nombre: string) =>
   paginaActual().locator('label').filter({ has: paginaActual().getByLabel(`Dividir con ${nombre}`) });
 
-Given('que el servidor rechaza los gastos porque el viaje está cerrado', () => {
+Given('que el servidor rechaza los gastos porque el viaje está finalizado', () => {
   rechazaPorViajeCerrado = true;
 });
 

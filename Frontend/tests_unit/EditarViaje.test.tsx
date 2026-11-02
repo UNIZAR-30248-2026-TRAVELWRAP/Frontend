@@ -138,7 +138,7 @@ describe('EditarViaje', () => {
   it('muestra el error del backend y deja volver a intentarlo', async () => {
     const user = userEvent.setup()
     simularBackend({}, () =>
-      respuesta(409, { error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está cerrado y ya no se puede modificar' } }),
+      respuesta(409, { error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está finalizado y ya no se puede modificar' } }),
     )
     const onGuardado = vi.fn()
     renderizar({ onGuardado })
@@ -146,7 +146,7 @@ describe('EditarViaje', () => {
     await user.type(await screen.findByLabelText('Nombre del viaje'), ' bis')
     await user.click(botonGuardar())
 
-    expect((await screen.findByRole('alert')).textContent).toBe('El viaje está cerrado y ya no se puede modificar')
+    expect((await screen.findByRole('alert')).textContent).toBe('El viaje está finalizado y ya no se puede modificar')
     expect(botonGuardar()).toHaveProperty('disabled', false)
     expect(onGuardado).not.toHaveBeenCalled()
   })
@@ -160,7 +160,7 @@ describe('EditarViaje', () => {
 
     simularBackend({ estado: 'archivado' })
     renderizar()
-    expect((await screen.findByRole('alert')).textContent).toBe('El viaje está cerrado y ya no se puede modificar')
+    expect((await screen.findByRole('alert')).textContent).toBe('El viaje está finalizado y ya no se puede modificar')
   })
 
   it('vuelve atrás al pulsar el botón de volver', async () => {

@@ -257,8 +257,8 @@ export default function AnadirActividad({
           {viaje && !editable && (
             <div role="alert" style={estiloAlerta}>
               {edicion
-                ? "El viaje está cerrado y ya no se pueden modificar actividades"
-                : "El viaje está cerrado y ya no se pueden añadir actividades"}
+                ? "El viaje está finalizado y ya no se pueden modificar actividades"
+                : "El viaje está finalizado y ya no se pueden añadir actividades"}
             </div>
           )}
 

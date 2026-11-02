@@ -45,9 +45,9 @@ Característica: Registrar un gasto compartido (PB-23)
     Y el servidor no ha guardado ningún gasto
 
   Escenario: Si el servidor rechaza el gasto se muestra el motivo
-    Dado que el servidor rechaza los gastos porque el viaje está cerrado
+    Dado que el servidor rechaza los gastos porque el viaje está finalizado
     Cuando abro la pantalla para añadir un gasto al viaje "Roma 2027"
     Y relleno el gasto con importe "20" y concepto "Museo"
     Y pulso el botón "Registrar gasto"
-    Entonces veo el mensaje de error "El viaje está cerrado y ya no se puede modificar"
+    Entonces veo el mensaje de error "El viaje está finalizado y ya no se puede modificar"
     Y sigo en la pantalla de añadir gasto

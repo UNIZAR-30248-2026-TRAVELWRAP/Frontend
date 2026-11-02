@@ -192,7 +192,7 @@ test.describe('Añadir gasto', () => {
     await entrarConSesion(page);
     await simularBackend(page, () => ({
       status: 409,
-      cuerpo: { error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está cerrado y ya no se puede modificar' } },
+      cuerpo: { error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está finalizado y ya no se puede modificar' } },
     }));
 
     await page.goto(rutaFormulario);
@@ -200,7 +200,7 @@ test.describe('Añadir gasto', () => {
     await page.getByLabel('Concepto').fill('Museo');
     await page.getByRole('button', { name: 'Registrar gasto' }).click();
 
-    await expect(page.getByRole('alert')).toHaveText('El viaje está cerrado y ya no se puede modificar');
+    await expect(page.getByRole('alert')).toHaveText('El viaje está finalizado y ya no se puede modificar');
     await expect(page).toHaveURL(new RegExp(`${rutaFormulario}$`));
   });
 

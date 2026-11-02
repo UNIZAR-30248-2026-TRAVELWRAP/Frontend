@@ -136,15 +136,15 @@ test.describe('Inicio del viaje y su gestión', () => {
     });
   });
 
-  test('cerrar el viaje lo archiva: sale de Mis viajes y queda de solo lectura', async ({ page }) => {
+  test('finalizar el viaje lo archiva: sale de Mis viajes y queda de solo lectura', async ({ page }) => {
     await entrarConSesion(page);
     await simularBackendViajes(page, [viaje('roma', { nombre: 'Roma 2027' })]);
 
     await page.goto('/viajes/roma');
-    await page.getByRole('button', { name: 'Cerrar viaje' }).click();
+    await page.getByRole('button', { name: 'Finalizar viaje' }).click();
     const dialogo = page.getByRole('dialog');
-    await expect(dialogo).toContainText('¿Cerrar este viaje?');
-    await dialogo.getByRole('button', { name: 'Cerrar viaje' }).click();
+    await expect(dialogo).toContainText('¿Finalizar este viaje?');
+    await dialogo.getByRole('button', { name: 'Finalizar viaje' }).click();
 
     await expect(page).toHaveURL(/\/viajes\/archivados$/);
     await page.getByRole('button', { name: /^Roma 2027/ }).click();
@@ -160,7 +160,7 @@ test.describe('Inicio del viaje y su gestión', () => {
     const { peticiones } = await simularBackendViajes(page, [viaje('roma', { nombre: 'Roma 2027' })]);
 
     await page.goto('/viajes/roma');
-    await page.getByRole('button', { name: 'Cerrar viaje' }).click();
+    await page.getByRole('button', { name: 'Finalizar viaje' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Cancelar' }).click();
 
     await expect(page.getByRole('dialog')).toHaveCount(0);
