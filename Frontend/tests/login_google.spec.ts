@@ -16,11 +16,14 @@ const sesion = {
 
 const codificar = (valor: unknown) => Buffer.from(JSON.stringify(valor)).toString('base64url');
 
+// El backend real responde con un 302 al callback. WebKit no deja simular redirecciones con route.fulfill,
+// así que se redirige con una página que hace lo mismo y funciona en los tres navegadores
 const simularBackendGoogle = (page: Page, fragmento: string) =>
   page.route('**/api/auth/google', (route) =>
     route.fulfill({
-      status: 302,
-      headers: { Location: `${new URL(page.url()).origin}/auth/callback#${fragmento}` },
+      status: 200,
+      contentType: 'text/html',
+      body: `<script>location.replace(${JSON.stringify(`${new URL(page.url()).origin}/auth/callback#${fragmento}`)})</script>`,
     }),
   );
 
