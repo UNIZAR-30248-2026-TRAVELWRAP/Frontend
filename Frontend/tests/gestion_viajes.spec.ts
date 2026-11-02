@@ -108,7 +108,7 @@ test.describe('Inicio del viaje y su gestión', () => {
     await expect(page.getByText('1.240 €')).toBeVisible();
     const barra = page.getByRole('navigation', { name: 'Secciones del viaje' });
     await expect(barra.getByRole('button', { name: 'Inicio' })).toHaveAttribute('aria-current', 'page');
-    await expect(barra.getByRole('button', { name: 'Gastos' })).toBeDisabled();
+    await expect(barra.getByRole('button', { name: 'Gastos' })).toBeEnabled();
 
     await page.getByRole('button', { name: 'Volver a Mis Viajes' }).click();
     await expect(page).toHaveURL(/\/$/);
