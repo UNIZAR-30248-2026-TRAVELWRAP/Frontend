@@ -44,12 +44,11 @@ describe('CrearViaje', () => {
     expect(JSON.parse(opciones.body as string)).toMatchObject({ nombre: 'Verano 2027', presupuesto: 900, destino: null })
   })
 
-  it('no deja crear hasta tener nombre, presupuesto y destino', async () => {
+  it('no deja crear hasta tener presupuesto y destino (el nombre es opcional)', async () => {
     const user = userEvent.setup()
     render(<CrearViaje tokenSesion="token-acceso" />)
 
     expect(botonCrear()).toHaveProperty('disabled', true)
-    await user.type(screen.getByLabelText('Nombre del viaje'), 'Roma 2027')
     await user.type(screen.getByLabelText('Presupuesto estimado (€)'), '850')
     expect(botonCrear()).toHaveProperty('disabled', true)
     await user.type(screen.getByPlaceholderText('Ciudad o país'), 'Roma')

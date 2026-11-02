@@ -25,3 +25,10 @@ Característica: Nombre por defecto al crear un viaje (RF8)
     Y pulso el botón "Crear viaje"
     Entonces estoy en el inicio del viaje
     Y veo el texto "Praga 2027-2028"
+
+  Escenario: Con «Votar destino» se puede crear sin nombre y lleva uno temporal
+    Cuando abro el formulario de nuevo viaje
+    Y elijo votar el destino
+    Y indico el presupuesto "900"
+    Entonces el campo del nombre del viaje propone "Viaje sin destino"
+    Y el botón "Crear viaje y elegir destino" está activo
