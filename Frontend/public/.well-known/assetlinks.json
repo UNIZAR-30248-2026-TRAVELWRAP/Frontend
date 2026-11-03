@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "es.unizar.travelwrap",
+      "sha256_cert_fingerprints": [
+        "17:A6:30:84:FA:DA:67:2C:0F:34:14:A8:4F:93:69:C0:0E:F7:A9:38:43:D1:76:84:B8:BE:AD:0B:17:E2:EF:77"
+      ]
+    }
+  }
+]
