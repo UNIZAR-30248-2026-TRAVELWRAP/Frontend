@@ -182,14 +182,14 @@ test.describe('Añadir actividad', () => {
     await entrarConSesion(page);
     await simularBackend(page, {}, () => ({
       status: 409,
-      cuerpo: { error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está cerrado y ya no se puede modificar' } },
+      cuerpo: { error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está finalizado y ya no se puede modificar' } },
     }));
 
     await page.goto(rutaFormulario);
     await page.getByLabel('Nombre de la actividad').fill('Paseo');
     await page.getByRole('button', { name: 'Añadir al itinerario' }).click();
 
-    await expect(page.getByRole('alert')).toHaveText('El viaje está cerrado y ya no se puede modificar');
+    await expect(page.getByRole('alert')).toHaveText('El viaje está finalizado y ya no se puede modificar');
     await expect(page).toHaveURL(new RegExp(`${rutaFormulario}$`));
   });
 
@@ -199,7 +199,7 @@ test.describe('Añadir actividad', () => {
 
     await page.goto(rutaFormulario);
 
-    await expect(page.getByRole('alert')).toHaveText('El viaje está cerrado y ya no se pueden añadir actividades');
+    await expect(page.getByRole('alert')).toHaveText('El viaje está finalizado y ya no se pueden añadir actividades');
     await expect(page.getByLabel('Nombre de la actividad')).toHaveCount(0);
   });
 

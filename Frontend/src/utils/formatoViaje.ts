@@ -49,10 +49,12 @@ export const diasDelItinerario = (inicio: string | null, fin: string | null, fec
 }
 
 const MAX_NOMBRE_VIAJE = 100
+// Nombre temporal mientras el destino está pendiente de votación
+const SIN_DESTINO = "Viaje sin destino"
 
+// El mismo nombre por defecto que pone la base de datos (nombre_por_defecto): «Roma 2027», «Praga 2027-2028»
 export const sugerirNombreViaje = (destino: string, inicio: string, fin: string) => {
-  const lugar = destino.trim()
-  if (!lugar) return ""
+  const lugar = destino.trim() || SIN_DESTINO
   const anioInicio = inicio.split("-")[0]
   const anioFin = fin.split("-")[0]
   let anio = anioInicio || anioFin

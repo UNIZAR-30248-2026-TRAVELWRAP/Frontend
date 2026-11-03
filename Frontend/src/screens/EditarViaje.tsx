@@ -135,7 +135,7 @@ export default function EditarViaje({ viajeId, tokenSesion, onVolver, onGuardado
             <div role="alert" style={estiloAlerta}>
               {viaje.rol !== "creador"
                 ? "Solo el creador del viaje puede editar sus datos"
-                : "El viaje está cerrado y ya no se puede modificar"}
+                : "El viaje está finalizado y ya no se puede modificar"}
             </div>
           )}
 

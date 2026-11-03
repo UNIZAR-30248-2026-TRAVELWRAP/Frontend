@@ -148,7 +148,7 @@ describe('CrearVotacion', () => {
     fetchMock.mockImplementationOnce(() =>
       Promise.resolve(
         new Response(
-          JSON.stringify({ error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está cerrado y ya no se puede modificar' } }),
+          JSON.stringify({ error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está finalizado y ya no se puede modificar' } }),
           { status: 409, headers: { 'Content-Type': 'application/json' } },
         ),
       ),
@@ -157,7 +157,7 @@ describe('CrearVotacion', () => {
     await rellenar(user, '¿Dónde dormimos?', ['Hotel', 'Apartamento'])
     await user.click(screen.getByRole('button', { name: 'Publicar votación' }))
 
-    expect((await screen.findByRole('alert')).textContent).toBe('El viaje está cerrado y ya no se puede modificar')
+    expect((await screen.findByRole('alert')).textContent).toBe('El viaje está finalizado y ya no se puede modificar')
     expect(screen.getByRole('button', { name: 'Publicar votación' })).toHaveProperty('disabled', false)
   })
 

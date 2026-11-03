@@ -40,13 +40,16 @@ export default function CrearViaje({ tokenSesion, onBack, onCreated }: CrearViaj
       ? "La fecha de fin no puede ser anterior a la de inicio"
       : ""
 
-  const destinoElegido = modoDestino === "elegido" ? destino : ""
-  const nombreFinal = nombre.trim() || sugerirNombreViaje(destinoElegido, fechaInicio, fechaFin)
+  // El nombre es opcional: sin él, el backend usa el destino y el año (o uno temporal hasta votar el destino).
+  // Aquí solo se muestra como ejemplo en el campo
+  const sinDestinoEscrito = modoDestino === "elegido" && destino.trim() === ""
+  const nombreSugerido = sinDestinoEscrito
+    ? "Ej. Verano 2027"
+    : sugerirNombreViaje(modoDestino === "elegido" ? destino : "", fechaInicio, fechaFin)
 
   const presupuestoValido = presupuesto.trim() !== "" && Number(presupuesto) >= 0
 
   const canSubmit =
-    nombreFinal !== "" &&
     avisoFechas === "" &&
     presupuestoValido &&
     (modoDestino === "votar" || destino.trim() !== "") &&
@@ -60,7 +63,7 @@ export default function CrearViaje({ tokenSesion, onBack, onCreated }: CrearViaj
     try {
       const viaje = await crearViaje(
         {
-          nombre: nombreFinal,
+          nombre: nombre.trim() || null,
           presupuesto: Number(presupuesto),
           destino: modoDestino === "elegido" ? destino.trim() : null,
           fecha_inicio: fechaInicio || null,
@@ -103,9 +106,13 @@ export default function CrearViaje({ tokenSesion, onBack, onCreated }: CrearViaj
               id="viaje-nombre"
               value={nombre}
               onChange={(event) => setNombre(event.target.value)}
-              placeholder="Ej. Verano 2027"
+              placeholder={nombreSugerido}
+              aria-describedby="viaje-nombre-ayuda"
               style={estiloCampo}
             />
+            <div id="viaje-nombre-ayuda" style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, marginTop: 6 }}>
+              Opcional: si lo dejas vacío, el viaje se llamará como su destino y el año
+            </div>
           </div>
 
           <div style={{ display: "flex", gap: 10, marginBottom: avisoFechas ? 6 : 16 }}>

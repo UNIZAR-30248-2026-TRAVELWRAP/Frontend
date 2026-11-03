@@ -114,7 +114,7 @@ export default function ViajesArchivados({ tokenSesion, onVolver, onVerViaje }: 
                 No tienes viajes archivados
               </div>
               <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>
-                Cuando cierres un viaje aparecerá aquí, de solo lectura.
+                Cuando finalices un viaje aparecerá aquí, de solo lectura.
               </div>
             </div>
           )}

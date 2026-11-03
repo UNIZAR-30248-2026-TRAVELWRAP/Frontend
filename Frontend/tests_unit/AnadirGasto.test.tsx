@@ -182,7 +182,7 @@ describe('AnadirGasto', () => {
     const fetchMock = simularBackend({
       gasto: (cuerpo) =>
         rechazar
-          ? json(409, { error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está cerrado y ya no se puede modificar' } })
+          ? json(409, { error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está finalizado y ya no se puede modificar' } })
           : json(201, { id: 'g1', ...cuerpo, repartos: [] }),
     })
     const onRegistrado = vi.fn()
@@ -193,7 +193,7 @@ describe('AnadirGasto', () => {
     await user.type(screen.getByLabelText('Concepto'), 'Museo')
     await user.click(screen.getByRole('button', { name: 'Registrar gasto' }))
 
-    expect((await screen.findByRole('alert')).textContent).toBe('El viaje está cerrado y ya no se puede modificar')
+    expect((await screen.findByRole('alert')).textContent).toBe('El viaje está finalizado y ya no se puede modificar')
     expect(onRegistrado).not.toHaveBeenCalled()
 
     rechazar = false

@@ -79,7 +79,7 @@ const RUTAS_DE_SECCION: Partial<Record<SeccionViaje, string>> = { itinerario: "i
 const rutaDeSeccion = (viajeId: string, seccion: SeccionViaje) =>
   RUTAS_DE_SECCION[seccion] ? `/viajes/${viajeId}/${RUTAS_DE_SECCION[seccion]}` : `/viajes/${viajeId}`;
 
-// Inicio del viaje de la URL. Al cerrarlo queda archivado y se va a «Viajes archivados»
+// Inicio del viaje de la URL. Al finalizarlo queda archivado y se va a «Viajes archivados»
 function RutaInicioViaje({ sesion }: { sesion: Sesion }) {
   const { viajeId = "" } = useParams();
   const navigate = useNavigate();

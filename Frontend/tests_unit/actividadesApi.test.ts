@@ -51,7 +51,7 @@ describe('actividadesApi · crear actividad', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(() =>
-        respuesta(409, { error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está cerrado y ya no se puede modificar' } }),
+        respuesta(409, { error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está finalizado y ya no se puede modificar' } }),
       ),
     )
 
@@ -64,7 +64,7 @@ describe('actividadesApi · crear actividad', () => {
     expect(error).toBeInstanceOf(ApiError)
     expect(error.estado).toBe(409)
     expect(error.codigo).toBe('viaje_no_activo')
-    expect(error.message).toBe('El viaje está cerrado y ya no se puede modificar')
+    expect(error.message).toBe('El viaje está finalizado y ya no se puede modificar')
   })
 })
 

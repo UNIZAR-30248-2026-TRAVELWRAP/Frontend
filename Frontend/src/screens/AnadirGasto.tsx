@@ -128,7 +128,7 @@ export default function AnadirGasto({ viajeId, tokenSesion, usuarioId, onVolver,
       )
       onRegistrado?.(gasto)
     } catch (e) {
-      // El backend explica el motivo (viaje cerrado, alguien que ya no es miembro...)
+      // El backend explica el motivo (viaje finalizado, alguien que ya no es miembro...)
       setError(mensajeDeError(e))
       setEnviando(false)
     }

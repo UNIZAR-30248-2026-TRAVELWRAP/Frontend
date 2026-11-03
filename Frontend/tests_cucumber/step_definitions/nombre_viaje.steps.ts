@@ -17,6 +17,18 @@ When('indico el presupuesto {string}', async (presupuesto: string) => {
   await paginaActual().getByLabel('Presupuesto estimado (€)').fill(presupuesto);
 });
 
+When('elijo votar el destino', async () => {
+  await paginaActual().getByRole('radio', { name: /Votar destino/ }).click();
+});
+
+Then('el campo del nombre del viaje propone {string}', async (nombre: string) => {
+  await expect(paginaActual().getByLabel('Nombre del viaje')).toHaveAttribute('placeholder', nombre);
+});
+
+Then('el botón {string} está activo', async (texto: string) => {
+  await expect(paginaActual().getByRole('button', { name: texto, exact: true })).toBeEnabled();
+});
+
 Then('el campo del nombre del viaje está vacío', async () => {
   await expect(paginaActual().getByLabel('Nombre del viaje')).toHaveValue('');
 });
