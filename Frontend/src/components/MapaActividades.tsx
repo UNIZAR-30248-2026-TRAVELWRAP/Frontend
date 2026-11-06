@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 import "./MapaActividades.css"
-import { C, NUNITO } from "../styles/tokens"
+import { C } from "../styles/tokens"
 
 export type PuntoDelMapa = {
   id: string
