@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from "react"
+import { lazy, Suspense, useEffect, useState, type CSSProperties } from "react"
 import Badge from "../components/Badge"
 import DialogoConfirmacion from "../components/DialogoConfirmacion"
 import BarraInferior, { ALTO_BARRA_INFERIOR, type SeccionViaje } from "../components/BarraInferior"
@@ -18,6 +18,10 @@ import { guardarItinerario, leerItinerario } from "../services/itinerarioGuardad
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro, diasDelItinerario, fechaDeHoy, formatearFechasActivo } from "../utils/formatoViaje"
+
+const MapaActividades = lazy(() => import("../components/MapaActividades"))
+
+const ALTO_MAPA_CARGANDO = 220
 
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
 
@@ -133,6 +137,19 @@ export default function Itinerario({
   const fueraDeLasFechas =
     viaje?.fecha_inicio && viaje.fecha_fin && dia !== "" ? dia < viaje.fecha_inicio || dia > viaje.fecha_fin : false
   const delDia = actividades.filter((actividad) => actividad.fecha === dia)
+  const puntosDelMapa = delDia.flatMap((actividad) =>
+    actividad.latitud !== null && actividad.longitud !== null
+      ? [
+          {
+            id: actividad.id,
+            titulo: actividad.titulo,
+            ubicacion: actividad.ubicacion_nombre,
+            latitud: actividad.latitud,
+            longitud: actividad.longitud,
+          },
+        ]
+      : [],
+  )
   const activo = viaje?.estado === "activo"
   const puedeModificar = activo && !guardadoEn
   const indiceDeMiembro = (usuarioId: string | null) =>
@@ -263,6 +280,46 @@ export default function Itinerario({
               >
                 Reintentar
               </button>
+            </div>
+          )}
+
+          {viaje && dias.length > 0 && delDia.length > 0 && (
+            <div
+              style={{
+                background: "white",
+                borderRadius: 22,
+                overflow: "hidden",
+                isolation: "isolate",
+                boxShadow: SHADOWS.card,
+                border: `1.5px solid ${C.border}`,
+                marginBottom: 14,
+              }}
+            >
+              {puntosDelMapa.length > 0 ? (
+                <>
+                  <Suspense
+                    fallback={
+                      <div
+                        role="status"
+                        style={{ ...avisoVacioStyle, height: ALTO_MAPA_CARGANDO, boxSizing: "border-box", background: C.lightBlue }}
+                      >
+                        Cargando mapa...
+                      </div>
+                    }
+                  >
+                    <MapaActividades puntos={puntosDelMapa} />
+                  </Suspense>
+                  <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, padding: "8px 14px" }}>
+                    {puntosDelMapa.length} de {delDia.length} {delDia.length === 1 ? "actividad" : "actividades"} con ubicación
+                    en el mapa
+                  </div>
+                </>
+              ) : (
+                <div style={{ ...avisoVacioStyle, padding: "20px 16px", lineHeight: 1.5 }}>
+                  Ninguna actividad de este día tiene ubicación en el mapa. Al añadir o editar una actividad, busca su
+                  dirección con la lupa para verla aquí.
+                </div>
+              )}
             </div>
           )}
 

@@ -1,0 +1,18 @@
+.leaflet-container {
+  font-family: 'Nunito', sans-serif;
+}
+
+.leaflet-touch .leaflet-bar a,
+.leaflet-touch .leaflet-bar a:hover,
+.leaflet-bar a,
+.leaflet-bar a:hover {
+  width: 40px;
+  height: 40px;
+  line-height: 40px;
+  font-size: 20px;
+}
+
+.mapa-marcador {
+  background: none;
+  border: none;
+}
