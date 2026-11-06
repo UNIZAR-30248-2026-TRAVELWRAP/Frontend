@@ -23,7 +23,7 @@ const ATRIBUCION = '&copy; <a href="https://www.openstreetmap.org/copyright">Ope
 const crearIcono = (numero: number) =>
   L.divIcon({
     className: "mapa-marcador",
-    html: `<div style="position:relative;width:36px;height:46px;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.35));"><svg width="36" height="46" viewBox="0 0 36 46" xmlns="http://www.w3.org/2000/svg" style="position:absolute;left:0;top:0;"><path d="M18 1.5C9 1.5 2 8.5 2 17.3c0 11.7 16 27.2 16 27.2s16-15.5 16-27.2C34 8.5 27 1.5 18 1.5z" fill="${numero === 1 ? C.accent : C.blue}" stroke="white" stroke-width="2.5"/></svg><div style="position:absolute;left:0;top:0;width:36px;height:34px;display:flex;align-items:center;justify-content:center;color:white;font-family:${NUNITO};font-size:14px;font-weight:800;">${numero}</div></div>`,
+    html: `<svg width="36" height="46" viewBox="0 0 36 46" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.35));"><path d="M18 1.5C9 1.5 2 8.5 2 17.3c0 11.7 16 27.2 16 27.2s16-15.5 16-27.2C34 8.5 27 1.5 18 1.5z" fill="${numero === 1 ? C.accent : C.blue}" stroke="white" stroke-width="2.5"/><text x="18" y="23" text-anchor="middle" fill="white" font-size="15" font-weight="800" font-family="Nunito, sans-serif">${numero}</text></svg>`,
     iconSize: [36, 46],
     iconAnchor: [18, 45],
     popupAnchor: [0, -42],
