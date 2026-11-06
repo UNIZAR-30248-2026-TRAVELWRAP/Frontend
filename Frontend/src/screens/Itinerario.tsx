@@ -137,6 +137,18 @@ export default function Itinerario({
   const fueraDeLasFechas =
     viaje?.fecha_inicio && viaje.fecha_fin && dia !== "" ? dia < viaje.fecha_inicio || dia > viaje.fecha_fin : false
   const delDia = actividades.filter((actividad) => actividad.fecha === dia)
+  const aMinutos = (hora: string) => Number(hora.slice(0, 2)) * 60 + Number(hora.slice(3, 5))
+  const solapadasCon = (actividad: (typeof delDia)[number]) =>
+    delDia.filter(
+      (otra) =>
+        otra.id !== actividad.id &&
+        actividad.hora_inicio !== null &&
+        actividad.hora_fin !== null &&
+        otra.hora_inicio !== null &&
+        otra.hora_fin !== null &&
+        aMinutos(actividad.hora_inicio) < aMinutos(otra.hora_fin) &&
+        aMinutos(otra.hora_inicio) < aMinutos(actividad.hora_fin),
+    )
   const puntosDelMapa = delDia.flatMap((actividad) =>
     actividad.latitud !== null && actividad.longitud !== null
       ? [
@@ -391,6 +403,7 @@ export default function Itinerario({
                   />
                   {delDia.map((actividad, indice) => {
                     const primera = indice === 0
+                    const solapadas = solapadasCon(actividad)
                     return (
                       <div
                         role="listitem"
@@ -470,6 +483,29 @@ export default function Itinerario({
                               </div>
                             )}
                           </div>
+                          {solapadas.length > 0 && (
+                            <div
+                              role="note"
+                              style={{
+                                fontFamily: NUNITO,
+                                color: "#B7531A",
+                                fontSize: 12,
+                                fontWeight: 700,
+                                marginTop: 8,
+                                display: "flex",
+                                alignItems: "flex-start",
+                                gap: 5,
+                                lineHeight: 1.4,
+                              }}
+                            >
+                              <span style={{ marginTop: 1, flexShrink: 0, display: "flex" }}>
+                                <Icon name="info" size={13} color="#B7531A" strokeWidth={2} />
+                              </span>
+                              <span style={{ overflowWrap: "anywhere" }}>
+                                Se solapa con {solapadas.map((otra) => `«${otra.titulo}»`).join(", ")}
+                              </span>
+                            </div>
+                          )}
                           {(actividad.hora_inicio || puedeModificar) && (
                             <div
                               style={{

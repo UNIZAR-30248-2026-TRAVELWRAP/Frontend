@@ -226,6 +226,51 @@ describe('Itinerario', () => {
     expect(await screen.findByText('10:00 – 12:30 h')).toBeTruthy()
   })
 
+  it('avisa en cada tarjeta de las actividades del día que se solapan', async () => {
+    simularBackend({}, [
+      actividad('a1', { titulo: 'Museo', hora_inicio: '10:00:00', hora_fin: '12:00:00' }),
+      actividad('a2', { titulo: 'Compras', hora_inicio: '11:00:00', hora_fin: '13:00:00' }),
+      actividad('a3', { titulo: 'Cena', hora_inicio: '21:00:00', hora_fin: '23:00:00' }),
+    ])
+    renderizar()
+
+    const avisos = await screen.findAllByRole('note')
+    expect(avisos.map((aviso) => aviso.textContent)).toEqual(['Se solapa con «Compras»', 'Se solapa con «Museo»'])
+  })
+
+  it('no avisa si una actividad empieza justo cuando acaba la anterior', async () => {
+    simularBackend({}, [
+      actividad('a1', { titulo: 'Museo', hora_inicio: '10:00:00', hora_fin: '12:00:00' }),
+      actividad('a2', { titulo: 'Comida', hora_inicio: '12:00:00', hora_fin: '14:00:00' }),
+    ])
+    renderizar()
+
+    await screen.findByText('Museo')
+    expect(screen.queryAllByRole('note')).toHaveLength(0)
+  })
+
+  it('no avisa si alguna de las actividades no tiene hora de fin', async () => {
+    simularBackend({}, [
+      actividad('a1', { titulo: 'Museo', hora_inicio: '10:00:00', hora_fin: '12:00:00' }),
+      actividad('a2', { titulo: 'Compras', hora_inicio: '11:00:00' }),
+    ])
+    renderizar()
+
+    await screen.findByText('Museo')
+    expect(screen.queryAllByRole('note')).toHaveLength(0)
+  })
+
+  it('no avisa de solapes con actividades de otro día', async () => {
+    simularBackend({}, [
+      actividad('a1', { titulo: 'Museo', hora_inicio: '10:00:00', hora_fin: '12:00:00' }),
+      actividad('a2', { titulo: 'Compras', fecha: '2027-05-13', hora_inicio: '11:00:00', hora_fin: '13:00:00' }),
+    ])
+    renderizar()
+
+    await screen.findByText('Museo')
+    expect(screen.queryAllByRole('note')).toHaveLength(0)
+  })
+
   it('muestra el avatar de quien añadió la actividad', async () => {
     simularBackend(
       { miembros: [
