@@ -283,7 +283,7 @@ export default function Itinerario({
             </div>
           )}
 
-          {viaje && dias.length > 0 && delDia.length > 0 && (
+          {viaje && dias.length > 0 && (
             <div
               style={{
                 background: "white",
@@ -295,31 +295,23 @@ export default function Itinerario({
                 marginBottom: 14,
               }}
             >
-              {puntosDelMapa.length > 0 ? (
-                <>
-                  <Suspense
-                    fallback={
-                      <div
-                        role="status"
-                        style={{ ...avisoVacioStyle, height: ALTO_MAPA_CARGANDO, boxSizing: "border-box", background: C.lightBlue }}
-                      >
-                        Cargando mapa...
-                      </div>
-                    }
+              <Suspense
+                fallback={
+                  <div
+                    role="status"
+                    style={{ ...avisoVacioStyle, height: ALTO_MAPA_CARGANDO, boxSizing: "border-box", background: C.lightBlue }}
                   >
-                    <MapaActividades puntos={puntosDelMapa} />
-                  </Suspense>
-                  <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, padding: "8px 14px" }}>
-                    {puntosDelMapa.length} de {delDia.length} {delDia.length === 1 ? "actividad" : "actividades"} con ubicación
-                    en el mapa
+                    Cargando mapa...
                   </div>
-                </>
-              ) : (
-                <div style={{ ...avisoVacioStyle, padding: "20px 16px", lineHeight: 1.5 }}>
-                  Ninguna actividad de este día tiene ubicación en el mapa. Al añadir o editar una actividad, busca su
-                  dirección con la lupa para verla aquí.
-                </div>
-              )}
+                }
+              >
+                <MapaActividades puntos={puntosDelMapa} />
+              </Suspense>
+              <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, padding: "8px 14px" }}>
+                {puntosDelMapa.length > 0
+                  ? `${puntosDelMapa.length} de ${delDia.length} ${delDia.length === 1 ? "actividad" : "actividades"} con ubicación en el mapa`
+                  : "Ninguna actividad de este día tiene ubicación en el mapa. Al añadir o editar una actividad, busca su dirección con la lupa para verla aquí."}
+              </div>
             </div>
           )}
 

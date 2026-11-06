@@ -68,6 +68,10 @@ export default function MapaActividades({ puntos }: MapaActividadesProps) {
     if (!actual || !capa) return
     const puntos: PuntoDelMapa[] = JSON.parse(clave)
     capa.clearLayers()
+    if (puntos.length === 0) {
+      actual.setView([25, 10], 2)
+      return
+    }
     puntos.forEach((punto, indice) => {
       L.marker([punto.latitud, punto.longitud], {
         icon: crearIcono(indice + 1),
