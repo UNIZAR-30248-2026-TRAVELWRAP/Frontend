@@ -3,12 +3,13 @@ import { C, NUNITO } from "../styles/tokens"
 
 export type SeccionViaje = "gastos" | "itinerario" | "inicio" | "agenda" | "mas"
 
-// Las secciones se activan a medida que se implementan (agenda y más, en próximos sprints)
+// Las secciones se activan a medida que se implementan (más, en próximos sprints).
+// «Agenda» abre la cartera de documentos, como en el prototipo
 const SECCIONES:{ id: SeccionViaje; icono: string; texto: string; disponible: boolean }[] = [
   { id: "gastos", icono: "euro", texto: "Gastos", disponible: true },
   { id: "itinerario", icono: "calendar", texto: "Itinerario", disponible: true },
   { id: "inicio", icono: "home", texto: "Inicio", disponible: true },
-  { id: "agenda", icono: "folder", texto: "Agenda", disponible: false },
+  { id: "agenda", icono: "folder", texto: "Agenda", disponible: true },
   { id: "mas", icono: "chat", texto: "Más", disponible: false },
 ]
 

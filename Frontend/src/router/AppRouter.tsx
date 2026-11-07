@@ -75,7 +75,11 @@ function RutaPerfil(props: Omit<ComponentProps<typeof Perfil>, "onVolver" | "onV
   return <Perfil {...props} onVolver={() => navigate("/")} onVerArchivados={() => navigate("/viajes/archivados")} />;
 }
 
-const RUTAS_DE_SECCION: Partial<Record<SeccionViaje, string>> = { itinerario: "itinerario", gastos: "gastos" };
+const RUTAS_DE_SECCION: Partial<Record<SeccionViaje, string>> = {
+  itinerario: "itinerario",
+  gastos: "gastos",
+  agenda: "documentos",
+};
 
 const rutaDeSeccion = (viajeId: string, seccion: SeccionViaje) =>
   RUTAS_DE_SECCION[seccion] ? `/viajes/${viajeId}/${RUTAS_DE_SECCION[seccion]}` : `/viajes/${viajeId}`;
@@ -93,6 +97,7 @@ function RutaInicioViaje({ sesion }: { sesion: Sesion }) {
       onEditar={() => navigate(`/viajes/${viajeId}/editar`)}
       onInvitar={() => navigate(`/viajes/${viajeId}/invitar`)}
       onVotaciones={() => navigate(`/viajes/${viajeId}/votaciones`)}
+      onDocumentos={() => navigate(`/viajes/${viajeId}/documentos`)}
       onCambiarSeccion={(seccion) => navigate(rutaDeSeccion(viajeId, seccion))}
       onPendienteDestino={() => navigate(`/viajes/${viajeId}/destino`, { replace: true })}
       onArchivado={() => navigate("/viajes/archivados")}

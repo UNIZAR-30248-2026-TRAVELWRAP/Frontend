@@ -42,6 +42,7 @@ type InicioViajeProps = {
   onEditar?: () => void
   onInvitar?: () => void
   onVotaciones?: () => void
+  onDocumentos?: () => void
   // Un viaje sin destino solo muestra la votación del destino
   onPendienteDestino?: () => void
   // Tras finalizar el viaje (queda archivado)
@@ -56,6 +57,7 @@ export default function InicioViaje({
   onEditar,
   onInvitar,
   onVotaciones,
+  onDocumentos,
   onPendienteDestino,
   onArchivado,
   onCambiarSeccion,
@@ -335,6 +337,45 @@ export default function InicioViaje({
                 </button>
               )}
             </div>
+          )}
+
+          {/* La cartera también se consulta en viajes finalizados */}
+          {viaje && (
+            <button
+              type="button"
+              onClick={onDocumentos}
+              style={{
+                ...tarjetaStyle,
+                width: "100%",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                textAlign: "left",
+              }}
+            >
+              <div
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 13,
+                  background: C.lightBlue,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <Icon name="folder" size={21} color={C.blue} strokeWidth={1.8} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: NUNITO, fontWeight: 800, color: C.navy, fontSize: 14 }}>Cartera de Documentos</div>
+                <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, marginTop: 2 }}>
+                  Billetes, reservas y otros documentos del viaje
+                </div>
+              </div>
+              <Icon name="arrow_right" size={18} color={C.muted} strokeWidth={2} />
+            </button>
           )}
 
           {viaje && activo && esCreador && (
