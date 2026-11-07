@@ -62,9 +62,14 @@ const simularBackend = (
   actividades: unknown[] = ACTIVIDADES,
   borrado: Borrado = () => respuesta(204),
 ) => {
-  const fetchMock = vi.fn((url: string, opciones?: RequestInit) => {
-    if (opciones?.method === 'DELETE') return borrado(url)
-    return url.includes('/actividades') ? respuesta(200, { actividades }) : respuesta(200, viaje(datos))
+  let vigentes = actividades as { id: string }[]
+  const fetchMock = vi.fn(async (url: string, opciones?: RequestInit) => {
+    if (opciones?.method === 'DELETE') {
+      const resultado = await borrado(url)
+      if (resultado.ok) vigentes = vigentes.filter((actividad) => actividad.id !== url.split('/').pop())
+      return resultado
+    }
+    return url.includes('/actividades') ? respuesta(200, { actividades: vigentes }) : respuesta(200, viaje(datos))
   })
   vi.stubGlobal('fetch', fetchMock)
   return fetchMock
@@ -159,6 +164,24 @@ describe('Itinerario · editar y eliminar actividades', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.getByText('Visita al Coliseo')).toBeTruthy()
     expect(llamadasDelete(fetchMock)).toHaveLength(0)
+  })
+
+  it('tras eliminar vuelve a pedir el viaje y las actividades al servidor para recargar la agenda', async () => {
+    const user = userEvent.setup()
+    const fetchMock = simularBackend()
+    renderizar()
+    await user.click(await screen.findByRole('button', { name: 'Eliminar Visita al Coliseo' }))
+    const peticionesAntes = fetchMock.mock.calls.length
+
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Eliminar actividad' }))
+
+    await waitFor(() => expect(screen.queryByText('Visita al Coliseo')).toBeNull())
+    await waitFor(() => {
+      const despues = fetchMock.mock.calls.slice(peticionesAntes).map(([url]) => String(url))
+      expect(despues.filter((url) => url.endsWith('/actividades')).length).toBe(1)
+      expect(despues.filter((url) => url.endsWith(`/viajes/${VIAJE_ID}`)).length).toBe(1)
+    })
+    expect(screen.getByText('Paseo sin hora')).toBeTruthy()
   })
 
   it('confirmar elimina la actividad en el servidor, la quita de la agenda y actualiza lo guardado', async () => {

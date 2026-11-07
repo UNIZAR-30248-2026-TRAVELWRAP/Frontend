@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Itinerario from '../src/screens/Itinerario'
 
@@ -57,11 +57,16 @@ const conUbicacion = (id: string, titulo: string, datos: Record<string, unknown>
   actividad(id, { titulo, ubicacion_nombre: 'Roma', latitud: 41.89, longitud: 12.49, ...datos })
 
 const simularBackend = (actividades: unknown[], datosViaje: Record<string, unknown> = {}) => {
+  let vigentes = actividades as { id: string }[]
   vi.stubGlobal(
     'fetch',
-    vi.fn((url: string) =>
-      url.includes('/actividades') ? respuesta(200, { actividades }) : respuesta(200, viaje(datosViaje)),
-    ),
+    vi.fn(async (url: string, opciones?: RequestInit) => {
+      if (opciones?.method === 'DELETE') {
+        vigentes = vigentes.filter((actividad) => actividad.id !== url.split('/').pop())
+        return new Response(null, { status: 204 })
+      }
+      return url.includes('/actividades') ? respuesta(200, { actividades: vigentes }) : respuesta(200, viaje(datosViaje))
+    }),
   )
 }
 
@@ -133,6 +138,32 @@ describe('Itinerario · mapa', () => {
 
     expect(screen.getByTestId('mapa').textContent).toBe('Vaticano|Trastevere')
     expect(screen.getByText('2 de 2 actividades con ubicación en el mapa')).toBeTruthy()
+  })
+
+  it('al eliminar una actividad desaparece su marcador del mapa y se actualiza el recuento', async () => {
+    const user = userEvent.setup()
+    simularBackend([conUbicacion('a1', 'Coliseo', { hora_inicio: '10:00:00' }), conUbicacion('a2', 'Foro', { hora_inicio: '12:00:00' })])
+    renderizar()
+    expect((await screen.findByTestId('mapa')).textContent).toBe('Coliseo|Foro')
+
+    await user.click(screen.getByRole('button', { name: 'Eliminar Coliseo' }))
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Eliminar actividad' }))
+
+    await waitFor(() => expect(screen.getByTestId('mapa').textContent).toBe('Foro'))
+    expect(screen.getByText('1 de 1 actividad con ubicación en el mapa')).toBeTruthy()
+  })
+
+  it('al eliminar la última actividad con ubicación el mapa se queda sin marcadores', async () => {
+    const user = userEvent.setup()
+    simularBackend([conUbicacion('a1', 'Coliseo')])
+    renderizar()
+    await screen.findByText('1 de 1 actividad con ubicación en el mapa')
+
+    await user.click(screen.getByRole('button', { name: 'Eliminar Coliseo' }))
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Eliminar actividad' }))
+
+    await waitFor(() => expect(screen.getByTestId('mapa').textContent).toBe(''))
+    expect(screen.getByText(/Ninguna actividad de este día tiene ubicación en el mapa/)).toBeTruthy()
   })
 
   it('en un viaje archivado el mapa también se ve', async () => {

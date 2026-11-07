@@ -124,6 +124,7 @@ export default function Itinerario({
       setActividades(restantes)
       guardarItinerario(viajeId, { viaje, actividades: restantes, guardadoEn: new Date().toISOString() })
       setAEliminar(null)
+      setIntento((n) => n + 1)
     } catch (e) {
       setErrorEliminar(mensajeDeError(e))
     } finally {
