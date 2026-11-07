@@ -35,6 +35,7 @@ AfterAll(async () => {
 Before(async () => {
   usuario = null;
   pagina = await navegador.newPage();
+  await pagina.route('https://tile.openstreetmap.org/**', (route) => route.abort());
 });
 
 After(async () => {

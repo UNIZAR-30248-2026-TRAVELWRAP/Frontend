@@ -45,6 +45,8 @@ export const sembrarActividad = (
   fecha: string,
   hora: string | null,
   ubicacion: string | null = null,
+  latitud: number | null = null,
+  longitud: number | null = null,
 ) => {
   actividades.push({
     id: `actividad-${actividades.length + 1}`,
@@ -53,8 +55,8 @@ export const sembrarActividad = (
     fecha,
     hora_inicio: hora,
     ubicacion_nombre: ubicacion,
-    latitud: null,
-    longitud: null,
+    latitud,
+    longitud,
     lugar_externo_id: null,
   });
 };

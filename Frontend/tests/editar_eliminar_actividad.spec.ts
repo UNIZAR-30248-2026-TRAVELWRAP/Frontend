@@ -71,6 +71,7 @@ const entrarConSesion = async (page: Page) => {
       sessionStorage.setItem('sesionSembrada', '1');
     }
   }, sesion);
+  await page.route('https://tile.openstreetmap.org/**', (route) => route.abort());
   await page.route('**/api/auth/refresh', (route) =>
     route.fulfill({
       status: 200,

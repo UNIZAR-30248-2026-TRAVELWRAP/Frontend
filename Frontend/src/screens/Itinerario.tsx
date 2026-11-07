@@ -142,10 +142,10 @@ export default function Itinerario({
     delDia.filter(
       (otra) =>
         otra.id !== actividad.id &&
-        actividad.hora_inicio !== null &&
-        actividad.hora_fin !== null &&
-        otra.hora_inicio !== null &&
-        otra.hora_fin !== null &&
+        !!actividad.hora_inicio &&
+        !!actividad.hora_fin &&
+        !!otra.hora_inicio &&
+        !!otra.hora_fin &&
         aMinutos(actividad.hora_inicio) < aMinutos(otra.hora_fin) &&
         aMinutos(otra.hora_inicio) < aMinutos(actividad.hora_fin),
     )
