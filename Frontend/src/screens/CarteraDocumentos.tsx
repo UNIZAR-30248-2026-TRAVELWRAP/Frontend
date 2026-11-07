@@ -168,7 +168,7 @@ export default function CarteraDocumentos({ viajeId, tokenSesion, onVolver, onCa
                     {subiendo ? "Subiendo documento..." : "Subir documento"}
                   </button>
                   <p style={{ fontFamily: NUNITO, color: C.muted, fontSize: 11, textAlign: "center", margin: "0 0 16px" }}>
-                    PDF o imagen JPEG o PNG, de 10 MB como máximo
+                    PDF o imagen JPEG o PNG, de 8 MB como máximo
                   </p>
                 </>
               ) : (

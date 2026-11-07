@@ -14,7 +14,7 @@ export const motivoParaNoSubir = (archivo: File): string | null => {
     : EXTENSIONES.test(archivo.name)
   if (!tipoValido) return "Solo se pueden subir documentos PDF o imágenes JPEG o PNG"
   if (archivo.size === 0) return "El archivo está vacío"
-  if (archivo.size > MAX_BYTES_DOCUMENTO) return "El documento no puede ocupar más de 10 MB"
+  if (archivo.size > MAX_BYTES_DOCUMENTO) return "El documento no puede ocupar más de 8 MB"
   return null
 }
 

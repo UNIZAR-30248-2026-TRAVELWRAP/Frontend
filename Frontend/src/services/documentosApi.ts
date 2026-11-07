@@ -21,7 +21,7 @@ export type ListaDocumentos = {
 
 // Los mismos límites que comprueban el backend y Supabase Storage
 export const TIPOS_DOCUMENTO: TipoDocumento[] = ["application/pdf", "image/jpeg", "image/png"]
-export const MAX_BYTES_DOCUMENTO = 10 * 1024 * 1024
+export const MAX_BYTES_DOCUMENTO = 8_000_000
 
 const rutaDocumentos = (viajeId: string) => `/viajes/${encodeURIComponent(viajeId)}/documentos`
 
