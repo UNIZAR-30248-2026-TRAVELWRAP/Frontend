@@ -30,15 +30,18 @@ export class ApiError extends Error {
 type OpcionesPeticion = {
   metodo?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
   cuerpo?: unknown
+  // Formulario multipart (por ejemplo, con un archivo). Se envía en lugar de cuerpo y sin Content-Type:
+  // lo pone el navegador con el separador de las partes
+  formulario?: FormData
   token?: string
 }
 
 export const peticion = async <T>(
   ruta: string,
-  { metodo = "GET", cuerpo, token }: OpcionesPeticion = {},
+  { metodo = "GET", cuerpo, formulario, token }: OpcionesPeticion = {},
 ): Promise<T> => {
   const headers: Record<string, string> = {}
-  if (cuerpo !== undefined) headers["Content-Type"] = "application/json"
+  if (cuerpo !== undefined && !formulario) headers["Content-Type"] = "application/json"
   if (token) headers.Authorization = `Bearer ${token}`
 
   let respuesta: Response
@@ -46,7 +49,7 @@ export const peticion = async <T>(
     respuesta = await fetch(`${API_URL}${ruta}`, {
       method: metodo,
       headers,
-      body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo),
+      body: formulario ?? (cuerpo === undefined ? undefined : JSON.stringify(cuerpo)),
     })
   } catch {
     avisarSinConexion()
