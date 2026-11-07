@@ -19,6 +19,7 @@ import AnadirActividad from "../screens/AnadirActividad";
 import AnadirGasto from "../screens/AnadirGasto";
 import ControlGastos from "../screens/ControlGastos";
 import Itinerario from "../screens/Itinerario";
+import CarteraDocumentos from "../screens/CarteraDocumentos";
 import { buscarDirecciones } from "../services/actividadesApi";
 import type { SeccionViaje } from "../components/BarraInferior";
 import { rutaTrasLogin } from "../services/invitacionPendiente";
@@ -256,6 +257,21 @@ function RutaControlGastos({ sesion }: { sesion: Sesion }) {
   );
 }
 
+// Cartera de documentos del viaje. Al volver se va al inicio del viaje
+function RutaCarteraDocumentos({ sesion }: { sesion: Sesion }) {
+  const { viajeId = "" } = useParams();
+  const navigate = useNavigate();
+  return (
+    <CarteraDocumentos
+      key={viajeId}
+      viajeId={viajeId}
+      tokenSesion={sesion.token}
+      onVolver={() => navigate(`/viajes/${viajeId}`)}
+      onCambiarSeccion={(seccion) => navigate(rutaDeSeccion(viajeId, seccion))}
+    />
+  );
+}
+
 // Al registrar el gasto (o al volver) se regresa a Control de Gastos, que vuelve a pedir el historial,
 // sin dejar el formulario en el historial del navegador
 function RutaAnadirGasto({ sesion }: { sesion: Sesion }) {
@@ -418,6 +434,12 @@ export default function AppRouter({
         <Route
           path="/viajes/:viajeId/gastos/nuevo"
           element={session ? <RutaAnadirGasto sesion={session} /> : <Navigate to="/login" replace />}
+        />
+
+        {/* Cartera de documentos compartida del viaje (privada) */}
+        <Route
+          path="/viajes/:viajeId/documentos"
+          element={session ? <RutaCarteraDocumentos sesion={session} /> : <Navigate to="/login" replace />}
         />
 
         {/* Votación del destino de un viaje que aún no lo tiene (privada) */}
