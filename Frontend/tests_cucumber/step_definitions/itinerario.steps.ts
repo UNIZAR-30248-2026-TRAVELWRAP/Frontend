@@ -56,3 +56,47 @@ When('vuelve la conexión con el servidor', async () => {
 Then('veo el botón {string}', async (texto: string) => {
   await expect(paginaActual().getByRole('button', { name: texto })).toBeVisible();
 });
+
+Then('veo en la agenda, por este orden, {string}, {string}, {string} y {string}', async (a: string, b: string, c: string, d: string) => {
+  await expect(agenda()).toHaveText([a, b, c, d].map((titulo) => new RegExp(`^${titulo}`)));
+});
+
+Given('que el servidor devuelve en {string} la actividad {string} el {string} sin hora', (viaje: string, titulo: string, fecha: string) => {
+  const id = idDelViaje(viaje);
+  expect(id, `el viaje "${viaje}" no está preparado`).toBeDefined();
+  sembrarActividad(id as string, titulo, fecha, null);
+});
+
+const asaDe = (titulo: string) => paginaActual().getByRole('button', { name: `Mover ${titulo}`, exact: true });
+
+Then('puedo mover la actividad {string}', async (titulo: string) => {
+  await expect(asaDe(titulo)).toBeVisible();
+});
+
+Then('no puedo mover la actividad {string}', async (titulo: string) => {
+  await expect(asaDe(titulo)).toHaveCount(0);
+});
+
+When('arrastro la actividad {string} sobre la actividad {string}', async (origen: string, destino: string) => {
+  const pagina = paginaActual();
+  await pagina.setViewportSize({ width: 500, height: 1400 });
+  await asaDe(origen).scrollIntoViewIfNeeded();
+  const a = await asaDe(origen).boundingBox();
+  const b = await agenda().filter({ hasText: destino }).first().boundingBox();
+  if (!a || !b) throw new Error('No se encuentran el origen o el destino del arrastre');
+  await pagina.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+  await pagina.mouse.down();
+  await pagina.mouse.move(a.x + a.width / 2, a.y + a.height / 2 + 12, { steps: 4 });
+  await pagina.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 14 });
+  await pagina.mouse.up();
+});
+
+When('muevo con el teclado la actividad {string} una posición hacia abajo', async (titulo: string) => {
+  const pagina = paginaActual();
+  await asaDe(titulo).focus();
+  await pagina.keyboard.press('Space');
+  await pagina.waitForTimeout(150);
+  await pagina.keyboard.press('ArrowDown');
+  await pagina.waitForTimeout(150);
+  await pagina.keyboard.press('Space');
+});

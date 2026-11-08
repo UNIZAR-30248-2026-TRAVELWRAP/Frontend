@@ -186,7 +186,7 @@ describe('Itinerario · mapa', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Día 2 · 13 may' }))
 
-    expect(screen.getByTestId('mapa').textContent).toBe('Vaticano|Trastevere')
+    expect(screen.getByTestId('mapa').textContent).toBe('Trastevere|Vaticano')
     expect(screen.getByText('2 de 2 actividades con ubicación en el mapa')).toBeTruthy()
   })
 

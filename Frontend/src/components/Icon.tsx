@@ -180,6 +180,16 @@ export default function Icon({
         <line x1="12" y1="8" x2="12.01" y2="8" />
       </>
     ),
+    grip: (
+      <>
+        <circle cx="9" cy="6" r="1.4" fill={color} stroke="none" />
+        <circle cx="15" cy="6" r="1.4" fill={color} stroke="none" />
+        <circle cx="9" cy="12" r="1.4" fill={color} stroke="none" />
+        <circle cx="15" cy="12" r="1.4" fill={color} stroke="none" />
+        <circle cx="9" cy="18" r="1.4" fill={color} stroke="none" />
+        <circle cx="15" cy="18" r="1.4" fill={color} stroke="none" />
+      </>
+    ),
     expand: (
       <>
         <path d="M15 3h6v6" />
