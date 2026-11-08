@@ -239,6 +239,18 @@ test.describe('Itinerario · mapa de las actividades', () => {
     expect(teselas.peticionesDeRuta).toHaveLength(1);
   });
 
+  test('con la ruta y el orden sugerido a 320 px no hay scroll horizontal', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await preparar(page, {}, ACTIVIDADES, { ...RUTA_DEL_DIA, orden_sugerido: ['foro', 'coliseo'], ahorro_m: 1240 });
+
+    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
+
+    await expect(page.getByText(/Orden más corto/)).toBeVisible();
+    await expect(page.getByText(/Ruta a pie por calles/)).toBeVisible();
+    const [ancho, visible] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
+    expect(ancho).toBeLessThanOrEqual(visible);
+  });
+
   test('con una sola actividad con ubicación no se dibuja ninguna línea', async ({ page }) => {
     await preparar(page);
     await page.goto(`/viajes/${VIAJE_ID}/itinerario`);

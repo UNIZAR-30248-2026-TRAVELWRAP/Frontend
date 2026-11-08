@@ -62,3 +62,16 @@ Característica: Ruta sugerida del día en el mapa (PB-43)
     Cuando abro el itinerario del viaje "Roma 2027"
     Entonces veo 1 marcadores en el mapa
     Y el servicio de rutas ha recibido 0 petición
+
+  Escenario: Al eliminar una de tres actividades se vuelve a calcular la ruta
+    Dado que el servidor devuelve en "Roma 2027" la actividad "Visita al Coliseo" el "2027-05-12" con ubicación "Colosseo, Roma" en las coordenadas 41.890214 y 12.492231
+    Y que el servidor devuelve en "Roma 2027" la actividad "Foro Romano" el "2027-05-12" con ubicación "Foro Romano, Roma" en las coordenadas 41.892462 y 12.485325
+    Y que el servidor devuelve en "Roma 2027" la actividad "Panteón" el "2027-05-12" con ubicación "Panteón, Roma" en las coordenadas 41.8986 y 12.4769
+    Y que el servicio de rutas calcula un recorrido de 3420 metros y 2700 segundos
+    Cuando abro el itinerario del viaje "Roma 2027"
+    Entonces veo el texto "Ruta a pie por calles: 3,4 km · 45 min"
+    Y el servicio de rutas ha recibido 1 petición
+    Cuando pulso eliminar la actividad "Foro Romano"
+    Y confirmo en el diálogo "Eliminar actividad"
+    Entonces veo 2 marcadores en el mapa
+    Y el servicio de rutas ha recibido 2 peticiones

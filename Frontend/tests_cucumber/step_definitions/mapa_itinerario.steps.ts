@@ -100,6 +100,6 @@ Then('veo la línea discontinua recta en el mapa', async () => {
   await expect(paginaActual().locator('.leaflet-overlay-pane path')).toHaveAttribute('stroke-dasharray', '8 8');
 });
 
-Then('el servicio de rutas ha recibido {int} petición', (cantidad: number) => {
-  expect(peticionesDeRuta).toBe(cantidad);
+Then('el servicio de rutas ha recibido {int} petición/peticiones', async (cantidad: number) => {
+  await expect.poll(() => peticionesDeRuta).toBe(cantidad);
 });
