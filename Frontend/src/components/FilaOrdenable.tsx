@@ -1,6 +1,6 @@
 import type { CSSProperties, HTMLAttributes, ReactNode, Ref } from "react"
 import { closestCenter, DndContext, type DndContextProps, type SensorDescriptor, type SensorOptions } from "@dnd-kit/core"
-import { useSortable } from "@dnd-kit/sortable"
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 
 export type AsaDeArrastre = {
@@ -12,12 +12,16 @@ export type AsaDeArrastre = {
 
 type FilaOrdenableProps = {
   id: string
+  arrastrable: boolean
   estilo: CSSProperties
-  children: (asa: AsaDeArrastre) => ReactNode
+  children: (asa: AsaDeArrastre | null) => ReactNode
 }
 
-export default function FilaOrdenable({ id, estilo, children }: FilaOrdenableProps) {
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id })
+export default function FilaOrdenable({ id, arrastrable, estilo, children }: FilaOrdenableProps) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+    disabled: { draggable: !arrastrable },
+  })
 
   return (
     <div
@@ -32,29 +36,36 @@ export default function FilaOrdenable({ id, estilo, children }: FilaOrdenablePro
         opacity: isDragging ? 0.92 : 1,
       }}
     >
-      {children({
-        referencia: setActivatorNodeRef,
-        atributos: attributes as unknown as HTMLAttributes<HTMLButtonElement>,
-        oyentes: listeners as unknown as HTMLAttributes<HTMLButtonElement> | undefined,
-        arrastrando: isDragging,
-      })}
+      {children(
+        arrastrable
+          ? {
+              referencia: setActivatorNodeRef,
+              atributos: attributes as unknown as HTMLAttributes<HTMLButtonElement>,
+              oyentes: listeners as unknown as HTMLAttributes<HTMLButtonElement> | undefined,
+              arrastrando: isDragging,
+            }
+          : null,
+      )}
     </div>
   )
 }
 
 type ZonaDeArrastreProps = {
   activa: boolean
+  ids: string[]
   sensores: SensorDescriptor<SensorOptions>[]
   alSoltar: DndContextProps["onDragEnd"]
   accesibilidad: DndContextProps["accessibility"]
   children: ReactNode
 }
 
-export function ZonaDeArrastre({ activa, sensores, alSoltar, accesibilidad, children }: ZonaDeArrastreProps) {
+export function ZonaDeArrastre({ activa, ids, sensores, alSoltar, accesibilidad, children }: ZonaDeArrastreProps) {
   if (!activa) return <>{children}</>
   return (
     <DndContext sensors={sensores} collisionDetection={closestCenter} onDragEnd={alSoltar} accessibility={accesibilidad}>
-      {children}
+      <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+        {children}
+      </SortableContext>
     </DndContext>
   )
 }

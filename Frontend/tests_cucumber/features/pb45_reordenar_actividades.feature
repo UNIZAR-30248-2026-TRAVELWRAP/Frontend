@@ -1,7 +1,7 @@
 # language: es
 Característica: Reordenar las actividades del día arrastrándolas (PB-45)
   Como miembro de un viaje
-  Quiero cambiar el orden de las actividades sin hora o a la misma hora
+  Quiero colocar las actividades sin hora donde quiera del día
   Para organizar el día como prefiera
 
   Antecedentes:
@@ -9,7 +9,7 @@ Característica: Reordenar las actividades del día arrastrándolas (PB-45)
     Y que he iniciado sesión con el email "adriana@travelwrap.app" y la contraseña "secreta123"
     Y que tengo el viaje activo "Roma 2027" con destino "Roma" y presupuesto 850
 
-  Escenario: Solo se pueden mover las actividades sin hora o a la misma hora
+  Escenario: Se pueden mover las actividades sin hora y las que comparten hora, pero no las que tienen una hora propia
     Dado que el servidor devuelve en "Roma 2027" la actividad "Desayuno" el "2027-05-12" a las "08:30"
     Y que el servidor devuelve en "Roma 2027" la actividad "Paseo" el "2027-05-12" sin hora
     Y que el servidor devuelve en "Roma 2027" la actividad "Compras" el "2027-05-12" sin hora
@@ -17,7 +17,7 @@ Característica: Reordenar las actividades del día arrastrándolas (PB-45)
     Entonces puedo mover la actividad "Paseo"
     Y puedo mover la actividad "Compras"
     Y no puedo mover la actividad "Desayuno"
-    Y veo el texto "Las actividades sin hora, o que empiezan a la misma hora, se pueden ordenar arrastrando el asa."
+    Y veo el texto "Las actividades sin hora se pueden colocar donde quieras arrastrando el asa; las que empiezan a la misma hora, entre sí."
 
   Escenario: Arrastrar una actividad sin hora cambia el orden de la agenda
     Dado que el servidor devuelve en "Roma 2027" la actividad "Desayuno" el "2027-05-12" a las "08:30"
@@ -27,6 +27,22 @@ Característica: Reordenar las actividades del día arrastrándolas (PB-45)
     Cuando abro el itinerario del viaje "Roma 2027"
     Y arrastro la actividad "Fotos" sobre la actividad "Paseo"
     Entonces veo en la agenda, por este orden, "Desayuno", "Fotos", "Paseo" y "Compras"
+
+  Escenario: Una actividad sin hora se puede colocar entre las que tienen hora
+    Dado que el servidor devuelve en "Roma 2027" la actividad "Desayuno" el "2027-05-12" a las "08:30"
+    Y que el servidor devuelve en "Roma 2027" la actividad "Comida" el "2027-05-12" a las "14:00"
+    Y que el servidor devuelve en "Roma 2027" la actividad "Paseo" el "2027-05-12" sin hora
+    Cuando abro el itinerario del viaje "Roma 2027"
+    Y arrastro la actividad "Paseo" sobre la actividad "Comida"
+    Entonces veo en la agenda, por este orden, "Desayuno", "Paseo" y "Comida"
+
+  Escenario: Una actividad sin hora se puede colocar la primera del día
+    Dado que el servidor devuelve en "Roma 2027" la actividad "Desayuno" el "2027-05-12" a las "08:30"
+    Y que el servidor devuelve en "Roma 2027" la actividad "Comida" el "2027-05-12" a las "14:00"
+    Y que el servidor devuelve en "Roma 2027" la actividad "Paseo" el "2027-05-12" sin hora
+    Cuando abro el itinerario del viaje "Roma 2027"
+    Y arrastro la actividad "Paseo" sobre la actividad "Desayuno"
+    Entonces veo en la agenda, por este orden, "Paseo", "Desayuno" y "Comida"
 
   Escenario: Se puede mover una actividad con el teclado
     Dado que el servidor devuelve en "Roma 2027" la actividad "Paseo" el "2027-05-12" sin hora

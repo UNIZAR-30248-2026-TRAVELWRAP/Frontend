@@ -1,4 +1,4 @@
-import { Fragment, lazy, Suspense, useEffect, useState, type CSSProperties } from "react"
+import { lazy, Suspense, useEffect, useState, type CSSProperties } from "react"
 import {
   KeyboardSensor,
   PointerSensor,
@@ -6,7 +6,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core"
-import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable"
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable"
 import Badge from "../components/Badge"
 import FilaOrdenable, { ZonaDeArrastre, type AsaDeArrastre } from "../components/FilaOrdenable"
 import DialogoConfirmacion from "../components/DialogoConfirmacion"
@@ -28,7 +28,7 @@ import { guardarItinerario, leerItinerario } from "../services/itinerarioGuardad
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro, diasDelItinerario, fechaDeHoy, formatearFechasActivo } from "../utils/formatoViaje"
-import { moverEnGrupo, ordenarAgenda, segmentosPorHora } from "../utils/ordenActividades"
+import { moverActividad, ordenarAgenda, puedeReordenarse } from "../utils/ordenActividades"
 import { estiloAlerta } from "../styles/formulario"
 
 const MapaActividades = lazy(() => import("../components/MapaActividades"))
@@ -160,11 +160,10 @@ export default function Itinerario({
   const fueraDeLasFechas =
     viaje?.fecha_inicio && viaje.fecha_fin && dia !== "" ? dia < viaje.fecha_inicio || dia > viaje.fecha_fin : false
   const delDia = ordenarAgenda(actividades.filter((actividad) => actividad.fecha === dia))
-  const segmentos = segmentosPorHora(delDia)
   const tituloDe = (id: string | number) => delDia.find((actividad) => actividad.id === id)?.titulo ?? "la actividad"
   const alSoltar = ({ active, over }: DragEndEvent) => {
     if (!over) return
-    const resultado = moverEnGrupo(actividades, dia, String(active.id), String(over.id))
+    const resultado = moverActividad(actividades, dia, String(active.id), String(over.id))
     if (resultado) setActividades(resultado.actividades)
   }
   const aMinutos = (hora: string) => Number(hora.slice(0, 2)) * 60 + Number(hora.slice(3, 5))
@@ -234,7 +233,7 @@ export default function Itinerario({
       : []
   const activo = viaje?.estado === "activo"
   const puedeModificar = activo && !guardadoEn
-  const hayQueOrdenar = puedeModificar && segmentos.some((segmento) => segmento.actividades.length > 1)
+  const hayQueOrdenar = puedeModificar && delDia.some((actividad) => puedeReordenarse(delDia, actividad.id))
   const indiceDeMiembro = (usuarioId: string | null) =>
     (viaje?.miembros ?? []).findIndex((miembro) => miembro.usuario_id === usuarioId)
 
@@ -512,7 +511,7 @@ export default function Itinerario({
                 <>
                   {hayQueOrdenar && (
                     <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, padding: "0 4px 10px", lineHeight: 1.4 }}>
-                      Las actividades sin hora, o que empiezan a la misma hora, se pueden ordenar arrastrando el asa.
+                      Las actividades sin hora se pueden colocar donde quieras arrastrando el asa; las que empiezan a la misma hora, entre sí.
                     </div>
                   )}
                   <div role="list" aria-label="Agenda del día" style={{ position: "relative", paddingBottom: 28 }}>
@@ -528,6 +527,7 @@ export default function Itinerario({
                     />
                     <ZonaDeArrastre
                       activa={hayQueOrdenar}
+                      ids={delDia.map((actividad) => actividad.id)}
                       sensores={sensores}
                       alSoltar={alSoltar}
                       accesibilidad={{
@@ -542,223 +542,209 @@ export default function Itinerario({
                         },
                       }}
                     >
-                      {segmentos.map((segmento) => {
-                        const reordenable = puedeModificar && segmento.actividades.length > 1
-                        const filas = segmento.actividades.map((actividad) => {
-                          const indice = delDia.indexOf(actividad)
-                          const primera = indice === 0
-                          const solapadas = solapadasCon(actividad)
-                          const contenido = (asa: AsaDeArrastre | null) => (
-                            <>
-                              <div
-                                role={actividad.categoria ? "img" : undefined}
-                                aria-label={CATEGORIAS.find((c) => c.valor === actividad.categoria)?.texto}
-                                style={{
-                                  width: 40,
-                                  height: 40,
-                                  borderRadius: "50%",
-                                  background: primera ? C.accent : "white",
-                                  border: `2.5px solid ${primera ? C.accent : C.blue}`,
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  flexShrink: 0,
-                                  zIndex: 1,
-                                  boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
-                                }}
-                              >
-                                <Icon
-                                  name={iconoDeCategoria(actividad.categoria)}
-                                  size={18}
-                                  color={primera ? "white" : C.blue}
-                                  strokeWidth={1.8}
-                                />
-                              </div>
-                              <div
-                                style={{
-                                  flex: 1,
-                                  minWidth: 0,
-                                  background: "white",
-                                  borderRadius: 16,
-                                  padding: "12px 14px",
-                                  boxShadow: SHADOWS.card,
-                                  border: `1.5px solid ${primera ? `${C.accent}50` : C.border}`,
-                                }}
-                              >
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
-                                  <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ fontFamily: NUNITO, color: C.navy, fontSize: 13, fontWeight: 800, overflowWrap: "anywhere" }}>
-                                      {actividad.titulo}
-                                    </div>
-                                    {actividad.ubicacion_nombre && (
-                                      <div
-                                        style={{
-                                          fontFamily: NUNITO,
-                                          color: C.muted,
-                                          fontSize: 11,
-                                          marginTop: 3,
-                                          display: "flex",
-                                          alignItems: "center",
-                                          gap: 4,
-                                        }}
-                                      >
-                                        <Icon name="pin" size={11} color={C.muted} strokeWidth={2} />
-                                        <span style={{ overflowWrap: "anywhere" }}>{actividad.ubicacion_nombre}</span>
-                                      </div>
-                                    )}
+                      {delDia.map((actividad, indice) => {
+                        const primera = indice === 0
+                        const solapadas = solapadasCon(actividad)
+                        const arrastrable = hayQueOrdenar && puedeReordenarse(delDia, actividad.id)
+                        const contenido = (asa: AsaDeArrastre | null) => (
+                          <>
+                            <div
+                              role={actividad.categoria ? "img" : undefined}
+                              aria-label={CATEGORIAS.find((c) => c.valor === actividad.categoria)?.texto}
+                              style={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: "50%",
+                                background: primera ? C.accent : "white",
+                                border: `2.5px solid ${primera ? C.accent : C.blue}`,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flexShrink: 0,
+                                zIndex: 1,
+                                boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
+                              }}
+                            >
+                              <Icon
+                                name={iconoDeCategoria(actividad.categoria)}
+                                size={18}
+                                color={primera ? "white" : C.blue}
+                                strokeWidth={1.8}
+                              />
+                            </div>
+                            <div
+                              style={{
+                                flex: 1,
+                                minWidth: 0,
+                                background: "white",
+                                borderRadius: 16,
+                                padding: "12px 14px",
+                                boxShadow: SHADOWS.card,
+                                border: `1.5px solid ${primera ? `${C.accent}50` : C.border}`,
+                              }}
+                            >
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontFamily: NUNITO, color: C.navy, fontSize: 13, fontWeight: 800, overflowWrap: "anywhere" }}>
+                                    {actividad.titulo}
                                   </div>
-                                  {viaje && indiceDeMiembro(actividad.creado_por) >= 0 && (
+                                  {actividad.ubicacion_nombre && (
                                     <div
-                                      role="img"
-                                      aria-label={`Añadida por ${viaje.miembros[indiceDeMiembro(actividad.creado_por)].nombre ?? "un viajero"}`}
+                                      style={{
+                                        fontFamily: NUNITO,
+                                        color: C.muted,
+                                        fontSize: 11,
+                                        marginTop: 3,
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 4,
+                                      }}
                                     >
-                                      <Avatar
-                                        member={aMiembro(
-                                          viaje.miembros[indiceDeMiembro(actividad.creado_por)].nombre,
-                                          indiceDeMiembro(actividad.creado_por),
-                                        )}
-                                        size={26}
-                                        showBorder={false}
-                                      />
+                                      <Icon name="pin" size={11} color={C.muted} strokeWidth={2} />
+                                      <span style={{ overflowWrap: "anywhere" }}>{actividad.ubicacion_nombre}</span>
                                     </div>
                                   )}
                                 </div>
-                                {solapadas.length > 0 && (
+                                {viaje && indiceDeMiembro(actividad.creado_por) >= 0 && (
                                   <div
-                                    role="note"
-                                    style={{
-                                      fontFamily: NUNITO,
-                                      color: "#B7531A",
-                                      fontSize: 12,
-                                      fontWeight: 700,
-                                      marginTop: 8,
-                                      display: "flex",
-                                      alignItems: "flex-start",
-                                      gap: 5,
-                                      lineHeight: 1.4,
-                                    }}
+                                    role="img"
+                                    aria-label={`Añadida por ${viaje.miembros[indiceDeMiembro(actividad.creado_por)].nombre ?? "un viajero"}`}
                                   >
-                                    <span style={{ marginTop: 1, flexShrink: 0, display: "flex" }}>
-                                      <Icon name="info" size={13} color="#B7531A" strokeWidth={2} />
-                                    </span>
-                                    <span style={{ overflowWrap: "anywhere" }}>
-                                      Se solapa con {solapadas.map((otra) => `«${otra.titulo}»`).join(", ")}
-                                    </span>
-                                  </div>
-                                )}
-                                {(actividad.hora_inicio || puedeModificar) && (
-                                  <div
-                                    style={{
-                                      marginTop: 8,
-                                      display: "flex",
-                                      alignItems: "center",
-                                      justifyContent: "space-between",
-                                      gap: 8,
-                                    }}
-                                  >
-                                    <div>
-                                      {actividad.hora_inicio && (
-                                        <Badge bg={primera ? C.lightAccent : C.lightBlue} color={primera ? C.accent : C.blue}>
-                                          <Icon name="clock" size={11} color={primera ? C.accent : C.blue} strokeWidth={2} />
-                                          {actividad.hora_inicio.slice(0, 5)}
-                                          {actividad.hora_fin ? ` – ${actividad.hora_fin.slice(0, 5)}` : ""} h
-                                        </Badge>
+                                    <Avatar
+                                      member={aMiembro(
+                                        viaje.miembros[indiceDeMiembro(actividad.creado_por)].nombre,
+                                        indiceDeMiembro(actividad.creado_por),
                                       )}
-                                    </div>
-                                    {puedeModificar && (
-                                      <div style={{ display: "flex", gap: 7, marginLeft: "auto" }}>
-                                        {asa && (
-                                          <button
-                                            type="button"
-                                            ref={asa.referencia}
-                                            {...asa.atributos}
-                                            {...asa.oyentes}
-                                            aria-label={`Mover ${actividad.titulo}`}
-                                            style={{
-                                              width: 36,
-                                              height: 28,
-                                              borderRadius: 8,
-                                              border: "none",
-                                              background: asa.arrastrando ? C.blue : C.lightBlue,
-                                              display: "flex",
-                                              alignItems: "center",
-                                              justifyContent: "center",
-                                              cursor: asa.arrastrando ? "grabbing" : "grab",
-                                              touchAction: "none",
-                                              flexShrink: 0,
-                                            }}
-                                          >
-                                            <Icon name="grip" size={14} color={asa.arrastrando ? "white" : C.blue} strokeWidth={2} />
-                                          </button>
-                                        )}
-                                        <button
-                                          type="button"
-                                          onClick={() => onEditarActividad?.(actividad)}
-                                          aria-label={`Editar ${actividad.titulo}`}
-                                          style={{
-                                            width: 28,
-                                            height: 28,
-                                            borderRadius: 8,
-                                            border: "none",
-                                            background: C.lightBlue,
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            cursor: "pointer",
-                                            flexShrink: 0,
-                                          }}
-                                        >
-                                          <Icon name="edit" size={13} color={C.blue} strokeWidth={2} />
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setErrorEliminar("")
-                                            setAEliminar(actividad)
-                                          }}
-                                          aria-label={`Eliminar ${actividad.titulo}`}
-                                          style={{
-                                            width: 28,
-                                            height: 28,
-                                            borderRadius: 8,
-                                            border: "none",
-                                            background: C.redBg,
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            cursor: "pointer",
-                                            flexShrink: 0,
-                                          }}
-                                        >
-                                          <Icon name="trash" size={13} color={C.red} strokeWidth={2} />
-                                        </button>
-                                      </div>
-                                    )}
+                                      size={26}
+                                      showBorder={false}
+                                    />
                                   </div>
                                 )}
                               </div>
-                            </>
-                          )
-                          return reordenable ? (
-                            <FilaOrdenable key={actividad.id} id={actividad.id} estilo={estiloDeFila}>
-                              {contenido}
-                            </FilaOrdenable>
-                          ) : (
-                            <div role="listitem" key={actividad.id} style={estiloDeFila}>
-                              {contenido(null)}
+                              {solapadas.length > 0 && (
+                                <div
+                                  role="note"
+                                  style={{
+                                    fontFamily: NUNITO,
+                                    color: "#B7531A",
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                    marginTop: 8,
+                                    display: "flex",
+                                    alignItems: "flex-start",
+                                    gap: 5,
+                                    lineHeight: 1.4,
+                                  }}
+                                >
+                                  <span style={{ marginTop: 1, flexShrink: 0, display: "flex" }}>
+                                    <Icon name="info" size={13} color="#B7531A" strokeWidth={2} />
+                                  </span>
+                                  <span style={{ overflowWrap: "anywhere" }}>
+                                    Se solapa con {solapadas.map((otra) => `«${otra.titulo}»`).join(", ")}
+                                  </span>
+                                </div>
+                              )}
+                              {(actividad.hora_inicio || puedeModificar) && (
+                                <div
+                                  style={{
+                                    marginTop: 8,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    gap: 8,
+                                  }}
+                                >
+                                  <div>
+                                    {actividad.hora_inicio && (
+                                      <Badge bg={primera ? C.lightAccent : C.lightBlue} color={primera ? C.accent : C.blue}>
+                                        <Icon name="clock" size={11} color={primera ? C.accent : C.blue} strokeWidth={2} />
+                                        {actividad.hora_inicio.slice(0, 5)}
+                                        {actividad.hora_fin ? ` – ${actividad.hora_fin.slice(0, 5)}` : ""} h
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  {puedeModificar && (
+                                    <div style={{ display: "flex", gap: 7, marginLeft: "auto" }}>
+                                      {asa && (
+                                        <button
+                                          type="button"
+                                          ref={asa.referencia}
+                                          {...asa.atributos}
+                                          {...asa.oyentes}
+                                          aria-label={`Mover ${actividad.titulo}`}
+                                          style={{
+                                            width: 36,
+                                            height: 28,
+                                            borderRadius: 8,
+                                            border: "none",
+                                            background: asa.arrastrando ? C.blue : C.lightBlue,
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            cursor: asa.arrastrando ? "grabbing" : "grab",
+                                            touchAction: "none",
+                                            flexShrink: 0,
+                                          }}
+                                        >
+                                          <Icon name="grip" size={14} color={asa.arrastrando ? "white" : C.blue} strokeWidth={2} />
+                                        </button>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() => onEditarActividad?.(actividad)}
+                                        aria-label={`Editar ${actividad.titulo}`}
+                                        style={{
+                                          width: 28,
+                                          height: 28,
+                                          borderRadius: 8,
+                                          border: "none",
+                                          background: C.lightBlue,
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "center",
+                                          cursor: "pointer",
+                                          flexShrink: 0,
+                                        }}
+                                      >
+                                        <Icon name="edit" size={13} color={C.blue} strokeWidth={2} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setErrorEliminar("")
+                                          setAEliminar(actividad)
+                                        }}
+                                        aria-label={`Eliminar ${actividad.titulo}`}
+                                        style={{
+                                          width: 28,
+                                          height: 28,
+                                          borderRadius: 8,
+                                          border: "none",
+                                          background: C.redBg,
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "center",
+                                          cursor: "pointer",
+                                          flexShrink: 0,
+                                        }}
+                                      >
+                                        <Icon name="trash" size={13} color={C.red} strokeWidth={2} />
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
-                          )
-                        })
-                        return reordenable ? (
-                          <SortableContext
-                            key={segmento.clave || "sin-hora"}
-                            items={segmento.actividades.map((actividad) => actividad.id)}
-                            strategy={verticalListSortingStrategy}
-                          >
-                            {filas}
-                          </SortableContext>
+                          </>
+                        )
+                        return hayQueOrdenar ? (
+                          <FilaOrdenable key={actividad.id} id={actividad.id} arrastrable={arrastrable} estilo={estiloDeFila}>
+                            {contenido}
+                          </FilaOrdenable>
                         ) : (
-                          <Fragment key={segmento.clave || "sin-hora"}>{filas}</Fragment>
+                          <div role="listitem" key={actividad.id} style={estiloDeFila}>
+                            {contenido(null)}
+                          </div>
                         )
                       })}
                     </ZonaDeArrastre>

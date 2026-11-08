@@ -68,7 +68,8 @@ const titulosDeLaAgenda = () =>
     .getAllByRole('listitem')
     .map((item) => within(item).getAllByText(/./)[0]?.textContent)
 
-const AVISO = 'Las actividades sin hora, o que empiezan a la misma hora, se pueden ordenar arrastrando el asa.'
+const AVISO =
+  'Las actividades sin hora se pueden colocar donde quieras arrastrando el asa; las que empiezan a la misma hora, entre sí.'
 
 afterEach(() => {
   cleanup()
@@ -104,11 +105,21 @@ describe('Itinerario · asas para reordenar', () => {
     expect(screen.queryByRole('button', { name: 'Mover Comida' })).toBeNull()
   })
 
-  it('no muestra asas ni aviso si cada actividad tiene una hora distinta', async () => {
+  it('una única actividad sin hora tiene asa si hay otras con hora entre las que colocarla', async () => {
+    simularBackend([actividad('Desayuno', { hora_inicio: '08:30:00' }), actividad('Museo', { hora_inicio: '10:00:00' }), actividad('Paseo')])
+    renderizar()
+
+    expect(await screen.findByRole('button', { name: 'Mover Paseo' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Mover Desayuno' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Mover Museo' })).toBeNull()
+    expect(screen.getByText(AVISO)).toBeTruthy()
+  })
+
+  it('no muestra asas ni aviso si todas tienen una hora distinta', async () => {
     simularBackend([
       actividad('Desayuno', { hora_inicio: '08:30:00' }),
       actividad('Museo', { hora_inicio: '10:00:00' }),
-      actividad('Paseo'),
+      actividad('Cena', { hora_inicio: '21:00:00' }),
     ])
     renderizar()
 
@@ -117,7 +128,21 @@ describe('Itinerario · asas para reordenar', () => {
     expect(screen.queryByText(AVISO)).toBeNull()
   })
 
-  it('una única actividad sin hora no se puede mover', async () => {
+  it('una sin hora colocada entre las de hora se muestra entre ellas', async () => {
+    simularBackend([
+      actividad('Desayuno', { hora_inicio: '08:30:00', orden: 0 }),
+      actividad('Comida', { hora_inicio: '14:00:00', orden: 2 }),
+      actividad('Paseo', { orden: -2 }),
+      actividad('Cena', { hora_inicio: '21:00:00', orden: 3 }),
+      actividad('Fotos', { orden: 4 }),
+    ])
+    renderizar()
+    await screen.findByText('Desayuno')
+
+    expect(titulosDeLaAgenda()).toEqual(['Desayuno', 'Paseo', 'Comida', 'Cena', 'Fotos'])
+  })
+
+  it('si es la única actividad del día no se puede mover', async () => {
     simularBackend([actividad('Paseo')])
     renderizar()
 

@@ -57,6 +57,10 @@ Then('veo el botón {string}', async (texto: string) => {
   await expect(paginaActual().getByRole('button', { name: texto })).toBeVisible();
 });
 
+Then('veo en la agenda, por este orden, {string}, {string} y {string}', async (a: string, b: string, c: string) => {
+  await expect(agenda()).toHaveText([a, b, c].map((titulo) => new RegExp(`^${titulo}`)));
+});
+
 Then('veo en la agenda, por este orden, {string}, {string}, {string} y {string}', async (a: string, b: string, c: string, d: string) => {
   await expect(agenda()).toHaveText([a, b, c, d].map((titulo) => new RegExp(`^${titulo}`)));
 });

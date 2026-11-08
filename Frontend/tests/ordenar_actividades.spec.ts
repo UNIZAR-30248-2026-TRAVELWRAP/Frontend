@@ -105,7 +105,7 @@ const arrastrar = async (page: Page, origen: Locator, destino: Locator) => {
 test.describe('Itinerario · reordenar actividades arrastrando', () => {
   test.use({ viewport: { width: 500, height: 1400 } });
 
-  test('solo tienen asa las actividades sin hora o a la misma hora', async ({ page }) => {
+  test('tienen asa las actividades sin hora y las que comparten hora, y no las que tienen una hora propia', async ({ page }) => {
     await preparar(page);
 
     await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
@@ -117,7 +117,9 @@ test.describe('Itinerario · reordenar actividades arrastrando', () => {
     await expect(asa(page, 'Desayuno')).toHaveCount(0);
     await expect(asa(page, 'Cena')).toHaveCount(0);
     await expect(
-      page.getByText('Las actividades sin hora, o que empiezan a la misma hora, se pueden ordenar arrastrando el asa.'),
+      page.getByText(
+        'Las actividades sin hora se pueden colocar donde quieras arrastrando el asa; las que empiezan a la misma hora, entre sí.',
+      ),
     ).toBeVisible();
   });
 
@@ -131,15 +133,45 @@ test.describe('Itinerario · reordenar actividades arrastrando', () => {
     await expect(agenda(page)).toHaveText([/^Desayuno/, /^Cena/, /^Fotos/, /^Paseo/, /^Compras/]);
   });
 
-  test('una actividad sin hora nunca pasa por encima de las que tienen hora', async ({ page }) => {
+  test('una actividad sin hora se puede colocar entre las que tienen hora', async ({ page }) => {
     await preparar(page);
     await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
 
-    await arrastrar(page, asa(page, 'Paseo'), agenda(page).nth(0));
-    await expect(agenda(page)).toHaveText([/^Desayuno/, /^Cena/, /^Paseo/, /^Compras/, /^Fotos/]);
-
     await arrastrar(page, asa(page, 'Fotos'), agenda(page).nth(1));
-    await expect(agenda(page)).toHaveText([/^Desayuno/, /^Cena/, /^Fotos/, /^Paseo/, /^Compras/]);
+
+    await expect(agenda(page)).toHaveText([/^Desayuno/, /^Fotos/, /^Cena/, /^Paseo/, /^Compras/]);
+  });
+
+  test('una actividad sin hora se puede colocar la primera del día', async ({ page }) => {
+    await preparar(page);
+    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
+
+    await arrastrar(page, asa(page, 'Compras'), agenda(page).nth(0));
+
+    await expect(agenda(page)).toHaveText([/^Compras/, /^Desayuno/, /^Cena/, /^Paseo/, /^Fotos/]);
+  });
+
+  test('una única actividad sin hora también se puede colocar entre las que tienen hora', async ({ page }) => {
+    await preparar(page, {}, [
+      actividad('Desayuno', { hora_inicio: '08:30:00', orden: 0 }),
+      actividad('Comida', { hora_inicio: '14:00:00', orden: 1 }),
+      actividad('Paseo', { orden: 2 }),
+    ]);
+    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
+
+    await arrastrar(page, asa(page, 'Paseo'), agenda(page).nth(1));
+
+    await expect(agenda(page)).toHaveText([/^Desayuno/, /^Paseo/, /^Comida/]);
+  });
+
+  test('las actividades con una hora propia no tienen asa y no se pueden mover', async ({ page }) => {
+    await preparar(page);
+    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
+
+    await expect(page.getByRole('button', { name: 'Mover Desayuno' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Mover Cena' })).toHaveCount(0);
+    await expect(agenda(page).nth(0)).toHaveText(/^Desayuno/);
+    await expect(agenda(page).nth(1)).toHaveText(/^Cena/);
   });
 
   test('con el teclado se coge el asa, se mueve con las flechas y se suelta', async ({ page }) => {
