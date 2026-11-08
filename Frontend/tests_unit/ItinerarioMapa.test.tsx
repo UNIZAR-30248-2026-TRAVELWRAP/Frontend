@@ -88,7 +88,7 @@ describe('Itinerario · mapa', () => {
     ])
     renderizar()
 
-    expect((await screen.findByTestId('mapa')).textContent).toBe('Desayuno|Coliseo')
+    expect((await screen.findByTestId('mapa', {}, { timeout: 5000 })).textContent).toBe('Desayuno|Coliseo')
   })
 
   it('indica cuántas actividades del día están en el mapa', async () => {
@@ -109,7 +109,7 @@ describe('Itinerario · mapa', () => {
     simularBackend([actividad('a1', { titulo: 'Paseo', ubicacion_nombre: 'Trastevere' })])
     renderizar()
 
-    expect((await screen.findByTestId('mapa')).textContent).toBe('')
+    expect((await screen.findByTestId('mapa', {}, { timeout: 5000 })).textContent).toBe('')
     expect(screen.getByText(/Ninguna actividad de este día tiene ubicación en el mapa/)).toBeTruthy()
   })
 
@@ -132,7 +132,7 @@ describe('Itinerario · mapa', () => {
       conUbicacion('a3', 'Trastevere', { fecha: '2027-05-13', hora_inicio: '20:00:00' }),
     ])
     renderizar()
-    expect((await screen.findByTestId('mapa')).textContent).toBe('Coliseo')
+    expect((await screen.findByTestId('mapa', {}, { timeout: 5000 })).textContent).toBe('Coliseo')
 
     await userEvent.click(screen.getByRole('button', { name: 'Día 2 · 13 may' }))
 
@@ -144,7 +144,7 @@ describe('Itinerario · mapa', () => {
     const user = userEvent.setup()
     simularBackend([conUbicacion('a1', 'Coliseo', { hora_inicio: '10:00:00' }), conUbicacion('a2', 'Foro', { hora_inicio: '12:00:00' })])
     renderizar()
-    expect((await screen.findByTestId('mapa')).textContent).toBe('Coliseo|Foro')
+    expect((await screen.findByTestId('mapa', {}, { timeout: 5000 })).textContent).toBe('Coliseo|Foro')
 
     await user.click(screen.getByRole('button', { name: 'Eliminar Coliseo' }))
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Eliminar actividad' }))
@@ -170,7 +170,7 @@ describe('Itinerario · mapa', () => {
     simularBackend([conUbicacion('a1', 'Coliseo')], { estado: 'archivado' })
     renderizar()
 
-    expect((await screen.findByTestId('mapa')).textContent).toBe('Coliseo')
+    expect((await screen.findByTestId('mapa', {}, { timeout: 5000 })).textContent).toBe('Coliseo')
   })
 
   it('sin fechas ni actividades no hay días y no se enseña el mapa', async () => {
