@@ -14,6 +14,7 @@ export type PuntoDelMapa = {
 
 type MapaActividadesProps = {
   puntos: PuntoDelMapa[]
+  trazado?: [number, number][] | null
 }
 
 export const ALTO_MAPA = 220
@@ -42,7 +43,7 @@ const crearPopup = (punto: PuntoDelMapa) => {
   return contenido
 }
 
-export default function MapaActividades({ puntos }: MapaActividadesProps) {
+export default function MapaActividades({ puntos, trazado = null }: MapaActividadesProps) {
   const contenedor = useRef<HTMLDivElement>(null)
   const mapa = useRef<L.Map | null>(null)
   const marcadores = useRef<L.LayerGroup | null>(null)
@@ -60,13 +61,13 @@ export default function MapaActividades({ puntos }: MapaActividadesProps) {
     }
   }, [])
 
-  const clave = JSON.stringify(puntos)
+  const clave = JSON.stringify({ puntos, trazado })
 
   useEffect(() => {
     const actual = mapa.current
     const capa = marcadores.current
     if (!actual || !capa) return
-    const puntos: PuntoDelMapa[] = JSON.parse(clave)
+    const { puntos, trazado }: { puntos: PuntoDelMapa[]; trazado: [number, number][] | null } = JSON.parse(clave)
     capa.clearLayers()
     if (puntos.length === 0) {
       actual.setView([25, 10], 2)
@@ -82,9 +83,10 @@ export default function MapaActividades({ puntos }: MapaActividadesProps) {
         .addTo(capa)
     })
     if (puntos.length >= 2) {
+      const porCalles = trazado !== null && trazado.length >= 2
       L.polyline(
-        puntos.map((punto) => [punto.latitud, punto.longitud] as [number, number]),
-        { color: C.blue, weight: 4, opacity: 0.7, dashArray: "8 8", interactive: false },
+        porCalles ? trazado : puntos.map((punto) => [punto.latitud, punto.longitud] as [number, number]),
+        { color: C.blue, weight: 4, opacity: 0.7, dashArray: porCalles ? undefined : "8 8", interactive: false },
       ).addTo(capa)
     }
     if (puntos.length === 1) {

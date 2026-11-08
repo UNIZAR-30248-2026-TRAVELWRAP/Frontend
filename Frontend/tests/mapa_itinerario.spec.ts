@@ -91,8 +91,32 @@ const TESELA = Buffer.from(
 const json = (route: Route, status: number, cuerpo: unknown) =>
   route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(cuerpo) });
 
-const preparar = async (page: Page, datosViaje: Record<string, unknown> = {}, actividades = ACTIVIDADES) => {
+const RUTA_DEL_DIA = {
+  puntos: [
+    { id: 'coliseo', titulo: 'Visita al Coliseo', latitud: 41.890214, longitud: 12.492231 },
+    { id: 'foro', titulo: 'Foro Romano', latitud: 41.892462, longitud: 12.485325 },
+  ],
+  orden_sugerido: ['coliseo', 'foro'],
+  ahorro_m: 0,
+  ruta: {
+    distancia_m: 812,
+    duracion_s: 590,
+    geometria: [
+      [41.89021, 12.49223],
+      [41.8911, 12.49],
+      [41.89246, 12.48533],
+    ],
+  },
+};
+
+const preparar = async (
+  page: Page,
+  datosViaje: Record<string, unknown> = {},
+  actividades = ACTIVIDADES,
+  ruta: Record<string, unknown> | null = null,
+) => {
   const teselas: string[] = [];
+  const peticionesDeRuta: string[] = [];
   await page.addInitScript((datos) => {
     if (!sessionStorage.getItem('sesionSembrada')) {
       localStorage.setItem('travelwrap.sesion', JSON.stringify(datos));
@@ -106,12 +130,19 @@ const preparar = async (page: Page, datosViaje: Record<string, unknown> = {}, ac
     teselas.push(route.request().url());
     return route.fulfill({ status: 200, contentType: 'image/png', body: TESELA });
   });
+  const rutaSimulada = ruta;
   await page.route('**/api/viajes/**', (route) => {
     const ruta = new URL(route.request().url()).pathname.replace(/^.*\/api/, '');
     if (ruta === `/viajes/${VIAJE_ID}/actividades`) return json(route, 200, { actividades });
+    if (ruta === `/viajes/${VIAJE_ID}/ruta`) {
+      peticionesDeRuta.push(new URL(route.request().url()).search);
+      return rutaSimulada
+        ? json(route, 200, rutaSimulada)
+        : json(route, 502, { error: { codigo: 'error_ruta', mensaje: 'No se ha podido calcular la ruta' } });
+    }
     return json(route, 200, viaje(datosViaje));
   });
-  return teselas;
+  return Object.assign(teselas, { peticionesDeRuta });
 };
 
 const mapa = (page: Page) => page.getByRole('region', { name: 'Mapa de las actividades del día' });
@@ -161,6 +192,51 @@ test.describe('Itinerario · mapa de las actividades', () => {
     await expect(marcadores(page)).toHaveCount(2);
     await expect(lineaDeRuta(page)).toHaveCount(1);
     await expect(lineaDeRuta(page)).toHaveAttribute('stroke-dasharray', '8 8');
+  });
+
+  test('con la ruta por calles la línea es continua y se indican la distancia y la duración', async ({ page }) => {
+    const teselas = await preparar(page, {}, ACTIVIDADES, RUTA_DEL_DIA);
+
+    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
+
+    await expect(page.getByText('Ruta a pie por calles: 810 m · 10 min')).toBeVisible();
+    await expect(lineaDeRuta(page)).toHaveCount(1);
+    await expect(lineaDeRuta(page)).not.toHaveAttribute('stroke-dasharray', /.+/);
+    expect(teselas.peticionesDeRuta).toEqual(['?fecha=2027-05-12']);
+  });
+
+  test('si no se puede calcular la ruta se avisa y la línea sigue siendo recta', async ({ page }) => {
+    await preparar(page);
+
+    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
+
+    await expect(page.getByText('No se ha podido calcular la ruta por calles; se muestra una línea recta.')).toBeVisible();
+    await expect(lineaDeRuta(page)).toHaveAttribute('stroke-dasharray', '8 8');
+  });
+
+  test('sugiere un orden más corto cuando ahorra al menos 100 m', async ({ page }) => {
+    await preparar(page, {}, ACTIVIDADES, {
+      ...RUTA_DEL_DIA,
+      orden_sugerido: ['foro', 'coliseo'],
+      ahorro_m: 1240,
+    });
+
+    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
+
+    await expect(page.getByText(/Orden más corto: «Foro Romano» → «Visita al Coliseo»/)).toBeVisible();
+    await expect(page.getByText(/unos 1,2 km menos en línea recta/)).toBeVisible();
+  });
+
+  test('al cambiar de día se vuelve a calcular la ruta solo si hay dos ubicaciones', async ({ page }) => {
+    const teselas = await preparar(page, {}, ACTIVIDADES, RUTA_DEL_DIA);
+    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
+    await expect(page.getByText(/Ruta a pie por calles/)).toBeVisible();
+
+    await page.getByRole('button', { name: 'Día 2 · 13 may' }).click();
+
+    await expect(marcadores(page)).toHaveCount(1);
+    await expect(page.getByText(/Ruta a pie por calles/)).toHaveCount(0);
+    expect(teselas.peticionesDeRuta).toHaveLength(1);
   });
 
   test('con una sola actividad con ubicación no se dibuja ninguna línea', async ({ page }) => {

@@ -1,11 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { ApiError } from '../src/services/authApi'
 import Itinerario from '../src/screens/Itinerario'
 
 vi.mock('../src/components/MapaActividades', () => ({
-  default: ({ puntos }: { puntos: { id: string; titulo: string }[] }) => (
-    <div data-testid="mapa">{puntos.map((punto) => punto.titulo).join('|')}</div>
+  default: ({ puntos, trazado }: { puntos: { id: string; titulo: string }[]; trazado?: number[][] | null }) => (
+    <div data-testid="mapa" data-trazado={trazado ? trazado.length : 'ninguno'}>
+      {puntos.map((punto) => punto.titulo).join('|')}
+    </div>
   ),
 }))
 
@@ -56,19 +59,48 @@ const actividad = (id: string, datos: Record<string, unknown> = {}) => ({
 const conUbicacion = (id: string, titulo: string, datos: Record<string, unknown> = {}) =>
   actividad(id, { titulo, ubicacion_nombre: 'Roma', latitud: 41.89, longitud: 12.49, ...datos })
 
-const simularBackend = (actividades: unknown[], datosViaje: Record<string, unknown> = {}) => {
+const RUTA_POR_DEFECTO = () =>
+  respuesta(502, { error: { codigo: 'error_ruta', mensaje: 'No se ha podido calcular la ruta' } })
+
+const rutaDelDia = (datos: Record<string, unknown> = {}) => ({
+  puntos: [
+    { id: 'a1', titulo: 'Coliseo', latitud: 41.89, longitud: 12.49 },
+    { id: 'a2', titulo: 'Foro', latitud: 41.9, longitud: 12.5 },
+  ],
+  orden_sugerido: ['a1', 'a2'],
+  ahorro_m: 0,
+  ruta: {
+    distancia_m: 3420,
+    duracion_s: 2700,
+    geometria: [
+      [41.89, 12.49],
+      [41.895, 12.495],
+      [41.9, 12.5],
+    ],
+  },
+  ...datos,
+})
+
+const simularBackend = (
+  actividades: unknown[],
+  datosViaje: Record<string, unknown> = {},
+  ruta: (url: string) => Promise<Response> = RUTA_POR_DEFECTO,
+) => {
   let vigentes = actividades as { id: string }[]
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (url: string, opciones?: RequestInit) => {
-      if (opciones?.method === 'DELETE') {
-        vigentes = vigentes.filter((actividad) => actividad.id !== url.split('/').pop())
-        return new Response(null, { status: 204 })
-      }
-      return url.includes('/actividades') ? respuesta(200, { actividades: vigentes }) : respuesta(200, viaje(datosViaje))
-    }),
-  )
+  const fetchMock = vi.fn(async (url: string, opciones?: RequestInit) => {
+    if (opciones?.method === 'DELETE') {
+      vigentes = vigentes.filter((actividad) => actividad.id !== url.split('/').pop())
+      return new Response(null, { status: 204 })
+    }
+    if (url.includes('/ruta')) return ruta(url)
+    return url.includes('/actividades') ? respuesta(200, { actividades: vigentes }) : respuesta(200, viaje(datosViaje))
+  })
+  vi.stubGlobal('fetch', fetchMock)
+  return fetchMock
 }
+
+const peticionesDeRuta = (fetchMock: ReturnType<typeof vi.fn>) =>
+  fetchMock.mock.calls.map(([url]) => String(url)).filter((url) => url.includes('/ruta'))
 
 const renderizar = () => render(<Itinerario viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
 
@@ -164,6 +196,116 @@ describe('Itinerario · mapa', () => {
 
     await waitFor(() => expect(screen.getByTestId('mapa').textContent).toBe(''))
     expect(screen.getByText(/Ninguna actividad de este día tiene ubicación en el mapa/)).toBeTruthy()
+  })
+
+  it('con dos actividades con ubicación pide la ruta del día con la sesión y se la pasa al mapa', async () => {
+    const fetchMock = simularBackend(
+      [conUbicacion('a1', 'Coliseo', { hora_inicio: '10:00:00' }), conUbicacion('a2', 'Foro', { hora_inicio: '12:00:00' })],
+      {},
+      async () => respuesta(200, rutaDelDia()),
+    )
+    renderizar()
+
+    expect(await screen.findByText('Ruta a pie por calles: 3,4 km · 45 min')).toBeTruthy()
+    expect(screen.getByTestId('mapa').getAttribute('data-trazado')).toBe('3')
+    const [url] = peticionesDeRuta(fetchMock)
+    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/ruta\\?fecha=2027-05-12$`))
+    const [, opciones] = fetchMock.mock.calls.find(([u]) => String(u).includes('/ruta')) as [string, RequestInit]
+    expect((opciones.headers as Record<string, string>).Authorization).toBe('Bearer token-acceso')
+  })
+
+  it('si el servicio de rutas falla avisa y deja la línea recta', async () => {
+    simularBackend([conUbicacion('a1', 'Coliseo'), conUbicacion('a2', 'Foro')])
+    renderizar()
+
+    expect(await screen.findByText('No se ha podido calcular la ruta por calles; se muestra una línea recta.')).toBeTruthy()
+    expect(screen.getByTestId('mapa').getAttribute('data-trazado')).toBe('ninguno')
+  })
+
+  it('no pide la ruta con menos de dos actividades con ubicación', async () => {
+    const fetchMock = simularBackend([conUbicacion('a1', 'Coliseo'), actividad('a2', { titulo: 'Paseo' })])
+    renderizar()
+    await screen.findByText('1 de 2 actividades con ubicación en el mapa')
+
+    expect(peticionesDeRuta(fetchMock)).toHaveLength(0)
+    expect(screen.queryByText(/Ruta a pie por calles/)).toBeNull()
+  })
+
+  it('sugiere un orden más corto cuando el ahorro es de 100 m o más', async () => {
+    simularBackend(
+      [conUbicacion('a1', 'Coliseo'), conUbicacion('a2', 'Foro'), conUbicacion('a3', 'Vaticano')],
+      {},
+      async () =>
+        respuesta(
+          200,
+          rutaDelDia({
+            puntos: [
+              { id: 'a1', titulo: 'Coliseo', latitud: 41.89, longitud: 12.49 },
+              { id: 'a2', titulo: 'Foro', latitud: 41.9, longitud: 12.5 },
+              { id: 'a3', titulo: 'Vaticano', latitud: 41.91, longitud: 12.51 },
+            ],
+            orden_sugerido: ['a1', 'a3', 'a2'],
+            ahorro_m: 1240,
+          }),
+        ),
+    )
+    renderizar()
+
+    expect(await screen.findByText(/Orden más corto: «Coliseo» → «Vaticano» → «Foro»/)).toBeTruthy()
+    expect(screen.getByText(/unos 1,2 km menos en línea recta/)).toBeTruthy()
+  })
+
+  it('no sugiere ningún orden si el ahorro es menor de 100 m', async () => {
+    simularBackend(
+      [conUbicacion('a1', 'Coliseo'), conUbicacion('a2', 'Foro')],
+      {},
+      async () => respuesta(200, rutaDelDia({ orden_sugerido: ['a2', 'a1'], ahorro_m: 40 })),
+    )
+    renderizar()
+
+    await screen.findByText(/Ruta a pie por calles/)
+    expect(screen.queryByText(/Orden más corto/)).toBeNull()
+  })
+
+  it('al cambiar a un día con una sola ubicación quita la ruta y no vuelve a pedirla', async () => {
+    const fetchMock = simularBackend(
+      [
+        conUbicacion('a1', 'Coliseo'),
+        conUbicacion('a2', 'Foro'),
+        conUbicacion('a3', 'Vaticano', { fecha: '2027-05-13' }),
+      ],
+      {},
+      async () => respuesta(200, rutaDelDia()),
+    )
+    renderizar()
+    await screen.findByText(/Ruta a pie por calles/)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Día 2 · 13 may' }))
+
+    expect(screen.queryByText(/Ruta a pie por calles/)).toBeNull()
+    expect(screen.getByTestId('mapa').getAttribute('data-trazado')).toBe('ninguno')
+    expect(peticionesDeRuta(fetchMock)).toHaveLength(1)
+  })
+
+  it('no pide la ruta cuando se está viendo lo guardado sin conexión', async () => {
+    const fetchMock = simularBackend([conUbicacion('a1', 'Coliseo'), conUbicacion('a2', 'Foro')])
+    renderizar()
+    await screen.findByText(/No se ha podido calcular la ruta/)
+    cleanup()
+    const llamadas = peticionesDeRuta(fetchMock).length
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (String(url).includes('/ruta')) throw new Error('no debería pedirse')
+        throw new ApiError('Sin conexión', 0)
+      }),
+    )
+
+    renderizar()
+
+    expect(await screen.findByText('2 de 2 actividades con ubicación en el mapa')).toBeTruthy()
+    expect(peticionesDeRuta(fetchMock)).toHaveLength(llamadas)
+    expect(screen.queryByText(/Ruta a pie por calles/)).toBeNull()
   })
 
   it('en un viaje archivado el mapa también se ve', async () => {

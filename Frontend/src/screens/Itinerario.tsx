@@ -14,6 +14,7 @@ import {
   type Actividad,
 } from "../services/actividadesApi"
 import { ApiError } from "../services/authApi"
+import { obtenerRutaDelDia, type RutaDelDia } from "../services/rutasApi"
 import { guardarItinerario, leerItinerario } from "../services/itinerarioGuardado"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
@@ -22,6 +23,16 @@ import { aMiembro, diasDelItinerario, fechaDeHoy, formatearFechasActivo } from "
 const MapaActividades = lazy(() => import("../components/MapaActividades"))
 
 const ALTO_MAPA_CARGANDO = 220
+
+const formatearDistancia = (metros: number) =>
+  metros < 1000 ? `${Math.round(metros / 10) * 10} m` : `${(metros / 1000).toFixed(1).replace(".", ",")} km`
+
+const formatearDuracion = (segundos: number) => {
+  const minutos = Math.max(1, Math.round(segundos / 60))
+  if (minutos < 60) return `${minutos} min`
+  const resto = minutos % 60
+  return resto === 0 ? `${Math.floor(minutos / 60)} h` : `${Math.floor(minutos / 60)} h ${String(resto).padStart(2, "0")} min`
+}
 
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
 
@@ -72,6 +83,7 @@ export default function Itinerario({
   const [eliminando, setEliminando] = useState(false)
   const [errorEliminar, setErrorEliminar] = useState("")
   const [diaElegido, setDiaElegido] = useState(diaInicial)
+  const [rutaCargada, setRutaCargada] = useState<{ clave: string; datos: RutaDelDia | null } | null>(null)
 
   useEffect(() => {
     let vigente = true
@@ -163,6 +175,32 @@ export default function Itinerario({
         ]
       : [],
   )
+  const claveDeLaRuta = `${dia}|${JSON.stringify(puntosDelMapa.map((p) => [p.id, p.latitud, p.longitud]))}`
+  const hayRutaQueCalcular = puntosDelMapa.length >= 2 && guardadoEn === null
+
+  useEffect(() => {
+    if (!hayRutaQueCalcular) return
+    let vigente = true
+    obtenerRutaDelDia(viajeId, dia, tokenSesion)
+      .then((datos) => {
+        if (vigente) setRutaCargada({ clave: claveDeLaRuta, datos })
+      })
+      .catch(() => {
+        if (vigente) setRutaCargada({ clave: claveDeLaRuta, datos: null })
+      })
+    return () => {
+      vigente = false
+    }
+  }, [hayRutaQueCalcular, claveDeLaRuta, viajeId, dia, tokenSesion])
+
+  const rutaDelDia = hayRutaQueCalcular && rutaCargada?.clave === claveDeLaRuta ? rutaCargada : null
+  const trazado = rutaDelDia?.datos?.ruta?.geometria ?? null
+  const ordenSugerido =
+    rutaDelDia?.datos && rutaDelDia.datos.ahorro_m >= 100
+      ? rutaDelDia.datos.orden_sugerido
+          .map((id) => rutaDelDia.datos?.puntos.find((punto) => punto.id === id)?.titulo)
+          .filter((titulo): titulo is string => !!titulo)
+      : []
   const activo = viaje?.estado === "activo"
   const puedeModificar = activo && !guardadoEn
   const indiceDeMiembro = (usuarioId: string | null) =>
@@ -318,13 +356,30 @@ export default function Itinerario({
                   </div>
                 }
               >
-                <MapaActividades puntos={puntosDelMapa} />
+                <MapaActividades puntos={puntosDelMapa} trazado={trazado} />
               </Suspense>
               <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, padding: "8px 14px" }}>
                 {puntosDelMapa.length > 0
                   ? `${puntosDelMapa.length} de ${delDia.length} ${delDia.length === 1 ? "actividad" : "actividades"} con ubicación en el mapa`
                   : "Ninguna actividad de este día tiene ubicación en el mapa. Al añadir o editar una actividad, busca su dirección con la lupa para verla aquí."}
               </div>
+              {rutaDelDia?.datos?.ruta && (
+                <div style={{ fontFamily: NUNITO, color: C.navy, fontSize: 12, fontWeight: 700, padding: "0 14px 8px" }}>
+                  Ruta a pie por calles: {formatearDistancia(rutaDelDia.datos.ruta.distancia_m)} ·{" "}
+                  {formatearDuracion(rutaDelDia.datos.ruta.duracion_s)}
+                </div>
+              )}
+              {ordenSugerido.length > 0 && rutaDelDia?.datos && (
+                <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, padding: "0 14px 8px", lineHeight: 1.4 }}>
+                  Orden más corto: {ordenSugerido.map((titulo) => `«${titulo}»`).join(" → ")} (unos{" "}
+                  {formatearDistancia(rutaDelDia.datos.ahorro_m)} menos en línea recta)
+                </div>
+              )}
+              {rutaDelDia && rutaDelDia.datos === null && (
+                <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, padding: "0 14px 8px" }}>
+                  No se ha podido calcular la ruta por calles; se muestra una línea recta.
+                </div>
+              )}
             </div>
           )}
 

@@ -31,3 +31,34 @@ Característica: Ruta sugerida del día en el mapa (PB-43)
     Y confirmo en el diálogo "Eliminar actividad"
     Entonces veo 1 marcadores en el mapa
     Y no veo ninguna línea en el mapa
+
+  Escenario: La ruta por calles sustituye a la línea recta e indica distancia y duración
+    Dado que el servidor devuelve en "Roma 2027" la actividad "Visita al Coliseo" el "2027-05-12" con ubicación "Colosseo, Roma" en las coordenadas 41.890214 y 12.492231
+    Y que el servidor devuelve en "Roma 2027" la actividad "Foro Romano" el "2027-05-12" con ubicación "Foro Romano, Roma" en las coordenadas 41.892462 y 12.485325
+    Y que el servicio de rutas calcula un recorrido de 3420 metros y 2700 segundos
+    Cuando abro el itinerario del viaje "Roma 2027"
+    Entonces veo el texto "Ruta a pie por calles: 3,4 km · 45 min"
+    Y veo la línea continua de la ruta por calles en el mapa
+    Y el servicio de rutas ha recibido 1 petición
+
+  Escenario: Si el servicio de rutas no responde se avisa y queda la línea recta
+    Dado que el servidor devuelve en "Roma 2027" la actividad "Visita al Coliseo" el "2027-05-12" con ubicación "Colosseo, Roma" en las coordenadas 41.890214 y 12.492231
+    Y que el servidor devuelve en "Roma 2027" la actividad "Foro Romano" el "2027-05-12" con ubicación "Foro Romano, Roma" en las coordenadas 41.892462 y 12.485325
+    Y que el servicio de rutas no responde
+    Cuando abro el itinerario del viaje "Roma 2027"
+    Entonces veo el texto "No se ha podido calcular la ruta por calles; se muestra una línea recta."
+    Y veo la línea discontinua recta en el mapa
+
+  Escenario: Se sugiere un orden más corto cuando ahorra distancia
+    Dado que el servidor devuelve en "Roma 2027" la actividad "Visita al Coliseo" el "2027-05-12" con ubicación "Colosseo, Roma" en las coordenadas 41.890214 y 12.492231
+    Y que el servidor devuelve en "Roma 2027" la actividad "Foro Romano" el "2027-05-12" con ubicación "Foro Romano, Roma" en las coordenadas 41.892462 y 12.485325
+    Y que el servicio de rutas sugiere el orden "a2,a1" y ahorra 1240 metros
+    Cuando abro el itinerario del viaje "Roma 2027"
+    Entonces veo el texto "Orden más corto: «Foro Romano» → «Visita al Coliseo»"
+
+  Escenario: Con una sola actividad con ubicación no se pide ninguna ruta
+    Dado que el servidor devuelve en "Roma 2027" la actividad "Visita al Coliseo" el "2027-05-12" con ubicación "Colosseo, Roma" en las coordenadas 41.890214 y 12.492231
+    Y que el servicio de rutas calcula un recorrido de 3420 metros y 2700 segundos
+    Cuando abro el itinerario del viaje "Roma 2027"
+    Entonces veo 1 marcadores en el mapa
+    Y el servicio de rutas ha recibido 0 petición

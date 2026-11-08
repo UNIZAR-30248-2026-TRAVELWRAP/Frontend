@@ -142,6 +142,38 @@ describe('MapaActividades', () => {
     expect(falso.estado.lineas[0].opciones).toMatchObject({ color: '#2B6CB0', dashArray: '8 8', interactive: false })
   })
 
+  it('con el trazado por calles dibuja esa línea continua en lugar de la recta', () => {
+    const calles: [number, number][] = [
+      [41.890214, 12.492231],
+      [41.8911, 12.49],
+      [41.892462, 12.485325],
+    ]
+    render(<MapaActividades puntos={[COLISEO, FORO]} trazado={calles} />)
+
+    expect(falso.estado.lineas).toHaveLength(1)
+    expect(falso.estado.lineas[0].puntos).toEqual(calles)
+    expect(falso.estado.lineas[0].opciones.dashArray).toBeUndefined()
+  })
+
+  it('al llegar el trazado por calles sustituye a la línea recta sin crear otro mapa', () => {
+    const { rerender } = render(<MapaActividades puntos={[COLISEO, FORO]} />)
+    expect(falso.estado.lineas[0].opciones.dashArray).toBe('8 8')
+
+    rerender(
+      <MapaActividades
+        puntos={[COLISEO, FORO]}
+        trazado={[
+          [41.890214, 12.492231],
+          [41.892462, 12.485325],
+        ]}
+      />,
+    )
+
+    expect(falso.L.map).toHaveBeenCalledTimes(1)
+    expect(falso.estado.lineas).toHaveLength(1)
+    expect(falso.estado.lineas[0].opciones.dashArray).toBeUndefined()
+  })
+
   it('con una sola actividad o ninguna no dibuja línea', () => {
     const { rerender } = render(<MapaActividades puntos={[COLISEO]} />)
     expect(falso.estado.lineas).toHaveLength(0)
