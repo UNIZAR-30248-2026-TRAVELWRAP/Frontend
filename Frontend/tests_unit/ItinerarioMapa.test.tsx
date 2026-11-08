@@ -5,10 +5,25 @@ import { ApiError } from '../src/services/authApi'
 import Itinerario from '../src/screens/Itinerario'
 
 vi.mock('../src/components/MapaActividades', () => ({
-  default: ({ puntos, trazado }: { puntos: { id: string; titulo: string }[]; trazado?: number[][] | null }) => (
-    <div data-testid="mapa" data-trazado={trazado ? trazado.length : 'ninguno'}>
-      {puntos.map((punto) => punto.titulo).join('|')}
-    </div>
+  default: ({
+    puntos,
+    trazado,
+    ampliado,
+    alAlternarAmpliado,
+  }: {
+    puntos: { id: string; titulo: string }[]
+    trazado?: number[][] | null
+    ampliado?: boolean
+    alAlternarAmpliado?: () => void
+  }) => (
+    <>
+      <div data-testid="mapa" data-trazado={trazado ? trazado.length : 'ninguno'} data-ampliado={String(!!ampliado)}>
+        {puntos.map((punto) => punto.titulo).join('|')}
+      </div>
+      <button type="button" onClick={alAlternarAmpliado}>
+        {ampliado ? 'Reducir mapa' : 'Ampliar mapa'}
+      </button>
+    </>
   ),
 }))
 
@@ -107,6 +122,7 @@ const peticionesDeRuta = (fetchMock: ReturnType<typeof vi.fn>) =>
 const renderizar = () => render(<Itinerario viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
 
 afterEach(() => {
+  document.body.style.overflow = ''
   cleanup()
   vi.unstubAllGlobals()
   localStorage.clear()
@@ -338,6 +354,87 @@ describe('Itinerario · mapa', () => {
 
     await waitFor(() => expect(screen.queryByText('Ruta a pie por calles: 3,4 km · 45 min')).toBeNull())
     expect(screen.getByText('Ruta a pie por calles: 5,0 km · 1 h')).toBeTruthy()
+  })
+
+  it('al ampliar el mapa lo pasa a pantalla casi completa y bloquea el scroll de la página', async () => {
+    const user = userEvent.setup()
+    simularBackend([conUbicacion('a1', 'Coliseo')])
+    renderizar()
+    const mapa = await screen.findByTestId('mapa')
+    const tarjeta = mapa.parentElement as HTMLElement
+    expect(tarjeta.style.position).not.toBe('fixed')
+    expect(document.body.style.overflow).toBe('')
+
+    await user.click(screen.getByRole('button', { name: 'Ampliar mapa' }))
+
+    expect(screen.getByTestId('mapa').getAttribute('data-ampliado')).toBe('true')
+    expect(tarjeta.style.position).toBe('fixed')
+    expect(tarjeta.style.height).toBe('100dvh')
+    expect(document.body.style.overflow).toBe('hidden')
+    expect(screen.getByRole('button', { name: 'Reducir mapa' })).toBeTruthy()
+  })
+
+  it('al reducir el mapa vuelve a su tamaño y devuelve el scroll de la página', async () => {
+    const user = userEvent.setup()
+    simularBackend([conUbicacion('a1', 'Coliseo')])
+    renderizar()
+    await user.click(await screen.findByRole('button', { name: 'Ampliar mapa' }))
+
+    await user.click(screen.getByRole('button', { name: 'Reducir mapa' }))
+
+    const tarjeta = screen.getByTestId('mapa').parentElement as HTMLElement
+    expect(screen.getByTestId('mapa').getAttribute('data-ampliado')).toBe('false')
+    expect(tarjeta.style.position).not.toBe('fixed')
+    expect(document.body.style.overflow).toBe('')
+  })
+
+  it('con Escape se reduce el mapa ampliado', async () => {
+    const user = userEvent.setup()
+    simularBackend([conUbicacion('a1', 'Coliseo')])
+    renderizar()
+    await user.click(await screen.findByRole('button', { name: 'Ampliar mapa' }))
+
+    await user.keyboard('{Escape}')
+
+    expect(screen.getByTestId('mapa').getAttribute('data-ampliado')).toBe('false')
+    expect(document.body.style.overflow).toBe('')
+  })
+
+  it('otras teclas no reducen el mapa ampliado', async () => {
+    const user = userEvent.setup()
+    simularBackend([conUbicacion('a1', 'Coliseo')])
+    renderizar()
+    await user.click(await screen.findByRole('button', { name: 'Ampliar mapa' }))
+
+    await user.keyboard('a{ArrowDown}{Tab}')
+
+    expect(screen.getByTestId('mapa').getAttribute('data-ampliado')).toBe('true')
+  })
+
+  it('si se sale de la pantalla con el mapa ampliado se devuelve el scroll de la página', async () => {
+    const user = userEvent.setup()
+    simularBackend([conUbicacion('a1', 'Coliseo')])
+    const { unmount } = renderizar()
+    await user.click(await screen.findByRole('button', { name: 'Ampliar mapa' }))
+    expect(document.body.style.overflow).toBe('hidden')
+
+    unmount()
+
+    expect(document.body.style.overflow).toBe('')
+  })
+
+  it('la información de la ruta sigue visible con el mapa ampliado', async () => {
+    const user = userEvent.setup()
+    simularBackend(
+      [conUbicacion('a1', 'Coliseo'), conUbicacion('a2', 'Foro')],
+      {},
+      async () => respuesta(200, rutaDelDia()),
+    )
+    renderizar()
+    await user.click(await screen.findByRole('button', { name: 'Ampliar mapa' }))
+
+    expect(await screen.findByText('Ruta a pie por calles: 3,4 km · 45 min')).toBeTruthy()
+    expect(screen.getByText('2 de 2 actividades con ubicación en el mapa')).toBeTruthy()
   })
 
   it('no pide la ruta cuando se está viendo lo guardado sin conexión', async () => {

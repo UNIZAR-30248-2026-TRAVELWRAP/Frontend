@@ -1,4 +1,4 @@
-import { Given, Then } from '@cucumber/cucumber';
+import { Given, Then, When } from '@cucumber/cucumber';
 import { expect } from '@playwright/test';
 import { sembrarActividad } from './anadir_actividad.steps';
 import { idDelViaje } from './gestion_viajes.steps';
@@ -102,4 +102,20 @@ Then('veo la línea discontinua recta en el mapa', async () => {
 
 Then('el servicio de rutas ha recibido {int} petición/peticiones', async (cantidad: number) => {
   await expect.poll(() => peticionesDeRuta).toBe(cantidad);
+});
+
+Then('el mapa ocupa casi toda la pantalla', async () => {
+  const pagina = paginaActual();
+  const altoVentana = pagina.viewportSize()?.height ?? 0;
+  const region = pagina.getByRole('region', { name: 'Mapa de las actividades del día' });
+  await expect.poll(async () => (await region.boundingBox())?.height ?? 0).toBeGreaterThan(altoVentana * 0.55);
+});
+
+Then('el mapa vuelve a su tamaño normal', async () => {
+  const region = paginaActual().getByRole('region', { name: 'Mapa de las actividades del día' });
+  await expect.poll(async () => (await region.boundingBox())?.height ?? 0).toBeLessThan(260);
+});
+
+When('pulso la tecla Escape', async () => {
+  await paginaActual().keyboard.press('Escape');
 });

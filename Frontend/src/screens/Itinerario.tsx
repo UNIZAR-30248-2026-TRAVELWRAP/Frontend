@@ -83,6 +83,7 @@ export default function Itinerario({
   const [eliminando, setEliminando] = useState(false)
   const [errorEliminar, setErrorEliminar] = useState("")
   const [diaElegido, setDiaElegido] = useState(diaInicial)
+  const [mapaAmpliado, setMapaAmpliado] = useState(false)
   const [rutaCargada, setRutaCargada] = useState<{ clave: string; datos: RutaDelDia | null } | null>(null)
 
   useEffect(() => {
@@ -192,6 +193,20 @@ export default function Itinerario({
       vigente = false
     }
   }, [hayRutaQueCalcular, claveDeLaRuta, viajeId, dia, tokenSesion])
+
+  useEffect(() => {
+    if (!mapaAmpliado) return
+    const alPulsarTecla = (evento: KeyboardEvent) => {
+      if (evento.key === "Escape") setMapaAmpliado(false)
+    }
+    const desbordeAnterior = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    window.addEventListener("keydown", alPulsarTecla)
+    return () => {
+      window.removeEventListener("keydown", alPulsarTecla)
+      document.body.style.overflow = desbordeAnterior
+    }
+  }, [mapaAmpliado])
 
   const rutaDelDia = hayRutaQueCalcular && rutaCargada?.clave === claveDeLaRuta ? rutaCargada : null
   const trazado = rutaDelDia?.datos?.ruta?.geometria ?? null
@@ -344,6 +359,23 @@ export default function Itinerario({
                 boxShadow: SHADOWS.card,
                 border: `1.5px solid ${C.border}`,
                 marginBottom: 14,
+                ...(mapaAmpliado
+                  ? {
+                      position: "fixed",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      height: "100dvh",
+                      zIndex: 50,
+                      borderRadius: 0,
+                      border: "none",
+                      marginBottom: 0,
+                      display: "flex",
+                      flexDirection: "column",
+                      boxSizing: "border-box",
+                      paddingTop: "env(safe-area-inset-top)",
+                    }
+                  : {}),
               }}
             >
               <Suspense
@@ -356,30 +388,44 @@ export default function Itinerario({
                   </div>
                 }
               >
-                <MapaActividades puntos={puntosDelMapa} trazado={trazado} />
+                <MapaActividades
+                  puntos={puntosDelMapa}
+                  trazado={trazado}
+                  ampliado={mapaAmpliado}
+                  alAlternarAmpliado={() => setMapaAmpliado((valor) => !valor)}
+                />
               </Suspense>
-              <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, padding: "8px 14px" }}>
-                {puntosDelMapa.length > 0
-                  ? `${puntosDelMapa.length} de ${delDia.length} ${delDia.length === 1 ? "actividad" : "actividades"} con ubicación en el mapa`
-                  : "Ninguna actividad de este día tiene ubicación en el mapa. Al añadir o editar una actividad, busca su dirección con la lupa para verla aquí."}
+              <div
+                style={{
+                  flexShrink: 0,
+                  ...(mapaAmpliado
+                    ? { maxHeight: "35%", overflowY: "auto", paddingBottom: "env(safe-area-inset-bottom)" }
+                    : {}),
+                }}
+              >
+                <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, padding: "8px 14px" }}>
+                  {puntosDelMapa.length > 0
+                    ? `${puntosDelMapa.length} de ${delDia.length} ${delDia.length === 1 ? "actividad" : "actividades"} con ubicación en el mapa`
+                    : "Ninguna actividad de este día tiene ubicación en el mapa. Al añadir o editar una actividad, busca su dirección con la lupa para verla aquí."}
+                </div>
+                {rutaDelDia?.datos?.ruta && (
+                  <div style={{ fontFamily: NUNITO, color: C.navy, fontSize: 12, fontWeight: 700, padding: "0 14px 8px" }}>
+                    Ruta a pie por calles: {formatearDistancia(rutaDelDia.datos.ruta.distancia_m)} ·{" "}
+                    {formatearDuracion(rutaDelDia.datos.ruta.duracion_s)}
+                  </div>
+                )}
+                {ordenSugerido.length > 0 && rutaDelDia?.datos && (
+                  <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, padding: "0 14px 8px", lineHeight: 1.4 }}>
+                    Orden más corto: {ordenSugerido.map((titulo) => `«${titulo}»`).join(" → ")} (unos{" "}
+                    {formatearDistancia(rutaDelDia.datos.ahorro_m)} menos en línea recta)
+                  </div>
+                )}
+                {rutaDelDia && rutaDelDia.datos === null && (
+                  <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, padding: "0 14px 8px" }}>
+                    No se ha podido calcular la ruta por calles; se muestra una línea recta.
+                  </div>
+                )}
               </div>
-              {rutaDelDia?.datos?.ruta && (
-                <div style={{ fontFamily: NUNITO, color: C.navy, fontSize: 12, fontWeight: 700, padding: "0 14px 8px" }}>
-                  Ruta a pie por calles: {formatearDistancia(rutaDelDia.datos.ruta.distancia_m)} ·{" "}
-                  {formatearDuracion(rutaDelDia.datos.ruta.duracion_s)}
-                </div>
-              )}
-              {ordenSugerido.length > 0 && rutaDelDia?.datos && (
-                <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, padding: "0 14px 8px", lineHeight: 1.4 }}>
-                  Orden más corto: {ordenSugerido.map((titulo) => `«${titulo}»`).join(" → ")} (unos{" "}
-                  {formatearDistancia(rutaDelDia.datos.ahorro_m)} menos en línea recta)
-                </div>
-              )}
-              {rutaDelDia && rutaDelDia.datos === null && (
-                <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, padding: "0 14px 8px" }}>
-                  No se ha podido calcular la ruta por calles; se muestra una línea recta.
-                </div>
-              )}
             </div>
           )}
 

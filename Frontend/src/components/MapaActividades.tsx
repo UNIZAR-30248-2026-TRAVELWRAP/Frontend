@@ -2,7 +2,8 @@ import { useEffect, useRef } from "react"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 import "./MapaActividades.css"
-import { C } from "../styles/tokens"
+import Icon from "./Icon"
+import { C, SHADOWS } from "../styles/tokens"
 
 export type PuntoDelMapa = {
   id: string
@@ -15,6 +16,8 @@ export type PuntoDelMapa = {
 type MapaActividadesProps = {
   puntos: PuntoDelMapa[]
   trazado?: [number, number][] | null
+  ampliado?: boolean
+  alAlternarAmpliado?: () => void
 }
 
 export const ALTO_MAPA = 220
@@ -43,7 +46,12 @@ const crearPopup = (punto: PuntoDelMapa) => {
   return contenido
 }
 
-export default function MapaActividades({ puntos, trazado = null }: MapaActividadesProps) {
+export default function MapaActividades({
+  puntos,
+  trazado = null,
+  ampliado = false,
+  alAlternarAmpliado,
+}: MapaActividadesProps) {
   const contenedor = useRef<HTMLDivElement>(null)
   const mapa = useRef<L.Map | null>(null)
   const marcadores = useRef<L.LayerGroup | null>(null)
@@ -54,12 +62,19 @@ export default function MapaActividades({ puntos, trazado = null }: MapaActivida
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: ATRIBUCION }).addTo(nuevo)
     marcadores.current = L.layerGroup().addTo(nuevo)
     mapa.current = nuevo
+    const alRedimensionar = () => nuevo.invalidateSize()
+    window.addEventListener("resize", alRedimensionar)
     return () => {
+      window.removeEventListener("resize", alRedimensionar)
       nuevo.remove()
       mapa.current = null
       marcadores.current = null
     }
   }, [])
+
+  useEffect(() => {
+    mapa.current?.invalidateSize()
+  }, [ampliado])
 
   const clave = JSON.stringify({ puntos, trazado })
 
@@ -100,11 +115,40 @@ export default function MapaActividades({ puntos, trazado = null }: MapaActivida
   }, [clave])
 
   return (
-    <div
-      ref={contenedor}
-      role="region"
-      aria-label="Mapa de las actividades del día"
-      style={{ height: ALTO_MAPA, width: "100%", background: C.lightBlue }}
-    />
+    <div style={{ position: "relative", width: "100%", ...(ampliado ? { flex: 1, minHeight: 0 } : { height: ALTO_MAPA }) }}>
+      <div
+        ref={contenedor}
+        role="region"
+        aria-label="Mapa de las actividades del día"
+        style={{ position: "absolute", inset: 0, background: C.lightBlue }}
+      />
+      {alAlternarAmpliado && (
+        <button
+          type="button"
+          onClick={alAlternarAmpliado}
+          aria-label={ampliado ? "Reducir mapa" : "Ampliar mapa"}
+          aria-expanded={ampliado}
+          style={{
+            position: "absolute",
+            top: 10,
+            right: 10,
+            zIndex: 1100,
+            width: 44,
+            height: 44,
+            borderRadius: 12,
+            border: `1.5px solid ${C.border}`,
+            background: "white",
+            boxShadow: SHADOWS.card,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            padding: 0,
+          }}
+        >
+          <Icon name={ampliado ? "compress" : "expand"} size={20} color={C.navy} strokeWidth={2.2} />
+        </button>
+      )}
+    </div>
   )
 }

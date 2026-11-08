@@ -251,6 +251,61 @@ test.describe('Itinerario · mapa de las actividades', () => {
     expect(ancho).toBeLessThanOrEqual(visible);
   });
 
+  test('el botón de ampliar lleva el mapa a casi toda la pantalla y el de reducir lo devuelve', async ({ page }) => {
+    const teselas = await preparar(page);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
+    await expect(marcadores(page)).toHaveCount(2);
+    const pequeno = await mapa(page).boundingBox();
+    const teselasAntes = teselas.length;
+
+    await page.getByRole('button', { name: 'Ampliar mapa' }).click();
+
+    await expect(page.getByRole('button', { name: 'Reducir mapa' })).toHaveAttribute('aria-expanded', 'true');
+    await expect.poll(async () => (await mapa(page).boundingBox())?.height ?? 0).toBeGreaterThan(844 * 0.55);
+    const grande = await mapa(page).boundingBox();
+    expect(grande?.width).toBeCloseTo(390, 0);
+    expect(pequeno?.height).toBeLessThan(260);
+    await expect(marcadores(page)).toHaveCount(2);
+    await expect(lineaDeRuta(page)).toHaveCount(1);
+    await expect.poll(() => teselas.length).toBeGreaterThan(teselasAntes);
+    expect(await page.evaluate(() => document.body.style.overflow)).toBe('hidden');
+
+    await page.getByRole('button', { name: 'Reducir mapa' }).click();
+
+    await expect(page.getByRole('button', { name: 'Ampliar mapa' })).toBeVisible();
+    await expect.poll(async () => (await mapa(page).boundingBox())?.height ?? 0).toBeLessThan(260);
+    expect(await page.evaluate(() => document.body.style.overflow)).toBe('');
+  });
+
+  test('con Escape se reduce el mapa ampliado', async ({ page }) => {
+    await preparar(page);
+    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
+    await page.getByRole('button', { name: 'Ampliar mapa' }).click();
+    await expect(page.getByRole('button', { name: 'Reducir mapa' })).toBeVisible();
+
+    await page.keyboard.press('Escape');
+
+    await expect(page.getByRole('button', { name: 'Ampliar mapa' })).toBeVisible();
+  });
+
+  test('con el mapa ampliado se puede tocar un marcador y el botón de reducir sigue accesible a 320 px', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await preparar(page, {}, ACTIVIDADES, RUTA_DEL_DIA);
+    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
+    await page.getByRole('button', { name: 'Ampliar mapa' }).click();
+
+    await page.getByRole('button', { name: '1. Visita al Coliseo' }).click();
+
+    await expect(page.locator('.leaflet-popup-content')).toContainText('Visita al Coliseo');
+    const boton = await page.getByRole('button', { name: 'Reducir mapa' }).boundingBox();
+    expect(boton?.x).toBeGreaterThanOrEqual(0);
+    expect((boton?.x ?? 0) + (boton?.width ?? 0)).toBeLessThanOrEqual(320);
+    expect(boton?.height).toBeGreaterThanOrEqual(44);
+    const [ancho, visible] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
+    expect(ancho).toBeLessThanOrEqual(visible);
+  });
+
   test('con una sola actividad con ubicación no se dibuja ninguna línea', async ({ page }) => {
     await preparar(page);
     await page.goto(`/viajes/${VIAJE_ID}/itinerario`);

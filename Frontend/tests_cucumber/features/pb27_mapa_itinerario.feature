@@ -55,3 +55,23 @@ Característica: Ver las actividades como marcadores en el mapa (PB-27)
     Cuando abro el itinerario del viaje "Lisboa 2026"
     Entonces veo 1 marcadores en el mapa
     Y no veo el botón "Añadir Actividad"
+
+  Escenario: El mapa se puede ampliar a casi toda la pantalla y reducir
+    Dado que el servidor devuelve en "Roma 2027" la actividad "Visita al Coliseo" el "2027-05-12" con ubicación "Colosseo, Roma" en las coordenadas 41.890214 y 12.492231
+    Y que el servidor devuelve en "Roma 2027" la actividad "Foro Romano" el "2027-05-12" con ubicación "Foro Romano, Roma" en las coordenadas 41.892462 y 12.485325
+    Cuando abro el itinerario del viaje "Roma 2027"
+    Y pulso el botón "Ampliar mapa"
+    Entonces veo el botón "Reducir mapa"
+    Y el mapa ocupa casi toda la pantalla
+    Y veo 2 marcadores en el mapa
+    Cuando pulso el botón "Reducir mapa"
+    Entonces veo el botón "Ampliar mapa"
+    Y el mapa vuelve a su tamaño normal
+
+  Escenario: Con Escape se reduce el mapa ampliado
+    Dado que el servidor devuelve en "Roma 2027" la actividad "Visita al Coliseo" el "2027-05-12" con ubicación "Colosseo, Roma" en las coordenadas 41.890214 y 12.492231
+    Cuando abro el itinerario del viaje "Roma 2027"
+    Y pulso el botón "Ampliar mapa"
+    Y pulso la tecla Escape
+    Entonces veo el botón "Ampliar mapa"
+    Y el mapa vuelve a su tamaño normal

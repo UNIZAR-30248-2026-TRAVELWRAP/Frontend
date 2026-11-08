@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import MapaActividades, { ALTO_MAPA, type PuntoDelMapa } from '../src/components/MapaActividades'
 
 type LineaFalsa = { puntos: number[][]; opciones: { color: string; dashArray: string; interactive: boolean } }
@@ -12,7 +12,7 @@ type MarcadorFalso = {
 
 const falso = vi.hoisted(() => {
   const estado = { marcadores: [] as MarcadorFalso[], lineas: [] as LineaFalsa[] }
-  const mapa = { setView: vi.fn(), fitBounds: vi.fn(), remove: vi.fn() }
+  const mapa = { setView: vi.fn(), fitBounds: vi.fn(), remove: vi.fn(), invalidateSize: vi.fn() }
   const capa = {
     clearLayers: vi.fn(() => {
       estado.marcadores.length = 0
@@ -96,7 +96,7 @@ describe('MapaActividades', () => {
     render(<MapaActividades puntos={[COLISEO]} />)
 
     const region = screen.getByRole('region', { name: 'Mapa de las actividades del día' })
-    expect(region.style.height).toBe(`${ALTO_MAPA}px`)
+    expect((region.parentElement as HTMLElement).style.height).toBe(`${ALTO_MAPA}px`)
   })
 
   it('con una sola actividad pone un marcador numerado y centra el mapa en él', () => {
@@ -244,6 +244,72 @@ describe('MapaActividades', () => {
     rerender(<MapaActividades puntos={[{ ...COLISEO }]} />)
 
     expect(falso.capa.clearLayers).toHaveBeenCalledTimes(1)
+  })
+
+  it('sin función para ampliar no muestra el botón', () => {
+    render(<MapaActividades puntos={[COLISEO]} />)
+
+    expect(screen.queryByRole('button', { name: /mapa/i })).toBeNull()
+  })
+
+  it('con función para ampliar muestra el botón «Ampliar mapa» y lo avisa al pulsarlo', () => {
+    const alternar = vi.fn()
+    render(<MapaActividades puntos={[COLISEO]} alAlternarAmpliado={alternar} />)
+
+    const boton = screen.getByRole('button', { name: 'Ampliar mapa' })
+    expect(boton.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(boton)
+
+    expect(alternar).toHaveBeenCalledTimes(1)
+  })
+
+  it('ampliado el botón pasa a «Reducir mapa» y el mapa ocupa el espacio libre', () => {
+    render(<MapaActividades puntos={[COLISEO]} ampliado alAlternarAmpliado={() => undefined} />)
+
+    const boton = screen.getByRole('button', { name: 'Reducir mapa' })
+    expect(boton.getAttribute('aria-expanded')).toBe('true')
+    const region = screen.getByRole('region', { name: 'Mapa de las actividades del día' })
+    expect((region.parentElement as HTMLElement).style.height).toBe('')
+    expect((region.parentElement as HTMLElement).style.flex).toContain('1')
+  })
+
+  it('el botón de ampliar mide al menos 44 px para el dedo', () => {
+    render(<MapaActividades puntos={[COLISEO]} alAlternarAmpliado={() => undefined} />)
+
+    const boton = screen.getByRole('button', { name: 'Ampliar mapa' })
+    expect(boton.style.width).toBe('44px')
+    expect(boton.style.height).toBe('44px')
+  })
+
+  it('al ampliar o reducir avisa a Leaflet del cambio de tamaño sin crear otro mapa', () => {
+    const { rerender } = render(<MapaActividades puntos={[COLISEO]} alAlternarAmpliado={() => undefined} />)
+    falso.mapa.invalidateSize.mockClear()
+
+    rerender(<MapaActividades puntos={[COLISEO]} ampliado alAlternarAmpliado={() => undefined} />)
+    expect(falso.mapa.invalidateSize).toHaveBeenCalledTimes(1)
+    rerender(<MapaActividades puntos={[COLISEO]} alAlternarAmpliado={() => undefined} />)
+
+    expect(falso.mapa.invalidateSize).toHaveBeenCalledTimes(2)
+    expect(falso.L.map).toHaveBeenCalledTimes(1)
+  })
+
+  it('al girar el dispositivo o cambiar el tamaño de la ventana recalcula el tamaño del mapa', () => {
+    render(<MapaActividades puntos={[COLISEO]} />)
+    falso.mapa.invalidateSize.mockClear()
+
+    window.dispatchEvent(new Event('resize'))
+
+    expect(falso.mapa.invalidateSize).toHaveBeenCalledTimes(1)
+  })
+
+  it('al salir de la pantalla deja de escuchar los cambios de tamaño', () => {
+    const { unmount } = render(<MapaActividades puntos={[COLISEO]} />)
+    unmount()
+    falso.mapa.invalidateSize.mockClear()
+
+    window.dispatchEvent(new Event('resize'))
+
+    expect(falso.mapa.invalidateSize).not.toHaveBeenCalled()
   })
 
   it('al salir de la pantalla destruye el mapa', () => {

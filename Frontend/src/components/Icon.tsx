@@ -180,6 +180,22 @@ export default function Icon({
         <line x1="12" y1="8" x2="12.01" y2="8" />
       </>
     ),
+    expand: (
+      <>
+        <path d="M15 3h6v6" />
+        <path d="M9 21H3v-6" />
+        <path d="M21 3l-7 7" />
+        <path d="M3 21l7-7" />
+      </>
+    ),
+    compress: (
+      <>
+        <path d="M4 14h6v6" />
+        <path d="M20 10h-6V4" />
+        <path d="M14 10l7-7" />
+        <path d="M3 21l7-7" />
+      </>
+    ),
     close: (
       <>
         <line x1="18" y1="6" x2="6" y2="18" />
