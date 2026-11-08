@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import MapaActividades, { ALTO_MAPA, type PuntoDelMapa } from '../src/components/MapaActividades'
 
+type LineaFalsa = { puntos: number[][]; opciones: { color: string; dashArray: string; interactive: boolean } }
+
 type MarcadorFalso = {
   latlng: [number, number]
   opciones: { title: string; alt: string; icon: { html: string } }
@@ -9,11 +11,12 @@ type MarcadorFalso = {
 }
 
 const falso = vi.hoisted(() => {
-  const estado = { marcadores: [] as MarcadorFalso[] }
+  const estado = { marcadores: [] as MarcadorFalso[], lineas: [] as LineaFalsa[] }
   const mapa = { setView: vi.fn(), fitBounds: vi.fn(), remove: vi.fn() }
   const capa = {
     clearLayers: vi.fn(() => {
       estado.marcadores.length = 0
+      estado.lineas.length = 0
     }),
     addTo: vi.fn(() => capa),
   }
@@ -23,6 +26,15 @@ const falso = vi.hoisted(() => {
     tileLayer: vi.fn(() => capaDeTeselas),
     layerGroup: vi.fn(() => capa),
     divIcon: vi.fn((opciones: { html: string }) => opciones),
+    polyline: vi.fn((puntos: number[][], opciones: LineaFalsa['opciones']) => {
+      const linea = {
+        addTo: () => {
+          estado.lineas.push({ puntos, opciones })
+          return linea
+        },
+      }
+      return linea
+    }),
     latLngBounds: vi.fn((puntos: number[][]) => ({ puntos })),
     marker: vi.fn((latlng: [number, number], opciones: MarcadorFalso['opciones']) => {
       const marcador: MarcadorFalso & { bindPopup: (c: HTMLElement) => unknown; addTo: () => unknown } = {
@@ -65,6 +77,7 @@ beforeEach(() => {
   cleanup()
   vi.clearAllMocks()
   falso.estado.marcadores.length = 0
+  falso.estado.lineas.length = 0
 })
 
 describe('MapaActividades', () => {
@@ -116,6 +129,36 @@ describe('MapaActividades', () => {
 
     expect(falso.estado.marcadores[0].opciones.icon.html).toContain('fill="#DD6B20"')
     expect(falso.estado.marcadores[1].opciones.icon.html).toContain('fill="#2B6CB0"')
+  })
+
+  it('con varias actividades dibuja una línea que las une en el orden de la agenda', () => {
+    render(<MapaActividades puntos={[COLISEO, FORO]} />)
+
+    expect(falso.estado.lineas).toHaveLength(1)
+    expect(falso.estado.lineas[0].puntos).toEqual([
+      [41.890214, 12.492231],
+      [41.892462, 12.485325],
+    ])
+    expect(falso.estado.lineas[0].opciones).toMatchObject({ color: '#2B6CB0', dashArray: '8 8', interactive: false })
+  })
+
+  it('con una sola actividad o ninguna no dibuja línea', () => {
+    const { rerender } = render(<MapaActividades puntos={[COLISEO]} />)
+    expect(falso.estado.lineas).toHaveLength(0)
+
+    rerender(<MapaActividades puntos={[]} />)
+
+    expect(falso.estado.lineas).toHaveLength(0)
+    expect(falso.L.polyline).not.toHaveBeenCalled()
+  })
+
+  it('al cambiar las actividades la línea anterior se borra y se dibuja la nueva', () => {
+    const { rerender } = render(<MapaActividades puntos={[COLISEO, FORO]} />)
+
+    rerender(<MapaActividades puntos={[FORO, COLISEO]} />)
+
+    expect(falso.estado.lineas).toHaveLength(1)
+    expect(falso.estado.lineas[0].puntos[0]).toEqual([41.892462, 12.485325])
   })
 
   it('al tocar un marcador se abre una ventana con el título y el lugar de la actividad', () => {

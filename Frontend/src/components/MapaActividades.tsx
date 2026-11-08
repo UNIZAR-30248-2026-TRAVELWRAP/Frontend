@@ -81,6 +81,12 @@ export default function MapaActividades({ puntos }: MapaActividadesProps) {
         .bindPopup(crearPopup(punto))
         .addTo(capa)
     })
+    if (puntos.length >= 2) {
+      L.polyline(
+        puntos.map((punto) => [punto.latitud, punto.longitud] as [number, number]),
+        { color: C.blue, weight: 4, opacity: 0.7, dashArray: "8 8", interactive: false },
+      ).addTo(capa)
+    }
     if (puntos.length === 1) {
       actual.setView([puntos[0].latitud, puntos[0].longitud], 15)
       return

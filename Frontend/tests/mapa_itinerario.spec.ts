@@ -116,6 +116,7 @@ const preparar = async (page: Page, datosViaje: Record<string, unknown> = {}, ac
 
 const mapa = (page: Page) => page.getByRole('region', { name: 'Mapa de las actividades del día' });
 const marcadores = (page: Page) => page.locator('.leaflet-marker-icon');
+const lineaDeRuta = (page: Page) => page.locator('.leaflet-overlay-pane path');
 
 test.describe('Itinerario · mapa de las actividades', () => {
   test('enseña un marcador numerado por cada actividad del día con ubicación y cuenta cuántas hay', async ({ page }) => {
@@ -150,6 +151,27 @@ test.describe('Itinerario · mapa de las actividades', () => {
       'href',
       'https://www.openstreetmap.org/copyright',
     );
+  });
+
+  test('con varias actividades con ubicación una línea las une en orden', async ({ page }) => {
+    await preparar(page);
+
+    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
+
+    await expect(marcadores(page)).toHaveCount(2);
+    await expect(lineaDeRuta(page)).toHaveCount(1);
+    await expect(lineaDeRuta(page)).toHaveAttribute('stroke-dasharray', '8 8');
+  });
+
+  test('con una sola actividad con ubicación no se dibuja ninguna línea', async ({ page }) => {
+    await preparar(page);
+    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
+    await expect(lineaDeRuta(page)).toHaveCount(1);
+
+    await page.getByRole('button', { name: 'Día 2 · 13 may' }).click();
+
+    await expect(marcadores(page)).toHaveCount(1);
+    await expect(lineaDeRuta(page)).toHaveCount(0);
   });
 
   test('al tocar un marcador se abre su título y su lugar', async ({ page }) => {

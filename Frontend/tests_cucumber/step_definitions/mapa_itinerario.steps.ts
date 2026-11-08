@@ -24,3 +24,11 @@ Then('veo {int} marcadores en el mapa', async (cantidad: number) => {
 Then('veo el marcador {string}', async (nombre: string) => {
   await expect(paginaActual().getByRole('button', { name: nombre, exact: true })).toBeVisible();
 });
+
+Then('veo una línea que une las actividades en el mapa', async () => {
+  await expect(paginaActual().locator('.leaflet-overlay-pane path')).toHaveCount(1);
+});
+
+Then('no veo ninguna línea en el mapa', async () => {
+  await expect(paginaActual().locator('.leaflet-overlay-pane path')).toHaveCount(0);
+});
