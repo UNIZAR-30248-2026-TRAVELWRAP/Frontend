@@ -58,11 +58,11 @@ Característica: Editar y eliminar una actividad del itinerario (PB-22)
 
   Escenario: Si el servidor rechaza el borrado se avisa y la actividad sigue
     Dado que el servidor devuelve en "Roma 2027" la actividad "Visita al Coliseo" el "2027-05-12" a las "10:00"
-    Y que el servidor rechaza las actividades porque el viaje está cerrado
+    Y que el servidor rechaza las actividades porque el viaje está finalizado
     Cuando abro el itinerario del viaje "Roma 2027"
     Y pulso eliminar la actividad "Visita al Coliseo"
     Y confirmo en el diálogo "Eliminar actividad"
-    Entonces veo el mensaje de error "El viaje está cerrado y ya no se puede modificar"
+    Entonces veo el mensaje de error "El viaje está finalizado y ya no se puede modificar"
     Y el servidor ha eliminado 0 actividades
 
   Escenario: Un viaje archivado no deja editar ni eliminar actividades

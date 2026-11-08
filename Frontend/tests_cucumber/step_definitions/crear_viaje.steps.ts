@@ -5,6 +5,15 @@ import { paginaActual } from './login.steps';
 
 const usuarioId = 'df77cba6-4be5-4cbc-814b-1e228dd73dcc';
 
+// Como el backend: sin nombre, el destino (o «Viaje sin destino») y el año de las fechas
+const nombrePorDefecto = (datos: Record<string, string | null>) => {
+  const lugar = datos.destino ?? 'Viaje sin destino';
+  const inicio = datos.fecha_inicio?.slice(0, 4);
+  const fin = datos.fecha_fin?.slice(0, 4);
+  const anio = inicio && fin && inicio !== fin ? `${inicio}-${fin}` : (inicio ?? fin);
+  return anio ? `${lugar} ${anio}` : lugar;
+};
+
 Given('que el servidor guarda los viajes que creo', async () => {
   const viajes: Record<string, unknown>[] = [];
   await paginaActual().route('**/api/viajes/*', (route) => {
@@ -31,6 +40,7 @@ Given('que el servidor guarda los viajes que creo', async () => {
       rol: 'creador',
       miembros: [{ usuario_id: usuarioId, nombre: 'Daniel', avatar_url: null, rol: 'creador' }],
       ...datos,
+      nombre: datos.nombre ?? nombrePorDefecto(datos),
     };
     viajes.unshift(nuevo);
     return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(nuevo) });

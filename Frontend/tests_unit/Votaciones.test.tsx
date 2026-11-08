@@ -2,29 +2,72 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Votaciones from '../src/screens/Votaciones'
+import { escucharVotaciones } from '../src/services/votacionesTiempoReal'
+import {
+  VIAJE_ID,
+  avisarCambio,
+  llamadas,
+  opcion,
+  simularBackendVotaciones,
+  viajeDePrueba,
+  type VotacionGuardada,
+} from './backendVotaciones'
 
-const PREGUNTA_ABIERTA = '¿Qué fin de semana preferimos para el viaje a Roma?'
+// Sin servidor de WebSocket: los avisos se lanzan desde el test con avisarCambio
+vi.mock('../src/services/votacionesTiempoReal')
+
+const PREGUNTA_ABIERTA = '¿Qué fin de semana preferimos?'
+
+const fechas = (): VotacionGuardada => ({
+  id: 'fechas',
+  titulo: PREGUNTA_ABIERTA,
+  tipo: 'fecha',
+  estado: 'abierta',
+  opciones: [opcion('mayo-12', '12 – 15 mayo', 0), opcion('mayo-19', '19 – 22 mayo', 1)],
+  votos: { u2: 'mayo-12', u3: 'mayo-12' },
+})
+
+const alojamiento = (): VotacionGuardada => ({
+  id: 'alojamiento',
+  titulo: '¿Qué tipo de alojamiento preferís?',
+  tipo: 'otro',
+  estado: 'cerrada',
+  opcion_ganadora_id: 'airbnb',
+  opciones: [opcion('airbnb', 'Airbnb compartido', 0), opcion('hotel', 'Hotel', 1)],
+  votos: { u1: 'airbnb', u2: 'airbnb', u3: 'hotel' },
+})
+
+const viajeConDestino = viajeDePrueba({ destino: 'Roma', pendiente_destino: false })
+
+const abrir = async (opciones: Parameters<typeof simularBackendVotaciones>[0] = {}) => {
+  const backend = simularBackendVotaciones({ viaje: viajeConDestino, votaciones: [fechas(), alojamiento()], ...opciones })
+  render(<Votaciones viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
+  await screen.findByRole('region', { name: PREGUNTA_ABIERTA })
+  return backend
+}
 
 afterEach(() => {
   cleanup()
+  vi.unstubAllGlobals()
+  vi.clearAllMocks()
 })
 
 describe('Votaciones', () => {
-  it('muestra la votación activa con sus opciones y la cerrada con su ganadora', () => {
-    render(<Votaciones />)
+  it('muestra las votaciones del viaje: la abierta con su recuento y la cerrada con su ganadora', async () => {
+    await abrir()
 
     const abierta = screen.getByRole('region', { name: PREGUNTA_ABIERTA })
-    expect(within(abierta).getByText('Votación activa')).toBeTruthy()
     expect(within(abierta).getAllByRole('radio')).toHaveLength(2)
     expect(within(abierta).getByText('2/3')).toBeTruthy()
+    expect(within(abierta).getByRole('button', { name: 'Emitir voto' })).toHaveProperty('disabled', true)
 
     const cerrada = screen.getByRole('region', { name: '¿Qué tipo de alojamiento preferís?' })
-    expect(cerrada.textContent).toContain('Ganó: Airbnb compartido')
+    expect(cerrada.textContent).toContain('Ganó: Airbnb compartido (67%)')
   })
 
   it('filtra por tipo de votación', async () => {
     const user = userEvent.setup()
-    render(<Votaciones />)
+    await abrir()
 
     await user.click(screen.getByRole('tab', { name: 'Fechas' }))
     expect(screen.getByRole('region', { name: PREGUNTA_ABIERTA })).toBeTruthy()
@@ -34,41 +77,186 @@ describe('Votaciones', () => {
     expect(screen.getByText('No hay votaciones de este tipo todavía.')).toBeTruthy()
   })
 
-  it('al emitir el voto se suma a la opción elegida', async () => {
+  it('al emitir el voto se envía al backend y se muestra el recuento que devuelve', async () => {
     const user = userEvent.setup()
-    render(<Votaciones />)
+    const { fetchMock } = await abrir()
     const abierta = screen.getByRole('region', { name: PREGUNTA_ABIERTA })
 
-    expect(within(abierta).getByRole('button', { name: 'Emitir voto' })).toHaveProperty('disabled', true)
     await user.click(within(abierta).getByRole('radio', { name: /19 – 22 mayo/ }))
     await user.click(within(abierta).getByRole('button', { name: 'Emitir voto' }))
 
-    expect(within(abierta).getByRole('button', { name: /Voto emitido/ })).toBeTruthy()
+    expect(await within(abierta).findByRole('button', { name: /Voto emitido/ })).toBeTruthy()
     expect(within(abierta).getByText('3/3')).toBeTruthy()
     expect(within(abierta).getByRole('radio', { name: /19 – 22 mayo/ }).textContent).toContain('Tu elección')
+    const [[, peticion]] = llamadas(fetchMock, 'PUT', '/votaciones/fechas/voto')
+    expect(JSON.parse(peticion?.body as string)).toEqual({ opcion_id: 'mayo-19' })
   })
 
-  it('al cerrar la votación pasa a cerradas con la opción ganadora', async () => {
+  it('el creador solo puede cerrar la votación cuando han votado todos los miembros (RF9)', async () => {
     const user = userEvent.setup()
-    render(<Votaciones />)
+    await abrir()
+    const abierta = screen.getByRole('region', { name: PREGUNTA_ABIERTA })
+
+    expect(within(abierta).getByRole('button', { name: 'Cerrar votación' })).toHaveProperty('disabled', true)
+    expect(within(abierta).getByText('Podrás cerrarla cuando hayan votado todos los miembros.')).toBeTruthy()
+
+    await user.click(within(abierta).getByRole('radio', { name: /12 – 15 mayo/ }))
+    await user.click(within(abierta).getByRole('button', { name: 'Emitir voto' }))
+
+    await vi.waitFor(() =>
+      expect(within(abierta).getByRole('button', { name: 'Cerrar votación' })).toHaveProperty('disabled', false),
+    )
+    expect(within(abierta).getByText('Completo')).toBeTruthy()
+    expect(within(abierta).queryByText('Podrás cerrarla cuando hayan votado todos los miembros.')).toBeNull()
+  })
+
+  it('el creador cierra la votación tras confirmar y pasa a cerradas con la ganadora', async () => {
+    const user = userEvent.setup()
+    const { fetchMock } = await abrir({ viaje: viajeConDestino, votaciones: [{ ...fechas(), votos: { u1: 'mayo-12', u2: 'mayo-12', u3: 'mayo-19' } }] })
 
     await user.click(screen.getByRole('button', { name: 'Cerrar votación' }))
+    const dialogo = screen.getByRole('dialog')
+    expect(dialogo.textContent).toContain('Ganará 12 – 15 mayo')
+    await user.click(within(dialogo).getByRole('button', { name: 'Cerrar votación' }))
 
+    await vi.waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     const cerrada = screen.getByRole('region', { name: PREGUNTA_ABIERTA })
     expect(cerrada.textContent).toContain('Cerrada')
     expect(cerrada.textContent).toContain('Ganó: 12 – 15 mayo')
+    expect(llamadas(fetchMock, 'POST', '/votaciones/fechas/cerrar')).toHaveLength(1)
+  })
+
+  it('avisa del empate antes de cerrar', async () => {
+    const user = userEvent.setup()
+    const empate = fechas()
+    empate.opciones.push(opcion('mayo-26', '26 – 29 mayo', 2))
+    empate.votos = { u1: 'mayo-12', u2: 'mayo-19', u3: 'mayo-26' }
+    await abrir({ viaje: viajeConDestino, votaciones: [empate] })
+
+    await user.click(screen.getByRole('button', { name: 'Cerrar votación' }))
+
+    expect(screen.getByRole('dialog').textContent).toContain('Hay un empate entre 12 – 15 mayo, 19 – 22 mayo y 26 – 29 mayo')
+  })
+
+  it('quien no es el creador vota pero no puede cerrar la votación', async () => {
+    await abrir({ viaje: { ...viajeConDestino, rol: 'miembro' }, votaciones: [fechas()] })
+
+    expect(screen.getByRole('button', { name: 'Emitir voto' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Cerrar votación' })).toBeNull()
   })
 
   it('el botón de crear y el de volver avisan a la ruta', async () => {
     const user = userEvent.setup()
+    simularBackendVotaciones({ viaje: viajeConDestino })
     const onVolver = vi.fn()
     const onCrearVotacion = vi.fn()
-    render(<Votaciones onVolver={onVolver} onCrearVotacion={onCrearVotacion} />)
+    render(<Votaciones viajeId={VIAJE_ID} tokenSesion="token-acceso" onVolver={onVolver} onCrearVotacion={onCrearVotacion} />)
 
+    expect(await screen.findByText('Todavía no hay votaciones en este viaje.')).toBeTruthy()
     await user.click(screen.getByRole('button', { name: 'Crear nueva votación' }))
     await user.click(screen.getByRole('button', { name: 'Volver' }))
 
     expect(onCrearVotacion).toHaveBeenCalledTimes(1)
     expect(onVolver).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('Votaciones en tiempo real', () => {
+  it('escucha los cambios del viaje mientras la pantalla está abierta', async () => {
+    const dejarDeEscuchar = vi.fn()
+    vi.mocked(escucharVotaciones).mockReturnValueOnce(dejarDeEscuchar)
+    await abrir()
+
+    expect(vi.mocked(escucharVotaciones).mock.calls[0].slice(0, 2)).toEqual([VIAJE_ID, 'token-acceso'])
+    cleanup()
+    expect(dejarDeEscuchar).toHaveBeenCalled()
+  })
+
+  it('el voto de otro miembro aparece sin recargar', async () => {
+    const { estado } = await abrir({ viaje: viajeConDestino, votaciones: [{ ...fechas(), votos: { u2: 'mayo-12' } }] })
+    const abierta = screen.getByRole('region', { name: PREGUNTA_ABIERTA })
+    expect(within(abierta).getByText('1/3')).toBeTruthy()
+
+    estado.votaciones[0].votos.u3 = 'mayo-19'
+    await avisarCambio({ votacion_id: 'fechas', motivo: 'voto' })
+
+    expect(await within(abierta).findByText('2/3')).toBeTruthy()
+    expect(within(abierta).getByRole('radio', { name: /19 – 22 mayo/ }).textContent).toContain('1 voto')
+  })
+
+  it('una votación creada por otro miembro aparece la primera', async () => {
+    const { estado } = await abrir()
+
+    estado.votaciones.unshift({ id: 'cena', titulo: '¿Dónde cenamos?', tipo: 'otro', estado: 'abierta', opciones: [opcion('a', 'Pizzería'), opcion('b', 'Tasca', 1)], votos: {} })
+    await avisarCambio({ votacion_id: 'cena', motivo: 'creada' })
+
+    expect(await screen.findByRole('region', { name: '¿Dónde cenamos?' })).toBeTruthy()
+  })
+
+  it('cuando el creador cierra la votación, pasa a cerradas para todos', async () => {
+    const { estado } = await abrir({ viaje: { ...viajeConDestino, rol: 'miembro' }, votaciones: [fechas()] })
+
+    Object.assign(estado.votaciones[0], { estado: 'cerrada', opcion_ganadora_id: 'mayo-12' })
+    await avisarCambio({ votacion_id: 'fechas', motivo: 'cerrada' })
+
+    const cerrada = await screen.findByText('Cerrada')
+    expect(cerrada).toBeTruthy()
+    expect(screen.getByRole('region', { name: PREGUNTA_ABIERTA }).textContent).toContain('Ganó: 12 – 15 mayo')
+    expect(screen.queryByRole('button', { name: 'Emitir voto' })).toBeNull()
+  })
+})
+
+describe('Votaciones · proponer opciones', () => {
+  it('en una votación sin opciones se propone la primera y ya se puede votar', async () => {
+    const user = userEvent.setup()
+    const vacia: VotacionGuardada = { ...fechas(), opciones: [], votos: {} }
+    const { fetchMock } = await abrir({ viaje: viajeConDestino, votaciones: [vacia] })
+    const abierta = screen.getByRole('region', { name: PREGUNTA_ABIERTA })
+    expect(within(abierta).getByText('Todavía no hay opciones. Propón la primera.')).toBeTruthy()
+
+    await user.type(within(abierta).getByLabelText('Proponer opción'), '  2 – 5 junio ')
+    await user.click(within(abierta).getByRole('button', { name: 'Añadir' }))
+
+    expect(await within(abierta).findByRole('radio', { name: /2 – 5 junio/ })).toBeTruthy()
+    expect(within(abierta).queryByText('Todavía no hay opciones. Propón la primera.')).toBeNull()
+    const [[, peticion]] = llamadas(fetchMock, 'POST', '/votaciones/fechas/opciones')
+    expect(JSON.parse(peticion?.body as string)).toEqual({ texto: '2 – 5 junio' })
+  })
+
+  it('no deja proponer una opción repetida', async () => {
+    const user = userEvent.setup()
+    const { fetchMock } = await abrir()
+    const abierta = screen.getByRole('region', { name: PREGUNTA_ABIERTA })
+
+    await user.type(within(abierta).getByLabelText('Proponer opción'), '12 – 15 MAYO')
+    await user.click(within(abierta).getByRole('button', { name: 'Añadir' }))
+
+    expect(within(abierta).getByRole('alert').textContent).toBe('Esa opción ya está propuesta')
+    expect(llamadas(fetchMock, 'POST', '/votaciones/fechas/opciones')).toHaveLength(0)
+  })
+
+  it('en un viaje archivado no se pueden proponer opciones', async () => {
+    await abrir({ viaje: { ...viajeConDestino, estado: 'archivado' }, votaciones: [fechas()] })
+
+    expect(screen.queryByLabelText('Proponer opción')).toBeNull()
+  })
+})
+
+describe('Votaciones · miembros nuevos', () => {
+  it('cuando se une alguien al viaje cuenta para el recuento y el creador ya no puede cerrar', async () => {
+    const { estado } = await abrir({
+      viaje: viajeConDestino,
+      votaciones: [{ ...fechas(), votos: { u1: 'mayo-12', u2: 'mayo-12', u3: 'mayo-19' } }],
+    })
+    const abierta = screen.getByRole('region', { name: PREGUNTA_ABIERTA })
+    expect(within(abierta).getByText('3/3')).toBeTruthy()
+    expect(within(abierta).getByRole('button', { name: 'Cerrar votación' })).toHaveProperty('disabled', false)
+
+    estado.viaje = { ...estado.viaje, miembros: [...estado.viaje.miembros, { usuario_id: 'u4', nombre: 'Carla', avatar_url: null, rol: 'miembro' as const }] }
+    await avisarCambio({ motivo: 'miembros' })
+
+    expect(await within(abierta).findByText('3/4')).toBeTruthy()
+    expect(within(abierta).getByRole('button', { name: 'Cerrar votación' })).toHaveProperty('disabled', true)
+    expect(within(abierta).getByText('Podrás cerrarla cuando hayan votado todos los miembros.')).toBeTruthy()
   })
 })

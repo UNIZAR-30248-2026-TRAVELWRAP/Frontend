@@ -19,7 +19,7 @@ jobs:
       - name: Configurar entorno de Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: './Frontend/package-lock.json' 
 
@@ -35,8 +35,21 @@ jobs:
         run: npm run build
         working-directory: ./Frontend
 
-      - name: Ejecutar pruebas automatizadas (si existen)
-        run: npm test --if-present
+      - name: Lint
+        run: npm run lint
+        working-directory: ./Frontend
+
+      - name: Pruebas E2E (Playwright)
+        run: npm run test:e2e
+        working-directory: ./Frontend
+
+      - name: Pruebas de aceptación (Cucumber)
+        run: npm run test:acceptance
+        working-directory: ./Frontend
+
+      # Genera Frontend/coverage/lcov.info, que SonarCloud usa para medir la cobertura
+      - name: Ejecutar pruebas automatizadas con cobertura
+        run: npm run test:coverage
         working-directory: ./Frontend
 
       - name: Analizar código con SonarCloud

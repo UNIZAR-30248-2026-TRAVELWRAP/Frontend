@@ -18,10 +18,6 @@ export const opcionesGanadoras = <T extends OpcionConVotos>(opciones: T[]) => {
   return maximo === 0 ? [] : opciones.filter((o) => o.votos === maximo)
 }
 
-// En caso de empate se elige una al azar
-export const elegirAlAzar = <T>(lista: T[], aleatorio: () => number = Math.random): T =>
-  lista[Math.floor(aleatorio() * lista.length)]
-
 // ["Lisboa", "Praga", "Roma"] → "Lisboa, Praga y Roma"
 export const enumerar = (textos: string[]) =>
   textos.length <= 1 ? (textos[0] ?? "") : `${textos.slice(0, -1).join(", ")} y ${textos[textos.length - 1]}`

@@ -231,7 +231,7 @@ describe('Itinerario · editar y eliminar actividades', () => {
   it('si el servidor rechaza el borrado muestra el error y la actividad sigue en la agenda', async () => {
     const user = userEvent.setup()
     simularBackend({}, ACTIVIDADES, () =>
-      respuesta(409, { error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está cerrado y ya no se puede modificar' } }),
+      respuesta(409, { error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está finalizado y ya no se puede modificar' } }),
     )
     renderizar()
 
@@ -239,7 +239,7 @@ describe('Itinerario · editar y eliminar actividades', () => {
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Eliminar actividad' }))
 
     const dialogo = await screen.findByRole('dialog')
-    expect((await within(dialogo).findByRole('alert')).textContent).toBe('El viaje está cerrado y ya no se puede modificar')
+    expect((await within(dialogo).findByRole('alert')).textContent).toBe('El viaje está finalizado y ya no se puede modificar')
     expect(within(dialogo).getByRole('button', { name: 'Eliminar actividad' })).toHaveProperty('disabled', false)
     await user.click(within(dialogo).getByRole('button', { name: 'Cancelar' }))
     expect(screen.getByText('Visita al Coliseo')).toBeTruthy()

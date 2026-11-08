@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import InvitarViajeros from '../src/screens/InvitarViajeros'
 
 const VIAJE_ID = 'df77cba6-4be5-4cbc-814b-1e228dd73dcc'
@@ -88,5 +89,36 @@ describe('InvitarViajeros', () => {
     render(<InvitarViajeros viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
 
     expect((await screen.findByRole('alert')).textContent).toBe('No se puede conectar con el servidor')
+  })
+})
+
+describe('InvitarViajeros · QR ampliado', () => {
+  const abrirQr = async (user: ReturnType<typeof userEvent.setup>) => {
+    vi.stubGlobal('fetch', backend())
+    render(<InvitarViajeros viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
+    await user.click(await screen.findByRole('button', { name: 'Ampliar codigo QR' }))
+    return screen.getByRole('dialog', { name: 'Codigo QR del viaje' })
+  }
+
+  it('pulsar dentro del QR no lo cierra; pulsar el fondo, sí', async () => {
+    const user = userEvent.setup()
+    const dialogo = await abrirQr(user)
+
+    await user.click(dialogo)
+    expect(screen.getByRole('dialog')).toBeTruthy()
+
+    await user.click(dialogo.parentElement as HTMLElement)
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('se cierra con Escape y con el botón Cerrar', async () => {
+    const user = userEvent.setup()
+    await abrirQr(user)
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Ampliar codigo QR' }))
+    await user.click(screen.getByRole('button', { name: 'Cerrar' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 })

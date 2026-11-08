@@ -28,13 +28,35 @@ describe('BarraInferior', () => {
     const onCambiar = vi.fn()
     render(<BarraInferior activa="inicio" onCambiar={onCambiar} />)
 
-    for (const seccion of ['Gastos', 'Agenda', 'Más']) {
-      const boton = screen.getByRole('button', { name: seccion })
-      expect(boton).toHaveProperty('disabled', true)
-      expect(boton.getAttribute('title')).toBe('Disponible próximamente')
-    }
-    await user.click(screen.getByRole('button', { name: 'Gastos' }))
+    const boton = screen.getByRole('button', { name: 'Más' })
+    expect(boton).toHaveProperty('disabled', true)
+    expect(boton.getAttribute('title')).toBe('Disponible próximamente')
+    await user.click(boton)
     expect(onCambiar).not.toHaveBeenCalled()
+  })
+
+  it('deja activa la sección Agenda (cartera de documentos) y avisa al pulsarla', async () => {
+    const user = userEvent.setup()
+    const onCambiar = vi.fn()
+    render(<BarraInferior activa="inicio" onCambiar={onCambiar} />)
+
+    const boton = screen.getByRole('button', { name: 'Agenda' })
+    expect(boton).toHaveProperty('disabled', false)
+    await user.click(boton)
+
+    expect(onCambiar).toHaveBeenCalledWith('agenda')
+  })
+
+  it('deja activa la sección Gastos y avisa al pulsarla', async () => {
+    const user = userEvent.setup()
+    const onCambiar = vi.fn()
+    render(<BarraInferior activa="inicio" onCambiar={onCambiar} />)
+
+    const boton = screen.getByRole('button', { name: 'Gastos' })
+    expect(boton).toHaveProperty('disabled', false)
+    await user.click(boton)
+
+    expect(onCambiar).toHaveBeenCalledWith('gastos')
   })
 
   it('deja activa la sección Itinerario y avisa al pulsarla', async () => {

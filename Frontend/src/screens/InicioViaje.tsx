@@ -42,9 +42,10 @@ type InicioViajeProps = {
   onEditar?: () => void
   onInvitar?: () => void
   onVotaciones?: () => void
+  onDocumentos?: () => void
   // Un viaje sin destino solo muestra la votación del destino
   onPendienteDestino?: () => void
-  // Tras cerrar el viaje (queda archivado)
+  // Tras finalizar el viaje (queda archivado)
   onArchivado?: (viaje: ViajeDelUsuario) => void
   onCambiarSeccion?: (seccion: SeccionViaje) => void
 }
@@ -56,15 +57,16 @@ export default function InicioViaje({
   onEditar,
   onInvitar,
   onVotaciones,
+  onDocumentos,
   onPendienteDestino,
   onArchivado,
   onCambiarSeccion,
 }: InicioViajeProps) {
   const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
   const [error, setError] = useState("")
-  const [confirmandoCierre, setConfirmandoCierre] = useState(false)
+  const [confirmandoFinalizar, setConfirmandoFinalizar] = useState(false)
   const [cerrando, setCerrando] = useState(false)
-  const [errorCierre, setErrorCierre] = useState("")
+  const [errorFinalizar, setErrorFinalizar] = useState("")
 
   useEffect(() => {
     let vigente = true
@@ -86,16 +88,16 @@ export default function InicioViaje({
     if (pendiente) onPendienteDestino?.()
   }, [pendiente, onPendienteDestino])
 
-  const handleCerrarViaje = async () => {
+  const handleFinalizarViaje = async () => {
     setCerrando(true)
-    setErrorCierre("")
+    setErrorFinalizar("")
     try {
       const archivado = await archivarViaje(viajeId, tokenSesion)
       setViaje(archivado)
-      setConfirmandoCierre(false)
+      setConfirmandoFinalizar(false)
       onArchivado?.(archivado)
     } catch (e) {
-      setErrorCierre(mensajeDeError(e))
+      setErrorFinalizar(mensajeDeError(e))
     } finally {
       setCerrando(false)
     }
@@ -187,8 +189,8 @@ export default function InicioViaje({
               <button
                 type="button"
                 onClick={() => {
-                  setErrorCierre("")
-                  setConfirmandoCierre(true)
+                  setErrorFinalizar("")
+                  setConfirmandoFinalizar(true)
                 }}
                 style={{
                   background: "rgba(255,255,255,0.15)",
@@ -207,7 +209,7 @@ export default function InicioViaje({
                 }}
               >
                 <Icon name="finish" size={13} color="rgba(255,255,255,0.9)" strokeWidth={2.5} />
-                Cerrar viaje
+                Finalizar viaje
               </button>
             )}
             {viaje && !activo && (
@@ -273,7 +275,7 @@ export default function InicioViaje({
             <div style={avisoStyle(C.lightAccent, `${C.accent}40`)}>
               <Icon name="lock" size={18} color={C.accent} strokeWidth={2} />
               <span>
-                Este viaje está {viaje.estado === "archivado" ? "archivado" : "cerrado"}: puedes consultarlo, pero ya no se
+                Este viaje está {viaje.estado === "archivado" ? "archivado" : "finalizado"}: puedes consultarlo, pero ya no se
                 pueden modificar sus datos ni añadir actividades o gastos.
               </span>
             </div>
@@ -337,6 +339,45 @@ export default function InicioViaje({
             </div>
           )}
 
+          {/* La cartera también se consulta en viajes finalizados */}
+          {viaje && (
+            <button
+              type="button"
+              onClick={onDocumentos}
+              style={{
+                ...tarjetaStyle,
+                width: "100%",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                textAlign: "left",
+              }}
+            >
+              <div
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 13,
+                  background: C.lightBlue,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <Icon name="folder" size={21} color={C.blue} strokeWidth={1.8} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: NUNITO, fontWeight: 800, color: C.navy, fontSize: 14 }}>Cartera de Documentos</div>
+                <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, marginTop: 2 }}>
+                  Billetes, reservas y otros documentos del viaje
+                </div>
+              </div>
+              <Icon name="arrow_right" size={18} color={C.muted} strokeWidth={2} />
+            </button>
+          )}
+
           {viaje && activo && esCreador && (
             <button
               type="button"
@@ -379,18 +420,18 @@ export default function InicioViaje({
 
       <BarraInferior activa="inicio" onCambiar={onCambiarSeccion} />
 
-      {confirmandoCierre && (
+      {confirmandoFinalizar && (
         <DialogoConfirmacion
-          titulo="¿Cerrar este viaje?"
+          titulo="¿Finalizar este viaje?"
           icono="finish"
           color={C.accent}
           colorFondo={C.lightAccent}
-          textoConfirmar="Cerrar viaje"
-          textoConfirmando="Cerrando viaje..."
+          textoConfirmar="Finalizar viaje"
+          textoConfirmando="Finalizando viaje..."
           ocupado={cerrando}
-          error={errorCierre}
-          onConfirmar={handleCerrarViaje}
-          onCancelar={() => setConfirmandoCierre(false)}
+          error={errorFinalizar}
+          onConfirmar={handleFinalizarViaje}
+          onCancelar={() => setConfirmandoFinalizar(false)}
         >
           El viaje pasará a «Viajes archivados» y quedará de solo lectura: ya no se podrán editar sus datos ni añadir
           actividades o gastos.

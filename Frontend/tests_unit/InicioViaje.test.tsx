@@ -107,16 +107,16 @@ describe('InicioViaje', () => {
     expect(screen.queryByRole('button', { name: /Editar viaje/ })).toBeNull()
   })
 
-  it('solo el creador puede cerrar el viaje', async () => {
+  it('solo el creador puede finalizar el viaje', async () => {
     simularBackend()
     const { unmount } = renderizar()
-    expect(await screen.findByRole('button', { name: 'Cerrar viaje' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Finalizar viaje' })).toBeTruthy()
     unmount()
 
     simularBackend({ rol: 'miembro' })
     renderizar()
     expect(await screen.findByRole('button', { name: 'Invitar' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Cerrar viaje' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Finalizar viaje' })).toBeNull()
   })
 
   it('un viaje archivado es de solo lectura', async () => {
@@ -126,7 +126,7 @@ describe('InicioViaje', () => {
     expect(await screen.findByText(/Este viaje está archivado/)).toBeTruthy()
     expect(screen.getByText('Archivado')).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Editar viaje/ })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Cerrar viaje' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Finalizar viaje' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Invitar' })).toBeNull()
   })
 
@@ -162,15 +162,15 @@ describe('InicioViaje', () => {
   })
 })
 
-describe('InicioViaje · cerrar viaje con confirmación', () => {
+describe('InicioViaje · finalizar viaje con confirmación', () => {
   it('pide confirmación antes de cerrar y se puede cancelar sin llamar al backend', async () => {
     const user = userEvent.setup()
     const fetchMock = simularBackend()
     renderizar()
 
-    await user.click(await screen.findByRole('button', { name: 'Cerrar viaje' }))
+    await user.click(await screen.findByRole('button', { name: 'Finalizar viaje' }))
     const ventana = dialogo()!
-    expect(within(ventana).getByText('¿Cerrar este viaje?')).toBeTruthy()
+    expect(within(ventana).getByText('¿Finalizar este viaje?')).toBeTruthy()
     expect(within(ventana).getByText('Esta acción no se puede deshacer.')).toBeTruthy()
 
     await user.click(within(ventana).getByRole('button', { name: 'Cancelar' }))
@@ -185,8 +185,8 @@ describe('InicioViaje · cerrar viaje con confirmación', () => {
     const onArchivado = vi.fn()
     renderizar({ onArchivado })
 
-    await user.click(await screen.findByRole('button', { name: 'Cerrar viaje' }))
-    await user.click(within(dialogo()!).getByRole('button', { name: 'Cerrar viaje' }))
+    await user.click(await screen.findByRole('button', { name: 'Finalizar viaje' }))
+    await user.click(within(dialogo()!).getByRole('button', { name: 'Finalizar viaje' }))
 
     await vi.waitFor(() => expect(onArchivado).toHaveBeenCalledTimes(1))
     expect(onArchivado.mock.calls[0][0].estado).toBe('archivado')
@@ -204,8 +204,8 @@ describe('InicioViaje · cerrar viaje con confirmación', () => {
     const onArchivado = vi.fn()
     renderizar({ onArchivado })
 
-    await user.click(await screen.findByRole('button', { name: 'Cerrar viaje' }))
-    await user.click(within(dialogo()!).getByRole('button', { name: 'Cerrar viaje' }))
+    await user.click(await screen.findByRole('button', { name: 'Finalizar viaje' }))
+    await user.click(within(dialogo()!).getByRole('button', { name: 'Finalizar viaje' }))
 
     expect((await within(dialogo()!).findByRole('alert')).textContent).toBe('Solo el creador del viaje puede hacerlo')
     expect(onArchivado).not.toHaveBeenCalled()

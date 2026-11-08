@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { conPorcentajes, elegirAlAzar, enumerar, opcionesGanadoras } from '../src/utils/votaciones'
+import { conPorcentajes, enumerar, opcionesGanadoras } from '../src/utils/votaciones'
 
 const opciones = (votos: number[]) => votos.map((v, i) => ({ id: `o${i}`, texto: `Opción ${i}`, votos: v }))
 
@@ -14,11 +14,8 @@ describe('utilidades de votaciones', () => {
     expect(opcionesGanadoras(opciones([0, 0]))).toEqual([])
   })
 
-  it('si hay empate devuelve todas las empatadas y se elige una al azar entre ellas', () => {
-    const empatadas = opcionesGanadoras(opciones([2, 2, 1]))
-    expect(empatadas.map((o) => o.id)).toEqual(['o0', 'o1'])
-    expect(elegirAlAzar(empatadas, () => 0).id).toBe('o0')
-    expect(elegirAlAzar(empatadas, () => 0.99).id).toBe('o1')
+  it('si hay empate devuelve todas las empatadas (el backend elige una al azar al cerrar)', () => {
+    expect(opcionesGanadoras(opciones([2, 2, 1])).map((o) => o.id)).toEqual(['o0', 'o1'])
   })
 
   it('enumera las opciones empatadas para el aviso', () => {

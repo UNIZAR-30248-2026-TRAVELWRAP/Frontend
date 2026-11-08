@@ -31,7 +31,8 @@ export type ViajeDelUsuario = Viaje & {
 }
 
 export type NuevoViaje = {
-  nombre: string
+  // null: el backend le pone el nombre por defecto (destino y año) y lo actualiza al fijar el destino
+  nombre: string | null
   presupuesto: number
   destino: string | null
   fecha_inicio: string | null
@@ -66,7 +67,7 @@ export const editarViaje = (viajeId: string, cambios: CambiosViaje, tokenSesion:
     token: tokenSesion,
   })
 
-// Cierra el viaje y lo deja archivado, de solo lectura (solo el creador)
+// Finaliza el viaje y lo deja archivado, de solo lectura (solo el creador)
 export const archivarViaje = (viajeId: string, tokenSesion: string) =>
   peticion<ViajeDelUsuario>(`/viajes/${encodeURIComponent(viajeId)}/archivar`, {
     metodo: "POST",

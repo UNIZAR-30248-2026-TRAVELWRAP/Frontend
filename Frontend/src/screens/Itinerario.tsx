@@ -19,6 +19,7 @@ import { guardarItinerario, leerItinerario } from "../services/itinerarioGuardad
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro, diasDelItinerario, fechaDeHoy, formatearFechasActivo } from "../utils/formatoViaje"
+import { estiloAlerta } from "../styles/formulario"
 
 const MapaActividades = lazy(() => import("../components/MapaActividades"))
 
@@ -35,17 +36,6 @@ const formatearDuracion = (segundos: number) => {
 }
 
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
-
-const alertaStyle: CSSProperties = {
-  background: C.redBg,
-  border: `1.5px solid ${C.red}55`,
-  borderRadius: 12,
-  padding: "10px 14px",
-  color: C.red,
-  fontFamily: NUNITO,
-  fontSize: 13,
-  fontWeight: 700,
-}
 
 const avisoVacioStyle: CSSProperties = {
   fontFamily: NUNITO,
@@ -295,7 +285,7 @@ export default function Itinerario({
 
         <div style={{ padding: "16px 16px 0" }}>
           {error && (
-            <div role="alert" style={{ ...alertaStyle, marginBottom: 14 }}>
+            <div role="alert" style={{ ...estiloAlerta, marginBottom: 14 }}>
               No se ha podido cargar el viaje: {error}
             </div>
           )}

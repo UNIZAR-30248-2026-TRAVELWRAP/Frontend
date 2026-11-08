@@ -3,16 +3,24 @@ import { expect } from '@playwright/test';
 import { idDelViaje } from './gestion_viajes.steps';
 import { paginaActual } from './login.steps';
 
+// Actividad con todos los campos que devuelve la API (GET /viajes/:viajeId/actividades)
 type ActividadSimulada = {
   id: string;
   viaje_id: string;
   titulo: string;
+  descripcion: string | null;
   fecha: string;
   hora_inicio: string | null;
+  hora_fin: string | null;
+  orden: number;
   ubicacion_nombre: string | null;
   latitud: number | null;
   longitud: number | null;
   lugar_externo_id: string | null;
+  categoria: string | null;
+  creado_por: string | null;
+  creado_en: string;
+  actualizado_en: string;
 };
 
 type DatosActividad = Pick<ActividadSimulada, 'titulo' | 'fecha' | 'hora_inicio' | 'ubicacion_nombre'>;
@@ -52,12 +60,19 @@ export const sembrarActividad = (
     id: `actividad-${actividades.length + 1}`,
     viaje_id: viajeId,
     titulo,
+    descripcion: null,
     fecha,
     hora_inicio: hora,
+    hora_fin: null,
+    orden: actividades.length + 1,
     ubicacion_nombre: ubicacion,
     latitud,
     longitud,
     lugar_externo_id: null,
+    categoria: null,
+    creado_por: null,
+    creado_en: '2026-10-20T10:00:00Z',
+    actualizado_en: '2026-10-20T10:00:00Z',
   });
 };
 
@@ -72,7 +87,7 @@ export const simularActividades = async () => {
         status: 409,
         contentType: 'application/json',
         body: JSON.stringify({
-          error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está cerrado y ya no se puede modificar' },
+          error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está finalizado y ya no se puede modificar' },
         }),
       });
     }
@@ -107,7 +122,7 @@ export const simularActividades = async () => {
         status: 409,
         contentType: 'application/json',
         body: JSON.stringify({
-          error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está cerrado y ya no se puede modificar' },
+          error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está finalizado y ya no se puede modificar' },
         }),
       });
     }
@@ -127,7 +142,7 @@ export const simularActividades = async () => {
   });
 };
 
-Given('que el servidor rechaza las actividades porque el viaje está cerrado', () => {
+Given('que el servidor rechaza las actividades porque el viaje está finalizado', () => {
   rechazaPorViajeCerrado = true;
 });
 

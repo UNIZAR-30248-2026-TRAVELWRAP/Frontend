@@ -24,15 +24,15 @@ Característica: Añadir una actividad al itinerario (PB-17)
 
   Escenario: Si el servidor rechaza la actividad se muestra el error
     Dado que tengo el viaje activo "Roma 2027" con destino "Roma" y presupuesto 850
-    Y que el servidor rechaza las actividades porque el viaje está cerrado
+    Y que el servidor rechaza las actividades porque el viaje está finalizado
     Cuando abro la pantalla para añadir una actividad al viaje "Roma 2027"
     Y relleno la actividad con título "Cena", lugar "" y hora ""
     Y pulso el botón "Añadir al itinerario"
-    Entonces veo el mensaje de error "El viaje está cerrado y ya no se puede modificar"
+    Entonces veo el mensaje de error "El viaje está finalizado y ya no se puede modificar"
     Y sigo en la pantalla de añadir actividad
 
   Escenario: Un viaje archivado no admite actividades nuevas
     Dado que tengo el viaje archivado "Lisboa 2026"
     Cuando abro la pantalla para añadir una actividad al viaje "Lisboa 2026"
-    Entonces veo el mensaje de error "El viaje está cerrado y ya no se pueden añadir actividades"
+    Entonces veo el mensaje de error "El viaje está finalizado y ya no se pueden añadir actividades"
     Y no veo el botón "Añadir al itinerario"

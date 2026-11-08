@@ -265,14 +265,14 @@ describe('AnadirActividad', () => {
     const user = userEvent.setup()
     const onGuardada = vi.fn()
     simularBackend({}, () =>
-      respuesta(409, { error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está cerrado y ya no se puede modificar' } }),
+      respuesta(409, { error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está finalizado y ya no se puede modificar' } }),
     )
     renderizar({ onGuardada })
 
     await user.type(await screen.findByLabelText('Nombre de la actividad'), 'Paseo')
     await user.click(botonAnadir())
 
-    expect((await screen.findByRole('alert')).textContent).toBe('El viaje está cerrado y ya no se puede modificar')
+    expect((await screen.findByRole('alert')).textContent).toBe('El viaje está finalizado y ya no se puede modificar')
     expect(onGuardada).not.toHaveBeenCalled()
     expect(botonAnadir()).toHaveProperty('disabled', false)
   })
@@ -282,7 +282,7 @@ describe('AnadirActividad', () => {
     renderizar()
 
     expect((await screen.findByRole('alert')).textContent).toBe(
-      'El viaje está cerrado y ya no se pueden añadir actividades',
+      'El viaje está finalizado y ya no se pueden añadir actividades',
     )
     expect(screen.queryByLabelText('Nombre de la actividad')).toBeNull()
   })

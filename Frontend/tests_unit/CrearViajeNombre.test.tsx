@@ -40,7 +40,27 @@ describe('CrearViaje · nombre por defecto', () => {
     expect(nombre().value).toBe('')
   })
 
-  it('al crear sin nombre usa el destino y el año de las fechas', async () => {
+  it('muestra como ejemplo el nombre que tendrá: el destino y el año de las fechas', async () => {
+    const user = userEvent.setup()
+    render(<CrearViaje tokenSesion="token-acceso" />)
+
+    expect(nombre().placeholder).toBe('Ej. Verano 2027')
+    await user.type(destino(), ' Praga ')
+    ponerFechas('2027-12-28', '2028-01-03')
+    expect(nombre().placeholder).toBe('Praga 2027-2028')
+  })
+
+  it('con «Votar destino» muestra el nombre temporal que tendrá hasta que se elija el destino', async () => {
+    const user = userEvent.setup()
+    render(<CrearViaje tokenSesion="token-acceso" />)
+
+    await user.click(screen.getByRole('radio', { name: /Votar destino/ }))
+    ponerFechas('2027-05-12', '2027-05-15')
+
+    expect(nombre().placeholder).toBe('Viaje sin destino 2027')
+  })
+
+  it('al crear sin nombre lo envía vacío (null) para que el backend ponga el del destino y el año', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn(() => respuesta(201, { id: 'v1', nombre: 'Roma 2027', destino: 'Roma', pendiente_destino: false }))
     vi.stubGlobal('fetch', fetchMock)
@@ -50,32 +70,7 @@ describe('CrearViaje · nombre por defecto', () => {
     ponerFechas('2027-05-12', '2027-05-15')
     await user.type(screen.getByLabelText('Presupuesto estimado (€)'), '850')
 
-    expect(await crearYLeerCuerpo(user, fetchMock)).toMatchObject({ nombre: 'Roma 2027', destino: 'Roma' })
-  })
-
-  it('si el viaje cruza de año usa los dos años', async () => {
-    const user = userEvent.setup()
-    const fetchMock = vi.fn(() => respuesta(201, { id: 'v1', pendiente_destino: false }))
-    vi.stubGlobal('fetch', fetchMock)
-    render(<CrearViaje tokenSesion="token-acceso" />)
-
-    await user.type(destino(), 'Praga')
-    ponerFechas('2027-12-28', '2028-01-03')
-    await user.type(screen.getByLabelText('Presupuesto estimado (€)'), '850')
-
-    expect((await crearYLeerCuerpo(user, fetchMock)).nombre).toBe('Praga 2027-2028')
-  })
-
-  it('sin fechas usa solo el destino', async () => {
-    const user = userEvent.setup()
-    const fetchMock = vi.fn(() => respuesta(201, { id: 'v1', pendiente_destino: false }))
-    vi.stubGlobal('fetch', fetchMock)
-    render(<CrearViaje tokenSesion="token-acceso" />)
-
-    await user.type(destino(), 'Lisboa')
-    await user.type(screen.getByLabelText('Presupuesto estimado (€)'), '850')
-
-    expect((await crearYLeerCuerpo(user, fetchMock)).nombre).toBe('Lisboa')
+    expect(await crearYLeerCuerpo(user, fetchMock)).toMatchObject({ nombre: null, destino: 'Roma' })
   })
 
   it('si el usuario escribe un nombre, es el que se guarda', async () => {
@@ -92,7 +87,7 @@ describe('CrearViaje · nombre por defecto', () => {
     expect((await crearYLeerCuerpo(user, fetchMock)).nombre).toBe('Escapada con los primos')
   })
 
-  it('un nombre solo con espacios cuenta como vacío y se usa el sugerido', async () => {
+  it('un nombre solo con espacios cuenta como vacío', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn(() => respuesta(201, { id: 'v1', pendiente_destino: false }))
     vi.stubGlobal('fetch', fetchMock)
@@ -103,22 +98,23 @@ describe('CrearViaje · nombre por defecto', () => {
     ponerFechas('2027-05-12', '2027-05-15')
     await user.type(screen.getByLabelText('Presupuesto estimado (€)'), '850')
 
-    expect((await crearYLeerCuerpo(user, fetchMock)).nombre).toBe('Roma 2027')
+    expect((await crearYLeerCuerpo(user, fetchMock)).nombre).toBeNull()
   })
 
-  it('con «Votar destino» y sin nombre no deja crear: no hay destino que lo sugiera', async () => {
+  it('con «Votar destino» se puede crear sin nombre: lleva uno temporal hasta elegir el destino', async () => {
     const user = userEvent.setup()
+    const fetchMock = vi.fn(() => respuesta(201, { id: 'v1', pendiente_destino: true }))
+    vi.stubGlobal('fetch', fetchMock)
     render(<CrearViaje tokenSesion="token-acceso" />)
 
     await user.click(screen.getByRole('radio', { name: /Votar destino/ }))
     await user.type(screen.getByLabelText('Presupuesto estimado (€)'), '850')
 
-    expect(botonCrear()).toHaveProperty('disabled', true)
-    await user.type(nombre(), 'Verano 2027')
     expect(botonCrear()).toHaveProperty('disabled', false)
+    expect(await crearYLeerCuerpo(user, fetchMock)).toMatchObject({ nombre: null, destino: null })
   })
 
-  it('sin nombre ni destino no deja crear', async () => {
+  it('con «Destino ya elegido» y sin escribir el destino no deja crear', async () => {
     const user = userEvent.setup()
     render(<CrearViaje tokenSesion="token-acceso" />)
 

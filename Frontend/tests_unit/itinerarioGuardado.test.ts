@@ -2,11 +2,51 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { borrarItinerarios, guardarItinerario, leerItinerario } from '../src/services/itinerarioGuardado'
 import { borrarSesion, guardarSesion, leerSesion } from '../src/services/sesionStorage'
 
+// Itinerario completo, como lo devuelve la API
 const itinerario = (id: string) => ({
-  viaje: { id, nombre: 'Roma 2027' } as never,
-  actividades: [{ id: 'a1', titulo: 'Coliseo' }] as never,
+  viaje: {
+    id,
+    nombre: 'Roma 2027',
+    destino: 'Roma',
+    descripcion: null,
+    fecha_inicio: '2027-05-12',
+    fecha_fin: '2027-05-14',
+    moneda: 'EUR',
+    presupuesto: 850,
+    estado: 'activo' as const,
+    creado_en: '2026-10-12T10:00:00Z',
+    pendiente_destino: false,
+    rol: 'miembro' as const,
+    miembros: [{ usuario_id: 'u1', nombre: 'Berta', avatar_url: null, rol: 'creador' as const }],
+  },
+  actividades: [
+    {
+      id: 'a1',
+      viaje_id: id,
+      titulo: 'Coliseo',
+      descripcion: null,
+      fecha: '2027-05-12',
+      hora_inicio: '10:00:00',
+      hora_fin: null,
+      orden: 1,
+      ubicacion_nombre: 'Piazza del Colosseo',
+      latitud: 41.890251,
+      longitud: 12.492373,
+      lugar_externo_id: null,
+      categoria: 'cultura' as const,
+      creado_por: 'u1',
+      creado_en: '2026-10-20T10:00:00.123456+00:00',
+      actualizado_en: '2026-10-20T10:00:00.123456+00:00',
+    },
+  ],
   guardadoEn: '2026-10-25T10:00:00.000Z',
 })
+
+const sesion = {
+  usuario: { id: 'u1', nombre: 'Berta', email: 'berta@travelwrap.app', avatar_url: null, creado_en: '2026-10-06T15:29:32Z' },
+  token: 't',
+  refresh_token: 'r',
+}
 
 afterEach(() => {
   localStorage.clear()
@@ -64,8 +104,51 @@ describe('itinerarioGuardado', () => {
     expect(leerItinerario('roma')).toBeNull()
   })
 
+  it('guarda solo los campos esperados', () => {
+    const conDeMas = itinerario('roma')
+    Object.assign(conDeMas.viaje, { campo_extra: 'no se guarda' })
+    Object.assign(conDeMas.actividades[0], { script: '<script>' })
+
+    guardarItinerario('roma', conDeMas)
+
+    expect(leerItinerario('roma')).toEqual(itinerario('roma'))
+  })
+
+  it('guarda como número el presupuesto y las coordenadas que llegan como texto', () => {
+    const conTexto = itinerario('roma')
+    Object.assign(conTexto.viaje, { presupuesto: '850.00' })
+    Object.assign(conTexto.actividades[0], { latitud: '41.890251' })
+
+    guardarItinerario('roma', conTexto)
+
+    expect(leerItinerario('roma')?.viaje.presupuesto).toBe(850)
+    expect(leerItinerario('roma')?.actividades[0].latitud).toBe(41.890251)
+  })
+
+  it.each([
+    ['un estado del viaje que no existe', (d: ReturnType<typeof itinerario>) => Object.assign(d.viaje, { estado: 'borrado' })],
+    ['una fecha con otro formato', (d: ReturnType<typeof itinerario>) => Object.assign(d.actividades[0], { fecha: '12/05/2027' })],
+    ['una categoría que no existe', (d: ReturnType<typeof itinerario>) => Object.assign(d.actividades[0], { categoria: 'fiesta' })],
+    ['un miembro sin identificador', (d: ReturnType<typeof itinerario>) => Object.assign(d.viaje.miembros[0], { usuario_id: '' })],
+    ['una foto de perfil que no es una URL', (d: ReturnType<typeof itinerario>) => Object.assign(d.viaje.miembros[0], { avatar_url: 'javascript:alert(1)' })],
+  ])('no guarda nada si el itinerario tiene %s', (_caso, estropear) => {
+    const datos = itinerario('roma')
+    estropear(datos)
+
+    guardarItinerario('roma', datos)
+
+    expect(localStorage.getItem('travelwrap.itinerario.roma')).toBeNull()
+  })
+
+  it('no guarda ni lee con un identificador de viaje no válido', () => {
+    guardarItinerario('../otra.clave', itinerario('roma'))
+
+    expect(localStorage.length).toBe(0)
+    expect(leerItinerario('../otra.clave')).toBeNull()
+  })
+
   it('al cerrar la sesión se borran los itinerarios guardados', () => {
-    guardarSesion({ usuario: { id: 'u1' }, token: 't', refresh_token: 'r' } as never)
+    guardarSesion(sesion)
     guardarItinerario('roma', itinerario('roma'))
 
     borrarSesion()

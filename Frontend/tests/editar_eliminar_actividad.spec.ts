@@ -94,7 +94,7 @@ const ordenarComoElBackend = (lista: ActividadSimulada[]) =>
 
 const conSegundos = (hora: unknown) => (typeof hora === 'string' && hora.length === 5 ? `${hora}:00` : hora);
 
-const RECHAZO = { error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está cerrado y ya no se puede modificar' } };
+const RECHAZO = { error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está finalizado y ya no se puede modificar' } };
 
 const simularBackend = async (
   page: Page,
@@ -229,7 +229,7 @@ test.describe('Itinerario · editar una actividad', () => {
     await page.getByLabel('Nombre de la actividad').fill('Otro nombre');
     await page.getByRole('button', { name: 'Guardar cambios' }).click();
 
-    await expect(page.getByRole('alert')).toHaveText('El viaje está cerrado y ya no se puede modificar');
+    await expect(page.getByRole('alert')).toHaveText('El viaje está finalizado y ya no se puede modificar');
     await expect(page).toHaveURL(/\/actividades\/coliseo\/editar/);
     await expect(page.getByRole('button', { name: 'Guardar cambios' })).toBeEnabled();
   });
@@ -254,7 +254,7 @@ test.describe('Itinerario · editar una actividad', () => {
     await expect(page.getByRole('button', { name: /^Eliminar / })).toHaveCount(0);
 
     await page.goto(`/viajes/${VIAJE_ID}/actividades/coliseo/editar`);
-    await expect(page.getByRole('alert')).toHaveText('El viaje está cerrado y ya no se pueden modificar actividades');
+    await expect(page.getByRole('alert')).toHaveText('El viaje está finalizado y ya no se pueden modificar actividades');
     await expect(page.getByLabel('Nombre de la actividad')).toHaveCount(0);
   });
 
@@ -318,7 +318,7 @@ test.describe('Itinerario · eliminar una actividad', () => {
     await page.getByRole('button', { name: 'Eliminar Visita al Coliseo' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Eliminar actividad' }).click();
 
-    await expect(page.getByRole('dialog').getByRole('alert')).toHaveText('El viaje está cerrado y ya no se puede modificar');
+    await expect(page.getByRole('dialog').getByRole('alert')).toHaveText('El viaje está finalizado y ya no se puede modificar');
     await page.getByRole('dialog').getByRole('button', { name: 'Cancelar' }).click();
     await expect(agenda(page)).toHaveCount(2);
   });

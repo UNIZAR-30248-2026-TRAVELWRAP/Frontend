@@ -7,7 +7,7 @@ type DialogoConfirmacionProps = {
   titulo: string
   children: ReactNode
   icono: string
-  // Color de la acción: rojo para borrar, naranja para cerrar el viaje...
+  // Color de la acción: rojo para borrar, naranja para finalizar el viaje...
   color: string
   colorFondo: string
   textoConfirmar: string

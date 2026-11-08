@@ -30,3 +30,6 @@ dist-ssr
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Informe de cobertura (lo genera npm run test:coverage)
+coverage
