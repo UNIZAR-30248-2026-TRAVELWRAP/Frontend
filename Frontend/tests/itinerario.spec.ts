@@ -208,7 +208,7 @@ test.describe('Itinerario · agenda del día', () => {
     await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
     await page.getByRole('button', { name: '10 may' }).click();
 
-    await expect(page.getByRole('status')).toContainText('Este día queda fuera de las fechas del viaje');
+    await expect(page.getByRole('status').filter({ hasText: 'Este día queda fuera de las fechas del viaje' })).toBeVisible();
     await expect(agenda(page)).toHaveText(['Antes de salir']);
   });
 

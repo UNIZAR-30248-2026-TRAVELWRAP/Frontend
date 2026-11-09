@@ -5,6 +5,7 @@ import BotonVolver from "../components/BotonVolver"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import SectionLabel from "../components/SectionLabel"
+import VisorFotos from "../components/VisorFotos"
 import { ApiError } from "../services/authApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { estiloAlerta } from "../styles/formulario"
@@ -39,6 +40,8 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
   const [errorSubida, setErrorSubida] = useState("")
   const selectorFoto = useRef<HTMLInputElement>(null)
   const urlsCreadas = useRef<string[]>([])
+  const [fotoAbierta, setFotoAbierta] = useState<number | null>(null)
+  const miniaturas = useRef<(HTMLButtonElement | null)[]>([])
 
   useEffect(() => {
     let vigente = true
@@ -66,6 +69,12 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
 
   const miembros = (viaje?.miembros ?? []).map((m, indice) => aMiembro(m.nombre, indice))
   const activo = viaje?.estado === "activo"
+
+  const cerrarVisor = () => {
+    const cerrada = fotoAbierta
+    setFotoAbierta(null)
+    if (cerrada !== null) setTimeout(() => miniaturas.current[cerrada]?.focus(), 0)
+  }
 
   const handleFotoElegida = (evento: ChangeEvent<HTMLInputElement>) => {
     const archivo = evento.target.files?.[0]
@@ -242,13 +251,23 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
                     overflow: "hidden",
                   }}
                 >
-                  {fotos.map((foto) => (
+                  {fotos.map((foto, posicion) => (
                     <li key={foto.id} style={{ aspectRatio: "1", background: "#CBD5E0", overflow: "hidden" }}>
-                      <img
-                        src={foto.url}
-                        alt={foto.nombre}
-                        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                      />
+                      <button
+                        type="button"
+                        ref={(el) => {
+                          miniaturas.current[posicion] = el
+                        }}
+                        onClick={() => setFotoAbierta(posicion)}
+                        aria-label={`Ampliar ${foto.nombre}`}
+                        style={{ width: "100%", height: "100%", padding: 0, border: "none", background: "none", cursor: "zoom-in", display: "block" }}
+                      >
+                        <img
+                          src={foto.url}
+                          alt=""
+                          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                        />
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -264,6 +283,10 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
           )}
         </div>
       </div>
+
+      {fotoAbierta !== null && (
+        <VisorFotos fotos={fotos} indice={fotoAbierta} onCambiar={setFotoAbierta} onCerrar={cerrarVisor} />
+      )}
 
       <BarraInferior activa="mas" onCambiar={onCambiarSeccion} />
     </div>
