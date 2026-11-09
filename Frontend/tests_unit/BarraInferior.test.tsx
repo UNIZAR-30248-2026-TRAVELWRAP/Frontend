@@ -23,16 +23,16 @@ describe('BarraInferior', () => {
     expect(screen.getByRole('button', { name: 'Gastos' }).getAttribute('aria-current')).toBeNull()
   })
 
-  it('deja desactivadas las secciones que aún no existen', async () => {
+  it('deja activa la sección Más (chat y galería) y avisa al pulsarla', async () => {
     const user = userEvent.setup()
     const onCambiar = vi.fn()
     render(<BarraInferior activa="inicio" onCambiar={onCambiar} />)
 
     const boton = screen.getByRole('button', { name: 'Más' })
-    expect(boton).toHaveProperty('disabled', true)
-    expect(boton.getAttribute('title')).toBe('Disponible próximamente')
+    expect(boton).toHaveProperty('disabled', false)
     await user.click(boton)
-    expect(onCambiar).not.toHaveBeenCalled()
+
+    expect(onCambiar).toHaveBeenCalledWith('mas')
   })
 
   it('deja activa la sección Agenda (cartera de documentos) y avisa al pulsarla', async () => {

@@ -20,6 +20,7 @@ import AnadirGasto from "../screens/AnadirGasto";
 import ControlGastos from "../screens/ControlGastos";
 import Itinerario from "../screens/Itinerario";
 import CarteraDocumentos from "../screens/CarteraDocumentos";
+import ChatGaleria from "../screens/ChatGaleria";
 import { buscarDirecciones } from "../services/actividadesApi";
 import type { SeccionViaje } from "../components/BarraInferior";
 import { rutaTrasLogin } from "../services/invitacionPendiente";
@@ -79,6 +80,7 @@ const RUTAS_DE_SECCION: Partial<Record<SeccionViaje, string>> = {
   itinerario: "itinerario",
   gastos: "gastos",
   agenda: "documentos",
+  mas: "galeria",
 };
 
 const rutaDeSeccion = (viajeId: string, seccion: SeccionViaje) =>
@@ -277,6 +279,20 @@ function RutaCarteraDocumentos({ sesion }: { sesion: Sesion }) {
   );
 }
 
+function RutaChatGaleria({ sesion }: { sesion: Sesion }) {
+  const { viajeId = "" } = useParams();
+  const navigate = useNavigate();
+  return (
+    <ChatGaleria
+      key={viajeId}
+      viajeId={viajeId}
+      tokenSesion={sesion.token}
+      onVolver={() => navigate(`/viajes/${viajeId}`)}
+      onCambiarSeccion={(seccion) => navigate(rutaDeSeccion(viajeId, seccion))}
+    />
+  );
+}
+
 // Al registrar el gasto (o al volver) se regresa a Control de Gastos, que vuelve a pedir el historial,
 // sin dejar el formulario en el historial del navegador
 function RutaAnadirGasto({ sesion }: { sesion: Sesion }) {
@@ -445,6 +461,11 @@ export default function AppRouter({
         <Route
           path="/viajes/:viajeId/documentos"
           element={session ? <RutaCarteraDocumentos sesion={session} /> : <Navigate to="/login" replace />}
+        />
+
+        <Route
+          path="/viajes/:viajeId/galeria"
+          element={session ? <RutaChatGaleria sesion={session} /> : <Navigate to="/login" replace />}
         />
 
         {/* Votación del destino de un viaje que aún no lo tiene (privada) */}

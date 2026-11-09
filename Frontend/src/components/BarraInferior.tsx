@@ -10,7 +10,7 @@ const SECCIONES:{ id: SeccionViaje; icono: string; texto: string; disponible: bo
   { id: "itinerario", icono: "calendar", texto: "Itinerario", disponible: true },
   { id: "inicio", icono: "home", texto: "Inicio", disponible: true },
   { id: "agenda", icono: "folder", texto: "Agenda", disponible: true },
-  { id: "mas", icono: "chat", texto: "Más", disponible: false },
+  { id: "mas", icono: "chat", texto: "Más", disponible: true },
 ]
 
 export const ALTO_BARRA_INFERIOR = 72
