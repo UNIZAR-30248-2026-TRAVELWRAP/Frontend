@@ -21,6 +21,7 @@ import ControlGastos from "../screens/ControlGastos";
 import Itinerario from "../screens/Itinerario";
 import CarteraDocumentos from "../screens/CarteraDocumentos";
 import ChatGaleria from "../screens/ChatGaleria";
+import FinDeViaje from "../screens/FinDeViaje";
 import { buscarDirecciones } from "../services/actividadesApi";
 import type { SeccionViaje } from "../components/BarraInferior";
 import { rutaTrasLogin } from "../services/invitacionPendiente";
@@ -100,6 +101,7 @@ function RutaInicioViaje({ sesion }: { sesion: Sesion }) {
       onInvitar={() => navigate(`/viajes/${viajeId}/invitar`)}
       onVotaciones={() => navigate(`/viajes/${viajeId}/votaciones`)}
       onDocumentos={() => navigate(`/viajes/${viajeId}/documentos`)}
+      onResumen={() => navigate(`/viajes/${viajeId}/resumen`)}
       onCambiarSeccion={(seccion) => navigate(rutaDeSeccion(viajeId, seccion))}
       onPendienteDestino={() => navigate(`/viajes/${viajeId}/destino`, { replace: true })}
       onArchivado={() => navigate("/viajes/archivados")}
@@ -275,6 +277,19 @@ function RutaCarteraDocumentos({ sesion }: { sesion: Sesion }) {
       tokenSesion={sesion.token}
       onVolver={() => navigate(`/viajes/${viajeId}`)}
       onCambiarSeccion={(seccion) => navigate(rutaDeSeccion(viajeId, seccion))}
+    />
+  );
+}
+
+function RutaFinDeViaje({ sesion }: { sesion: Sesion }) {
+  const { viajeId = "" } = useParams();
+  const navigate = useNavigate();
+  return (
+    <FinDeViaje
+      key={viajeId}
+      viajeId={viajeId}
+      tokenSesion={sesion.token}
+      onVolver={() => navigate(`/viajes/${viajeId}`)}
     />
   );
 }
@@ -461,6 +476,11 @@ export default function AppRouter({
         <Route
           path="/viajes/:viajeId/documentos"
           element={session ? <RutaCarteraDocumentos sesion={session} /> : <Navigate to="/login" replace />}
+        />
+
+        <Route
+          path="/viajes/:viajeId/resumen"
+          element={session ? <RutaFinDeViaje sesion={session} /> : <Navigate to="/login" replace />}
         />
 
         <Route
