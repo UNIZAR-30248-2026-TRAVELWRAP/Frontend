@@ -170,8 +170,35 @@ test.describe('Añadir gasto', () => {
     await page.getByLabel('Concepto').fill('Cena');
     await page.getByRole('button', { name: 'Registrar gasto' }).click();
 
-    await expect(page.getByRole('alert')).toHaveText('Escribe un importe mayor que 0 con dos decimales como máximo');
+    await expect(page.getByRole('alert')).toHaveText('Como máximo dos decimales');
     expect(recibidos).toHaveLength(0);
+  });
+
+  test('al escribir un importe negativo avisa debajo del campo sin esperar a registrar', async ({ page }) => {
+    await entrarConSesion(page);
+    const { recibidos } = await simularBackend(page);
+
+    await page.goto(rutaFormulario);
+    const importe = page.getByLabel('Importe');
+    await importe.pressSequentially('-20');
+
+    await expect(page.getByRole('alert')).toHaveText('El importe no puede ser negativo');
+    await expect(importe).toHaveAttribute('aria-invalid', 'true');
+    await page.getByLabel('Concepto').fill('Cena');
+    await page.getByRole('button', { name: 'Registrar gasto' }).click();
+    await expect(importe).toBeFocused();
+    expect(recibidos).toHaveLength(0);
+  });
+
+  test('sin concepto avisa al salir del campo', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularBackend(page);
+
+    await page.goto(rutaFormulario);
+    await page.getByLabel('Concepto').focus();
+    await page.getByLabel('Concepto').blur();
+
+    await expect(page.getByRole('alert')).toHaveText('Escribe el concepto del gasto');
   });
 
   test('sin nadie en el reparto no se envía y se explica el motivo', async ({ page }) => {

@@ -1,6 +1,7 @@
 // Test unitario de las funciones de reparto de gastos
 import { describe, expect, it } from 'vitest'
 import {
+  avisoAlEscribirImporte,
   CATEGORIAS_GASTO,
   conEuros,
   conSigno,
@@ -10,6 +11,7 @@ import {
   leerImporte,
   repartirAPartesIguales,
   tamanoSegunLongitud,
+  validarImporte,
 } from '../src/utils/gastos'
 
 describe('leerImporte', () => {
@@ -29,6 +31,39 @@ describe('leerImporte', () => {
       expect(leerImporte(texto)).toBeNull()
     },
   )
+})
+
+describe('validarImporte', () => {
+  it.each([
+    ['', 'Escribe el importe del gasto'],
+    ['   ', 'Escribe el importe del gasto'],
+    ['-20', 'El importe no puede ser negativo'],
+    ['-abc', 'El importe no puede ser negativo'],
+    ['abc', 'Escribe solo números, con coma o punto para los decimales'],
+    ['12a', 'Escribe solo números, con coma o punto para los decimales'],
+    ['1.000,50', 'Escribe solo números, con coma o punto para los decimales'],
+    ['10,123', 'Como máximo dos decimales'],
+    ['99999999999', 'El importe máximo es 9.999.999.999,99 €'],
+    ['0', 'El importe tiene que ser mayor que 0'],
+    ['0,00', 'El importe tiene que ser mayor que 0'],
+    ['12,', 'Escribe los decimales después de la coma'],
+  ])('«%s» → «%s»', (texto, mensaje) => {
+    expect(validarImporte(texto)).toBe(mensaje)
+  })
+
+  it.each(['10', '12,5', '12.50', ' 0,01 ', '9999999999,99'])('«%s» es válido', (texto) => {
+    expect(validarImporte(texto)).toBe('')
+  })
+})
+
+describe('avisoAlEscribirImporte', () => {
+  it.each(['-20', 'abc', '10,123', '99999999999'])('avisa de «%s» mientras se escribe', (texto) => {
+    expect(avisoAlEscribirImporte(texto)).toBe(validarImporte(texto))
+  })
+
+  it.each(['', '0', '0,', '12,'])('no avisa todavía de «%s», que puede ser el principio de un importe', (texto) => {
+    expect(avisoAlEscribirImporte(texto)).toBe('')
+  })
 })
 
 describe('repartirAPartesIguales', () => {

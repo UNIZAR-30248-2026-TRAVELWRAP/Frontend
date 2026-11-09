@@ -142,9 +142,10 @@ describe('AnadirGasto', () => {
   })
 
   const casosInvalidos: [string, string, string, string[], string][] = [
-    ['sin importe', '', 'Cena', [], 'Escribe un importe mayor que 0 con dos decimales como máximo'],
-    ['con importe 0', '0', 'Cena', [], 'Escribe un importe mayor que 0 con dos decimales como máximo'],
-    ['con tres decimales', '10,123', 'Cena', [], 'Escribe un importe mayor que 0 con dos decimales como máximo'],
+    ['sin importe', '', 'Cena', [], 'Escribe el importe del gasto'],
+    ['con importe 0', '0', 'Cena', [], 'El importe tiene que ser mayor que 0'],
+    ['con importe negativo', '-20', 'Cena', [], 'El importe no puede ser negativo'],
+    ['con tres decimales', '10,123', 'Cena', [], 'Como máximo dos decimales'],
     ['sin concepto', '10', '   ', [], 'Escribe el concepto del gasto'],
     ['sin nadie en el reparto', '10', 'Cena', ['Daniel', 'Berta', 'Adriana'], 'Elige al menos un miembro entre los que dividir el gasto'],
   ]
@@ -171,10 +172,72 @@ describe('AnadirGasto', () => {
     await abrir()
 
     await user.click(screen.getByRole('button', { name: 'Registrar gasto' }))
-    expect(screen.getByRole('alert')).toBeTruthy()
+    expect(screen.getAllByRole('alert').map((a) => a.textContent)).toEqual([
+      'Escribe el importe del gasto',
+      'Escribe el concepto del gasto',
+    ])
     await user.type(screen.getByLabelText('Importe'), '5')
+    await user.type(screen.getByLabelText('Concepto'), 'Cena')
 
     expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it.each([
+    ['-20', 'El importe no puede ser negativo'],
+    ['abc', 'Escribe solo números, con coma o punto para los decimales'],
+    ['1,234', 'Como máximo dos decimales'],
+  ])('al escribir «%s» avisa debajo del importe sin esperar a registrar', async (texto, mensaje) => {
+    simularBackend()
+    const user = userEvent.setup()
+    await abrir()
+
+    const importe = screen.getByLabelText('Importe')
+    await user.type(importe, texto)
+
+    const aviso = screen.getByRole('alert')
+    expect(aviso.textContent).toBe(mensaje)
+    expect(importe.getAttribute('aria-invalid')).toBe('true')
+    expect(importe.getAttribute('aria-describedby')).toBe(aviso.id)
+  })
+
+  it('mientras se escribe un importe a medias no avisa, pero sí al salir del campo', async () => {
+    simularBackend()
+    const user = userEvent.setup()
+    await abrir()
+
+    const importe = screen.getByLabelText('Importe')
+    await user.type(importe, '12,')
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(importe.getAttribute('aria-invalid')).toBe('false')
+
+    await user.tab()
+    expect(screen.getByRole('alert').textContent).toBe('Escribe los decimales después de la coma')
+  })
+
+  it('el concepto avisa al salir del campo si está vacío', async () => {
+    simularBackend()
+    const user = userEvent.setup()
+    await abrir()
+
+    await user.click(screen.getByLabelText('Concepto'))
+    await user.tab()
+
+    expect(screen.getByRole('alert').textContent).toBe('Escribe el concepto del gasto')
+    expect(screen.getByLabelText('Concepto').getAttribute('aria-invalid')).toBe('true')
+  })
+
+  it('al registrar con errores lleva el foco al primer campo que está mal', async () => {
+    simularBackend()
+    const user = userEvent.setup()
+    await abrir()
+
+    await user.type(screen.getByLabelText('Importe'), '10')
+    await user.click(screen.getByRole('button', { name: 'Registrar gasto' }))
+    expect(document.activeElement).toBe(screen.getByLabelText('Concepto'))
+
+    await user.clear(screen.getByLabelText('Importe'))
+    await user.click(screen.getByRole('button', { name: 'Registrar gasto' }))
+    expect(document.activeElement).toBe(screen.getByLabelText('Importe'))
   })
 
   it('si el backend rechaza el gasto muestra su motivo y deja volver a intentarlo', async () => {
