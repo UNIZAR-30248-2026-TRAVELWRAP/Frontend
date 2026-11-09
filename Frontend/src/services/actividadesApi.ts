@@ -64,6 +64,13 @@ export const listarActividades = (viajeId: string, tokenSesion: string, fecha?: 
     { token: tokenSesion },
   )
 
+export const reordenarActividades = (viajeId: string, fecha: string, ids: string[], tokenSesion: string) =>
+  peticion<{ actividades: Actividad[] }>(`/viajes/${encodeURIComponent(viajeId)}/actividades/orden`, {
+    metodo: "PUT",
+    cuerpo: { fecha, actividades: ids },
+    token: tokenSesion,
+  })
+
 export type CambiosActividad = Partial<NuevaActividad>
 
 export const editarActividad = (viajeId: string, actividadId: string, cambios: CambiosActividad, tokenSesion: string) =>

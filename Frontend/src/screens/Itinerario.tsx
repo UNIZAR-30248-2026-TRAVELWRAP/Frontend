@@ -20,6 +20,7 @@ import {
   eliminarActividad,
   iconoDeCategoria,
   listarActividades,
+  reordenarActividades,
   type Actividad,
 } from "../services/actividadesApi"
 import { ApiError } from "../services/authApi"
@@ -89,6 +90,8 @@ export default function Itinerario({
   const [errorEliminar, setErrorEliminar] = useState("")
   const [diaElegido, setDiaElegido] = useState(diaInicial)
   const [mapaAmpliado, setMapaAmpliado] = useState(false)
+  const [guardandoOrden, setGuardandoOrden] = useState(false)
+  const [errorOrden, setErrorOrden] = useState("")
   const sensores = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -161,10 +164,29 @@ export default function Itinerario({
     viaje?.fecha_inicio && viaje.fecha_fin && dia !== "" ? dia < viaje.fecha_inicio || dia > viaje.fecha_fin : false
   const delDia = ordenarAgenda(actividades.filter((actividad) => actividad.fecha === dia))
   const tituloDe = (id: string | number) => delDia.find((actividad) => actividad.id === id)?.titulo ?? "la actividad"
-  const alSoltar = ({ active, over }: DragEndEvent) => {
-    if (!over) return
+  const alSoltar = async ({ active, over }: DragEndEvent) => {
+    if (!over || guardandoOrden || !viaje) return
     const resultado = moverActividad(actividades, dia, String(active.id), String(over.id))
-    if (resultado) setActividades(resultado.actividades)
+    if (!resultado) return
+    const anteriores = actividades
+    setActividades(resultado.actividades)
+    setErrorOrden("")
+    setGuardandoOrden(true)
+    try {
+      const guardado = await reordenarActividades(viajeId, dia, resultado.orden, tokenSesion)
+      const ordenGuardado = new Map(guardado.actividades.map((actividad) => [actividad.id, actividad.orden]))
+      const conOrdenDelServidor = resultado.actividades.map((actividad) =>
+        ordenGuardado.has(actividad.id) ? { ...actividad, orden: ordenGuardado.get(actividad.id) as number } : actividad,
+      )
+      setActividades(conOrdenDelServidor)
+      guardarItinerario(viajeId, { viaje, actividades: conOrdenDelServidor, guardadoEn: new Date().toISOString() })
+    } catch (e) {
+      setActividades(anteriores)
+      setErrorOrden(mensajeDeError(e))
+      if (e instanceof ApiError && e.estado === 409) setIntento((n) => n + 1)
+    } finally {
+      setGuardandoOrden(false)
+    }
   }
   const aMinutos = (hora: string) => Number(hora.slice(0, 2)) * 60 + Number(hora.slice(3, 5))
   const solapadasCon = (actividad: (typeof delDia)[number]) =>
@@ -509,7 +531,12 @@ export default function Itinerario({
                 <div style={avisoVacioStyle}>No hay actividades este día.</div>
               ) : (
                 <>
-                  {hayQueOrdenar && (
+                  {errorOrden && (
+                  <div role="alert" style={{ ...estiloAlerta, marginBottom: 10 }}>
+                    {errorOrden}
+                  </div>
+                )}
+                {hayQueOrdenar && (
                     <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, padding: "0 4px 10px", lineHeight: 1.4 }}>
                       Las actividades sin hora se pueden colocar donde quieras arrastrando el asa; las que empiezan a la misma hora, entre sí.
                     </div>
