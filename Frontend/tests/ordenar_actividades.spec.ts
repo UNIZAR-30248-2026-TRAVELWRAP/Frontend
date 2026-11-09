@@ -1,4 +1,5 @@
 import { test, expect, type Locator, type Page, type Route } from '@playwright/test';
+import { valoresDeOrden } from '../src/utils/ordenActividades';
 
 const USUARIO_ID = 'df77cba6-4be5-4cbc-814b-1e228dd73dcc';
 const VIAJE_ID = 'roma';
@@ -66,7 +67,16 @@ const AGENDA = [
 const json = (route: Route, status: number, cuerpo: unknown) =>
   route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(cuerpo) });
 
-const preparar = async (page: Page, datosViaje: Record<string, unknown> = {}, actividades = AGENDA) => {
+type RespuestaDelOrden = { status: number; cuerpo: unknown } | null;
+
+const preparar = async (
+  page: Page,
+  datosViaje: Record<string, unknown> = {},
+  actividades = AGENDA,
+  respuestaDelOrden: RespuestaDelOrden = null,
+) => {
+  const ordenesRecibidos: { fecha: string; actividades: string[]; autorizacion: string | undefined }[] = [];
+  let listados = 0;
   await page.addInitScript((datos) => {
     if (!sessionStorage.getItem('sesionSembrada')) {
       localStorage.setItem('travelwrap.sesion', JSON.stringify(datos));
@@ -79,10 +89,23 @@ const preparar = async (page: Page, datosViaje: Record<string, unknown> = {}, ac
   );
   await page.route('**/api/viajes/**', (route) => {
     const ruta = new URL(route.request().url()).pathname.replace(/^.*\/api/, '');
-    if (ruta === `/viajes/${VIAJE_ID}/actividades`) return json(route, 200, { actividades });
+    if (ruta === `/viajes/${VIAJE_ID}/actividades/orden` && route.request().method() === 'PUT') {
+      const cuerpo = route.request().postDataJSON();
+      ordenesRecibidos.push({ ...cuerpo, autorizacion: route.request().headers()['authorization'] });
+      if (respuestaDelOrden) return json(route, respuestaDelOrden.status, respuestaDelOrden.cuerpo);
+      const porId = new Map(actividades.map((a) => [a.id, a]));
+      const nuevoOrden = cuerpo.actividades.map((id: string) => porId.get(id) as (typeof actividades)[number]);
+      const valores = valoresDeOrden(nuevoOrden);
+      return json(route, 200, { actividades: nuevoOrden.map((a) => ({ ...a, orden: valores.get(a.id) })) });
+    }
+    if (ruta === `/viajes/${VIAJE_ID}/actividades`) {
+      listados += 1;
+      return json(route, 200, { actividades });
+    }
     if (ruta === `/viajes/${VIAJE_ID}/ruta`) return json(route, 502, { error: { codigo: 'error_ruta', mensaje: 'No' } });
     return json(route, 200, viaje(datosViaje));
   });
+  return { ordenesRecibidos, totalDeListados: () => listados };
 };
 
 const agenda = (page: Page) => page.getByRole('list', { name: 'Agenda del día' }).getByRole('listitem');
@@ -172,6 +195,59 @@ test.describe('Itinerario · reordenar actividades arrastrando', () => {
     await expect(page.getByRole('button', { name: 'Mover Cena' })).toHaveCount(0);
     await expect(agenda(page).nth(0)).toHaveText(/^Desayuno/);
     await expect(agenda(page).nth(1)).toHaveText(/^Cena/);
+  });
+
+  test('al soltar se envía al servidor el orden de todo el día con la sesión', async ({ page }) => {
+    const { ordenesRecibidos } = await preparar(page);
+    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
+
+    await arrastrar(page, asa(page, 'Fotos'), agenda(page).nth(2));
+
+    await expect.poll(() => ordenesRecibidos.length).toBe(1);
+    expect(ordenesRecibidos[0]).toEqual({
+      fecha: '2027-05-12',
+      actividades: ['Desayuno', 'Cena', 'Fotos', 'Paseo', 'Compras'],
+      autorizacion: 'Bearer token-acceso',
+    });
+  });
+
+  test('colocar una sin hora entre las de hora guarda ese orden', async ({ page }) => {
+    const { ordenesRecibidos } = await preparar(page);
+    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
+
+    await arrastrar(page, asa(page, 'Fotos'), agenda(page).nth(1));
+
+    await expect.poll(() => ordenesRecibidos.length).toBe(1);
+    expect(ordenesRecibidos[0].actividades).toEqual(['Desayuno', 'Fotos', 'Cena', 'Paseo', 'Compras']);
+  });
+
+  test('si el servidor no puede guardar el orden se avisa y la agenda vuelve a como estaba', async ({ page }) => {
+    await preparar(page, {}, AGENDA, {
+      status: 502,
+      cuerpo: { error: { codigo: 'error_actividad', mensaje: 'No se ha podido guardar el orden de las actividades' } },
+    });
+    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
+
+    await arrastrar(page, asa(page, 'Fotos'), agenda(page).nth(2));
+
+    await expect(page.getByRole('alert')).toHaveText('No se ha podido guardar el orden de las actividades');
+    await expect(agenda(page)).toHaveText([/^Desayuno/, /^Cena/, /^Paseo/, /^Compras/, /^Fotos/]);
+  });
+
+  test('si la agenda ha cambiado se avisa y se vuelve a pedir el listado', async ({ page }) => {
+    const { totalDeListados } = await preparar(page, {}, AGENDA, {
+      status: 409,
+      cuerpo: { error: { codigo: 'agenda_cambiada', mensaje: 'La agenda de ese día ha cambiado. Recárgala para ver las actividades actuales' } },
+    });
+    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
+    await expect(agenda(page)).toHaveCount(5);
+    const antes = totalDeListados();
+
+    await arrastrar(page, asa(page, 'Fotos'), agenda(page).nth(2));
+
+    await expect(page.getByRole('alert')).toContainText('La agenda de ese día ha cambiado');
+    await expect.poll(() => totalDeListados()).toBeGreaterThan(antes);
+    await expect(agenda(page)).toHaveText([/^Desayuno/, /^Cena/, /^Paseo/, /^Compras/, /^Fotos/]);
   });
 
   test('con el teclado se coge el asa, se mueve con las flechas y se suelta', async ({ page }) => {

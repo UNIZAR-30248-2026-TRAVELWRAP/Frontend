@@ -1,6 +1,6 @@
 import { Given, Then, When } from '@cucumber/cucumber';
 import { expect } from '@playwright/test';
-import { sembrarActividad, simularActividades } from './anadir_actividad.steps';
+import { hacerQueFalleElOrden, ordenesDelServidor, sembrarActividad, simularActividades } from './anadir_actividad.steps';
 import { idDelViaje } from './gestion_viajes.steps';
 import { paginaActual } from './login.steps';
 
@@ -103,4 +103,24 @@ When('muevo con el teclado la actividad {string} una posición hacia abajo', asy
   await pagina.keyboard.press('ArrowDown');
   await pagina.waitForTimeout(150);
   await pagina.keyboard.press('Space');
+});
+
+Then('el servidor ha guardado el orden {string}', async (orden: string) => {
+  await expect.poll(() => ordenesDelServidor().at(-1)?.join(',')).toBe(orden);
+});
+
+Then('el servidor no ha recibido ningún orden', () => {
+  expect(ordenesDelServidor()).toHaveLength(0);
+});
+
+Given('que el servidor no puede guardar el orden de las actividades', () => {
+  hacerQueFalleElOrden('servidor');
+});
+
+Given('que la agenda del día ha cambiado en el servidor', () => {
+  hacerQueFalleElOrden('agenda_cambiada');
+});
+
+Then('veo la alerta {string}', async (texto: string) => {
+  await expect(paginaActual().getByRole('alert').filter({ hasText: texto })).toBeVisible();
 });

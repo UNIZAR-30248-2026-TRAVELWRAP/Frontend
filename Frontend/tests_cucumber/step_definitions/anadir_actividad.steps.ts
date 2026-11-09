@@ -1,5 +1,6 @@
 import { Before, Given, Then, When } from '@cucumber/cucumber';
 import { expect } from '@playwright/test';
+import { valoresDeOrden } from '../../src/utils/ordenActividades';
 import { idDelViaje } from './gestion_viajes.steps';
 import { paginaActual } from './login.steps';
 
@@ -29,12 +30,16 @@ let actividades: ActividadSimulada[] = [];
 let rechazaPorViajeCerrado = false;
 let cambiosRecibidos: Partial<DatosActividad>[] = [];
 let eliminadas: string[] = [];
+let ordenesGuardados: string[][] = [];
+let fallaElOrden: 'ninguno' | 'servidor' | 'agenda_cambiada' = 'ninguno';
 
 Before(() => {
   actividades = [];
   rechazaPorViajeCerrado = false;
   cambiosRecibidos = [];
   eliminadas = [];
+  ordenesGuardados = [];
+  fallaElOrden = 'ninguno';
 });
 
 const idDeLaUrl = (url: string) => new URL(url).pathname.split('/')[3];
@@ -78,6 +83,12 @@ export const sembrarActividad = (
 
 export const actividadesGuardadas = () => actividades;
 
+export const ordenesDelServidor = () => ordenesGuardados;
+
+export const hacerQueFalleElOrden = (modo: 'servidor' | 'agenda_cambiada') => {
+  fallaElOrden = modo;
+};
+
 export const simularActividades = async () => {
   await paginaActual().route('**/api/viajes/*/actividades/*', (route) => {
     const peticion = route.request();
@@ -90,6 +101,37 @@ export const simularActividades = async () => {
           error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está finalizado y ya no se puede modificar' },
         }),
       });
+    }
+    if (actividadId === 'orden' && peticion.method() === 'PUT') {
+      if (fallaElOrden === 'servidor') {
+        return route.fulfill({
+          status: 502,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            error: { codigo: 'error_actividad', mensaje: 'No se ha podido guardar el orden de las actividades' },
+          }),
+        });
+      }
+      if (fallaElOrden === 'agenda_cambiada') {
+        return route.fulfill({
+          status: 409,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            error: { codigo: 'agenda_cambiada', mensaje: 'La agenda de ese día ha cambiado. Recárgala para ver las actividades actuales' },
+          }),
+        });
+      }
+      const cuerpo = peticion.postDataJSON() as { fecha: string; actividades: string[] };
+      const delDia = actividades.filter((a) => a.fecha === cuerpo.fecha);
+      const nuevoOrden = cuerpo.actividades
+        .map((id) => delDia.find((a) => a.id === id))
+        .filter((a): a is ActividadSimulada => a !== undefined);
+      const valores = valoresDeOrden(nuevoOrden);
+      nuevoOrden.forEach((a) => {
+        a.orden = valores.get(a.id) as number;
+      });
+      ordenesGuardados.push(nuevoOrden.map((a) => a.titulo));
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ actividades: nuevoOrden }) });
     }
     const actividad = actividades.find((a) => a.id === actividadId);
     if (!actividad) return route.fulfill({ status: 404, contentType: 'application/json', body: '{}' });
