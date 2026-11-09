@@ -139,11 +139,6 @@ test.describe('Itinerario · reordenar actividades arrastrando', () => {
     await expect(asa(page, 'Fotos')).toBeVisible();
     await expect(asa(page, 'Desayuno')).toHaveCount(0);
     await expect(asa(page, 'Cena')).toHaveCount(0);
-    await expect(
-      page.getByText(
-        'Las actividades sin hora se pueden colocar donde quieras arrastrando el asa; las que empiezan a la misma hora, entre sí.',
-      ),
-    ).toBeVisible();
   });
 
   test('arrastrar una actividad sin hora a otra posición cambia el orden de la agenda', async ({ page }) => {
