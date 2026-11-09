@@ -9,6 +9,7 @@ import {
   iconoDeCategoriaGasto,
   leerImporte,
   repartirAPartesIguales,
+  tamanoSegunLongitud,
 } from '../src/utils/gastos'
 
 describe('leerImporte', () => {
@@ -56,6 +57,35 @@ describe('conEuros', () => {
   it('muestra dos decimales con coma y el símbolo del euro', () => {
     expect(conEuros(3.5)).toBe('3,50 €')
     expect(conEuros(3.34)).toBe('3,34 €')
+  })
+
+  it.each([
+    [999.99, '999,99 €'],
+    [1000, '1.000,00 €'],
+    [1234.5, '1.234,50 €'],
+    [10000000150.59, '10.000.000.150,59 €'],
+    [9999999999.99, '9.999.999.999,99 €'],
+    [-1234567.8, '-1.234.567,80 €'],
+  ])('separa los miles con punto: %d → «%s»', (cantidad, texto) => {
+    expect(conEuros(cantidad)).toBe(texto)
+  })
+})
+
+describe('tamanoSegunLongitud', () => {
+  it('no encoge hasta la longitud indicada', () => {
+    expect(tamanoSegunLongitud(4, 40, 24, 6, 13)).toBe(40)
+    expect(tamanoSegunLongitud(6, 40, 24, 6, 13)).toBe(40)
+  })
+
+  it('desde la longitud máxima usa el tamaño pequeño', () => {
+    expect(tamanoSegunLongitud(13, 40, 24, 6, 13)).toBe(24)
+    expect(tamanoSegunLongitud(20, 40, 24, 6, 13)).toBe(24)
+  })
+
+  it('entre medias encoge poco a poco', () => {
+    const tamano = tamanoSegunLongitud(14, 34, 22, 10, 18)
+    expect(tamano).toBe(28)
+    expect(tamanoSegunLongitud(15, 34, 22, 10, 18)).toBeLessThan(tamano)
   })
 })
 

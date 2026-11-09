@@ -10,7 +10,14 @@ import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { estiloAlerta } from "../styles/formulario"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
-import { conEuros, conSigno, estadoDelSaldo, fechaDelGasto, iconoDeCategoriaGasto } from "../utils/gastos"
+import {
+  conEuros,
+  conSigno,
+  estadoDelSaldo,
+  fechaDelGasto,
+  iconoDeCategoriaGasto,
+  tamanoSegunLongitud,
+} from "../utils/gastos"
 
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
 
@@ -156,8 +163,28 @@ export default function ControlGastos({
                 >
                   Total gastado
                 </div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                  <div style={{ fontFamily: NUNITO, fontSize: 34, fontWeight: 900, color: C.navy }}>{conEuros(total)}</div>
+                {/* Con importes largos «Tu saldo» baja debajo del total en lugar de salirse por la derecha */}
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontFamily: NUNITO,
+                      fontSize: tamanoSegunLongitud(conEuros(total).length, 34, 22, 10, 18),
+                      fontWeight: 900,
+                      color: C.navy,
+                      whiteSpace: "nowrap",
+                      minWidth: 0,
+                    }}
+                  >
+                    {conEuros(total)}
+                  </div>
 
                   {/* Saldo de quien usa la app */}
                   {miSaldo && estadoMio && (
@@ -185,7 +212,15 @@ export default function ControlGastos({
                       >
                         Tu saldo
                       </div>
-                      <div style={{ fontFamily: NUNITO, fontSize: 17, fontWeight: 900, color: COLORES_SALDO[estadoMio.color] }}>
+                      <div
+                        style={{
+                          fontFamily: NUNITO,
+                          fontSize: 17,
+                          fontWeight: 900,
+                          color: COLORES_SALDO[estadoMio.color],
+                          whiteSpace: "nowrap",
+                        }}
+                      >
                         {conSigno(miSaldo.saldo)}
                       </div>
                       <div
@@ -228,13 +263,28 @@ export default function ControlGastos({
                       return (
                         <li
                           key={s.usuario_id}
-                          style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, minWidth: 72 }}
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            gap: 4,
+                            minWidth: 72,
+                            maxWidth: "100%",
+                          }}
                         >
                           <span aria-hidden="true">
                             <Avatar member={miembro} size={30} showBorder={false} />
                           </span>
                           <span style={{ fontFamily: NUNITO, fontSize: 11, fontWeight: 700, color: C.navy }}>{miembro.name}</span>
-                          <span style={{ fontFamily: NUNITO, fontSize: 12, fontWeight: 800, color: COLORES_SALDO[estado.color] }}>
+                          <span
+                            style={{
+                              fontFamily: NUNITO,
+                              fontSize: 12,
+                              fontWeight: 800,
+                              color: COLORES_SALDO[estado.color],
+                              whiteSpace: "nowrap",
+                            }}
+                          >
                             {conSigno(s.saldo)}
                           </span>
                         </li>
@@ -343,7 +393,16 @@ export default function ControlGastos({
                             {fechaDelGasto(gasto.fecha)}
                           </div>
                         </div>
-                        <div style={{ fontFamily: NUNITO, color: C.navy, fontSize: 15, fontWeight: 900, flexShrink: 0 }}>
+                        <div
+                          style={{
+                            fontFamily: NUNITO,
+                            color: C.navy,
+                            fontSize: tamanoSegunLongitud(conEuros(gasto.importe).length, 15, 13, 12, 18),
+                            fontWeight: 900,
+                            flexShrink: 0,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
                           {conEuros(gasto.importe)}
                         </div>
                       </li>

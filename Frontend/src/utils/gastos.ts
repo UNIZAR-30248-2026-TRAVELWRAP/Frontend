@@ -20,8 +20,24 @@ export const repartirAPartesIguales = (importe: number, participantes: number) =
   return Array.from({ length: participantes }, (_, i) => (base + (i < sobran ? 1 : 0)) / 100)
 }
 
-// 3.5 → "3,50 €"
-export const conEuros = (cantidad: number) => `${cantidad.toFixed(2).replace(".", ",")} €`
+// 3.5 → "3,50 €"; 1234567.8 → "1.234.567,80 €". Los miles se separan a mano porque Intl en español
+// no separa los números de cuatro cifras (1234,00 €)
+export const conEuros = (cantidad: number) => {
+  const fijo = cantidad.toFixed(2)
+  const negativo = fijo.startsWith("-")
+  const [enteros, decimales] = (negativo ? fijo.slice(1) : fijo).split(".")
+  const grupos: string[] = []
+  for (let fin = enteros.length; fin > 0; fin -= 3) grupos.unshift(enteros.slice(Math.max(0, fin - 3), fin))
+  return `${negativo ? "-" : ""}${grupos.join(".")},${decimales} €`
+}
+
+// Tamaño de letra para que las cifras largas quepan: hasta `desde` caracteres es `grande`, a partir de
+// `hasta` es `pequeno` y entre medias encoge poco a poco
+export const tamanoSegunLongitud = (longitud: number, grande: number, pequeno: number, desde: number, hasta: number) => {
+  if (longitud <= desde) return grande
+  if (longitud >= hasta) return pequeno
+  return Math.round(grande - ((grande - pequeno) * (longitud - desde)) / (hasta - desde))
+}
 
 // Categorías de gasto con su icono, en el orden del prototipo
 export const CATEGORIAS_GASTO: { categoria: CategoriaGasto; icono: string; texto: string }[] = [

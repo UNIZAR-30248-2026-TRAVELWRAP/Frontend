@@ -8,7 +8,7 @@ import { crearGasto, type CategoriaGasto, type Gasto } from "../services/gastosA
 import { obtenerViaje, type MiembroDelViaje } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
-import { CATEGORIAS_GASTO, conEuros, leerImporte, repartirAPartesIguales } from "../utils/gastos"
+import { CATEGORIAS_GASTO, conEuros, leerImporte, repartirAPartesIguales, tamanoSegunLongitud } from "../utils/gastos"
 
 const MAX_CONCEPTO = 100
 
@@ -100,6 +100,8 @@ export default function AnadirGasto({ viajeId, tokenSesion, usuarioId, onVolver,
   }
 
   const importeValido = leerImporte(importe)
+  // 40 px hasta 6 caracteres y 24 px con los 13 del máximo (9999999999,99)
+  const tamanoImporte = tamanoSegunLongitud(importe.length, 40, 24, 6, 13)
   const partes = importeValido !== null && participantes.length > 0
     ? repartirAPartesIguales(importeValido, participantes.length)
     : []
@@ -195,8 +197,9 @@ export default function AnadirGasto({ viajeId, tokenSesion, usuarioId, onVolver,
             <label htmlFor="gasto-importe" style={{ ...labelStyle, textAlign: "center" }}>
               Importe
             </label>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
-              <span aria-hidden="true" style={{ fontFamily: NUNITO, fontSize: 40, fontWeight: 900, color: C.navy }}>
+            {/* El campo crece con la cifra y la letra encoge cuando es larga, para que no se corte ni pise el € */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, minWidth: 0 }}>
+              <span aria-hidden="true" style={{ fontFamily: NUNITO, fontSize: tamanoImporte, fontWeight: 900, color: C.navy }}>
                 €
               </span>
               <input
@@ -211,13 +214,15 @@ export default function AnadirGasto({ viajeId, tokenSesion, usuarioId, onVolver,
                 placeholder="0,00"
                 style={{
                   fontFamily: NUNITO,
-                  fontSize: 40,
+                  fontSize: tamanoImporte,
                   fontWeight: 900,
                   color: C.navy,
                   border: "none",
                   outline: "none",
-                  width: 170,
+                  width: `${Math.max(importe.length, 4) + 1}ch`,
+                  maxWidth: "100%",
                   minWidth: 0,
+                  padding: 0,
                   background: "transparent",
                 }}
               />

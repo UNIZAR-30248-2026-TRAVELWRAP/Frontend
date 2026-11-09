@@ -408,3 +408,47 @@ test.describe('Balance de cada miembro', () => {
     await expect.poll(() => balance.peticiones()).toBeGreaterThan(alAbrir);
   });
 });
+
+// Importes grandes en pantallas estrechas
+
+// Hay desplazamiento horizontal si el contenido es más ancho que la ventana
+const haySalidaPorLaDerecha = (page: Page) =>
+  page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+
+test.describe('Importes grandes en un móvil de 320 px', () => {
+  test.use({ viewport: { width: 320, height: 640 } });
+
+  test('Control de Gastos no se sale por la derecha con importes de diez cifras', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularHistorial(page, [{ id: 'g1', importe: 9999999999.99 }, { id: 'g2', importe: 150.6 }]);
+    await simularBalance(page, [
+      saldo(DANIEL_ID, 'Daniel', 6666666766.73),
+      saldo(BERTA_ID, 'Berta', -3333333383.37),
+      saldo(USUARIO_ID, 'Adriana', -3333333383.36),
+    ]);
+
+    await page.goto(rutaControl);
+
+    await expect(page.getByRole('region', { name: 'Total gastado' })).toContainText('10.000.000.150,59 €');
+    await expect(page.getByRole('group', { name: 'Tu saldo' })).toContainText('-3.333.333.383,36 €');
+    expect(await haySalidaPorLaDerecha(page)).toBe(false);
+    // El total ocupa una sola línea: el símbolo del euro no se queda solo debajo
+    const total = page.getByRole('region', { name: 'Total gastado' }).getByText('10.000.000.150,59 €');
+    const { height } = (await total.boundingBox())!;
+    const lineHeight = await total.evaluate((el) => Number.parseFloat(getComputedStyle(el).fontSize) * 1.6);
+    expect(height).toBeLessThan(lineHeight);
+  });
+
+  test('en Añadir Gasto el importe máximo se ve entero sin salirse', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularBackend(page);
+
+    await page.goto(rutaFormulario);
+    const importe = page.getByLabel('Importe');
+    await importe.fill('9999999999,99');
+
+    expect(await haySalidaPorLaDerecha(page)).toBe(false);
+    // El texto cabe en el campo: no hay parte oculta que haya que desplazar
+    expect(await importe.evaluate((el: HTMLInputElement) => el.scrollWidth <= el.clientWidth)).toBe(true);
+  });
+});

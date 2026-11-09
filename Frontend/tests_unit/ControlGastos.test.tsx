@@ -95,6 +95,27 @@ describe('ControlGastos', () => {
     expect(segunda.textContent).toContain('60,50 €')
   })
 
+  it('con importes de diez cifras separa los miles, no parte el total y reduce su tamaño', async () => {
+    simularBackend({
+      historial: () =>
+        json(200, { gastos: [gasto({ importe: 9999999999.99 }), gasto({ id: 'g2', importe: 150.6 })], total: 10000000150.59 }),
+    })
+    await abrir()
+
+    const region = screen.getByRole('region', { name: 'Total gastado' })
+    const total = within(region).getByText('10.000.000.150,59 €')
+    expect(total.style.whiteSpace).toBe('nowrap')
+    expect(Number.parseInt(total.style.fontSize)).toBeLessThan(34)
+    expect(filas()[0].textContent).toContain('9.999.999.999,99 €')
+  })
+
+  it('con importes cortos el total mantiene su tamaño', async () => {
+    simularBackend()
+    await abrir()
+
+    expect(within(screen.getByRole('region', { name: 'Total gastado' })).getByText('95,50 €').style.fontSize).toBe('34px')
+  })
+
   it('si quien pagó ya no es miembro del viaje, lo indica', async () => {
     simularBackend({
       historial: () => json(200, { gastos: [gasto({ pagado_por: 'antiguo-miembro' })], total: 60.5 }),
@@ -244,6 +265,15 @@ describe('ControlGastos · balance', () => {
 
     expect(screen.queryByRole('group', { name: 'Tu saldo' })).toBeNull()
     expect(saldoDe('Berta')?.textContent).toContain('0,00 €')
+  })
+
+  it('con saldos de diez cifras «Tu saldo» puede bajar debajo del total y la cifra no se parte', async () => {
+    conSaldos([saldo(BERTA, 'Berta', -5000000075.3), saldo(ADRIANA, 'Adriana', 5000000075.3)])
+    await abrir()
+
+    expect(tuSaldo().parentElement?.style.flexWrap).toBe('wrap')
+    expect(within(tuSaldo()).getByText('+5.000.000.075,30 €').style.whiteSpace).toBe('nowrap')
+    expect(saldoDe('Berta')?.textContent).toContain('-5.000.000.075,30 €')
   })
 
   it('sin saldos no muestra la lista de saldos', async () => {
