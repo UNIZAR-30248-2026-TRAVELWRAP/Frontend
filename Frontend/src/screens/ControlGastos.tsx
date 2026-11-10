@@ -5,7 +5,14 @@ import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import SectionLabel from "../components/SectionLabel"
 import { ApiError } from "../services/authApi"
-import { listarGastos, obtenerBalance, type Gasto, type SaldoMiembro } from "../services/gastosApi"
+import {
+  listarGastos,
+  obtenerBalance,
+  obtenerLiquidacion,
+  type Gasto,
+  type SaldoMiembro,
+  type Transferencia,
+} from "../services/gastosApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { estiloAlerta } from "../styles/formulario"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
@@ -22,6 +29,8 @@ import {
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
 
 const COLORES_SALDO = { green: C.green, accent: C.accent, muted: C.muted }
+
+const nombreOAntiguo = (nombre: string | null) => nombre ?? "Un antiguo miembro"
 const FONDOS_SALDO = { green: C.greenBg, accent: C.lightAccent, muted: C.bg }
 
 // Pantalla: Control de Gastos 
@@ -47,6 +56,7 @@ export default function ControlGastos({
   const [gastos, setGastos] = useState<Gasto[]>([])
   const [total, setTotal] = useState(0)
   const [saldos, setSaldos] = useState<SaldoMiembro[]>([])
+  const [transferencias, setTransferencias] = useState<Transferencia[]>([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState("")
 
@@ -57,13 +67,15 @@ export default function ControlGastos({
       obtenerViaje(viajeId, tokenSesion),
       listarGastos(viajeId, tokenSesion),
       obtenerBalance(viajeId, tokenSesion),
+      obtenerLiquidacion(viajeId, tokenSesion),
     ])
-      .then(([datosViaje, lista, balance]) => {
+      .then(([datosViaje, lista, balance, liquidacion]) => {
         if (!vigente) return
         setViaje(datosViaje)
         setGastos(lista.gastos)
         setTotal(lista.total)
         setSaldos(balance.saldos)
+        setTransferencias(liquidacion.transferencias)
       })
       .catch((e) => {
         if (vigente) setError(`No se han podido cargar los gastos: ${mensajeDeError(e)}`)
@@ -286,6 +298,71 @@ export default function ControlGastos({
                             }}
                           >
                             {conSigno(s.saldo)}
+                          </span>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+              </section>
+
+              {/* Transferencias para saldar las cuentas: las tuyas salen destacadas */}
+              <section
+                aria-label="Liquidación pendiente"
+                style={{
+                  background: "white",
+                  borderRadius: RADIUS.xl,
+                  padding: 20,
+                  marginBottom: 16,
+                  boxShadow: SHADOWS.card,
+                  border: `1.5px solid ${C.border}`,
+                }}
+              >
+                <SectionLabel>Liquidación pendiente</SectionLabel>
+                {transferencias.length === 0 ? (
+                  <p style={{ fontFamily: NUNITO, color: C.green, fontSize: 13, fontWeight: 700, margin: 0 }}>
+                    Cuentas saldadas
+                  </p>
+                ) : (
+                  <ul
+                    aria-label="Transferencias pendientes"
+                    style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 }}
+                  >
+                    {transferencias.map((t) => {
+                      const pagas = t.de === usuarioId
+                      const tePagan = t.a === usuarioId
+                      const texto = pagas
+                        ? `Tú pagas a ${nombreOAntiguo(t.a_nombre)}`
+                        : tePagan
+                          ? `${nombreOAntiguo(t.de_nombre)} te paga a ti`
+                          : `${nombreOAntiguo(t.de_nombre)} paga a ${nombreOAntiguo(t.a_nombre)}`
+                      const destacada = pagas || tePagan
+                      return (
+                        <li
+                          key={`${t.de}-${t.a}`}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 12,
+                            padding: "10px 12px",
+                            borderRadius: RADIUS.md,
+                            background: pagas ? C.lightAccent : tePagan ? C.greenBg : C.bg,
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontFamily: NUNITO,
+                              fontSize: 13,
+                              fontWeight: destacada ? 800 : 600,
+                              color: pagas ? C.accent : tePagan ? C.green : C.navy,
+                              minWidth: 0,
+                            }}
+                          >
+                            {texto}
+                          </span>
+                          <span style={{ fontFamily: NUNITO, fontSize: 13, fontWeight: 900, color: C.navy, whiteSpace: "nowrap" }}>
+                            {conEuros(t.importe)}
                           </span>
                         </li>
                       )

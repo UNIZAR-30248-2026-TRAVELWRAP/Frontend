@@ -2,6 +2,8 @@ import { test, expect, type Page, type Route } from '@playwright/test';
 
 const EMAIL = 'adriana@travelwrap.app';
 const USUARIO_ID = 'df77cba6-4be5-4cbc-814b-1e228dd73dcc';
+const OTRO_ID = '5b1f0c2e-8a7d-4c3b-9e6f-2d4a1b3c5e7f';
+const TERCERO_ID = '8c4d2e1f-3a5b-4c6d-9e7f-1a2b3c4d5e6f';
 const BERTA_ID = '5b1f0c2e-8a7d-4c3b-9e6f-2d4a1b3c5e7f';
 const DANIEL_ID = '8c4d2e1f-3a5b-4c6d-9e7f-1a2b3c4d5e6f';
 const VIAJE_ID = 'roma';
@@ -76,6 +78,9 @@ const simularBackend = async (
     // Control de Gastos, al que se vuelve después de registrar
     if (ruta === `/viajes/${VIAJE_ID}/gastos/balance`) {
       return json(route, 200, { saldos: [] });
+    }
+    if (ruta === `/viajes/${VIAJE_ID}/gastos/liquidacion`) {
+      return json(route, 200, { transferencias: [] });
     }
     if (ruta === `/viajes/${VIAJE_ID}/gastos` && peticion.method() === 'GET') {
       return json(route, 200, { gastos: [], total: 0 });
@@ -267,6 +272,7 @@ const simularHistorial = async (page: Page, iniciales: Record<string, unknown>[]
     const peticion = route.request();
     const ruta = new URL(peticion.url()).pathname.replace(/^.*\/api/, '');
     if (ruta === `/viajes/${VIAJE_ID}/gastos/balance`) return json(route, 200, { saldos: [] });
+    if (ruta === `/viajes/${VIAJE_ID}/gastos/liquidacion`) return json(route, 200, { transferencias: [] });
     if (ruta !== `/viajes/${VIAJE_ID}/gastos`) return json(route, 200, { ...viaje, ...datosViaje });
     if (peticion.method() === 'POST') {
       gastos.unshift(gastoGuardado({ id: `g${gastos.length + 1}`, ...peticion.postDataJSON() }));
@@ -433,6 +439,46 @@ test.describe('Balance de cada miembro', () => {
     await expect(page).toHaveURL(new RegExp(`${rutaControl}$`));
     await expect(page.getByRole('group', { name: 'Tu saldo' })).toBeVisible();
     await expect.poll(() => balance.peticiones()).toBeGreaterThan(alAbrir);
+  });
+});
+
+// Liquidación pendiente: transferencias que devuelve GET /gastos/liquidacion (con prioridad, como el balance)
+const simularLiquidacion = async (page: Page, transferencias: Record<string, unknown>[]) => {
+  await page.route(`**/api/viajes/${VIAJE_ID}/gastos/liquidacion`, (route) => json(route, 200, { transferencias }));
+};
+
+const transferencia = (de: string, deNombre: string, a: string, aNombre: string, importe: number) => ({
+  de,
+  de_nombre: deNombre,
+  a,
+  a_nombre: aNombre,
+  importe,
+});
+
+test.describe('Liquidación pendiente', () => {
+  test('sin deudas dice que las cuentas están saldadas', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularHistorial(page, []);
+    await simularLiquidacion(page, []);
+
+    await page.goto(rutaControl);
+    await expect(page.getByRole('region', { name: 'Liquidación pendiente' })).toContainText('Cuentas saldadas');
+  });
+
+  test('cada transferencia dice quién paga a quién y destaca las tuyas', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularHistorial(page, []);
+    await simularLiquidacion(page, [
+      transferencia(USUARIO_ID, 'Adriana', OTRO_ID, 'Berta', 30),
+      transferencia(OTRO_ID, 'Berta', TERCERO_ID, 'Daniel', 12.5),
+    ]);
+
+    await page.goto(rutaControl);
+    const filas = page.getByRole('list', { name: 'Transferencias pendientes' }).getByRole('listitem');
+    await expect(filas.nth(0)).toContainText('Tú pagas a Berta');
+    await expect(filas.nth(0)).toContainText('30,00 €');
+    await expect(filas.nth(1)).toContainText('Berta paga a Daniel');
+    await expect(filas.nth(1)).toContainText('12,50 €');
   });
 });
 

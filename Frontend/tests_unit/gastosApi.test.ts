@@ -1,7 +1,7 @@
 // Test unitario de la función crearGasto de gastosApi.ts
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../src/services/authApi'
-import { crearGasto, listarGastos, obtenerBalance, type NuevoGasto } from '../src/services/gastosApi'
+import { crearGasto, listarGastos, obtenerBalance, obtenerLiquidacion, type NuevoGasto } from '../src/services/gastosApi'
 
 const VIAJE_ID = '123e4567-e89b-12d3-a456-426614174000'
 const ADRIANA = 'df77cba6-4be5-4cbc-814b-1e228dd73dcc'
@@ -144,5 +144,21 @@ describe('gastosApi · balance', () => {
 
     expect(error).toBeInstanceOf(ApiError)
     expect((error as ApiError).estado).toBe(404)
+  })
+})
+
+describe('gastosApi · liquidación', () => {
+  it('pide las transferencias para saldar el viaje con GET a /viajes/:id/gastos/liquidacion', async () => {
+    const liquidacion = { transferencias: [{ de: BERTA, de_nombre: 'Berta', a: ADRIANA, a_nombre: 'Adriana', importe: 5 }] }
+    const fetchMock = vi.fn(() => respuesta(200, liquidacion))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const resultado = await obtenerLiquidacion(VIAJE_ID, 'token-acceso')
+
+    expect(resultado).toEqual(liquidacion)
+    const [url, opciones] = llamada(fetchMock)
+    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/gastos/liquidacion$`))
+    expect(opciones.method).toBe('GET')
+    expect(opciones.headers.Authorization).toBe('Bearer token-acceso')
   })
 })
