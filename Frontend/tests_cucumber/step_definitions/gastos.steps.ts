@@ -251,3 +251,16 @@ Then('el saldo de {string} es {string}', async (nombre: string, saldo: string) =
     .filter({ hasText: nombre });
   await expect(fila).toContainText(saldo);
 });
+
+// Liquidación pendiente (PB-28): transferencias propuestas, con quién paga, a quién y cuánto
+Then('en la liquidación pendiente veo {string} con {string}', async (texto: string, importe: string) => {
+  const fila = paginaActual()
+    .getByRole('list', { name: 'Transferencias pendientes' })
+    .getByRole('listitem')
+    .filter({ hasText: texto });
+  await expect(fila).toContainText(importe);
+});
+
+Then('en la liquidación pendiente veo {string}', async (texto: string) => {
+  await expect(paginaActual().getByRole('region', { name: 'Liquidación pendiente' })).toContainText(texto);
+});
