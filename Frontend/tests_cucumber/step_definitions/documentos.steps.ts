@@ -1,4 +1,4 @@
-// Pasos de la cartera de documentos de un viaje (PB-30).
+// Pasos de la cartera de documentos de un viaje: subir (PB-30) y abrir o previsualizar (PB-31).
 // Simulan el backend de los documentos. Usan la página y el login de login.steps.ts y los viajes de
 // gestion_viajes.steps.ts, y reutilizan sus pasos de textos, botones y mensajes de error
 import { Before, Given, Then, When } from '@cucumber/cucumber';
@@ -23,11 +23,40 @@ type DocumentoGuardado = {
 let documentos: DocumentoGuardado[] = [];
 let subidas: { nombre: string; cabecera: string | undefined }[] = [];
 let rechazaPorContenido = false;
+// Documentos que el backend da por borrados (GET .../url responde 404) y enlaces que ha entregado
+let borrados: string[] = [];
+let enlacesEntregados: string[] = [];
+
+const ARCHIVOS = 'https://storage.test/firmado';
+
+const PNG_1X1 = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64',
+);
+
+// PDF de una página con texto; pdf.js reconstruye solo la tabla de referencias cruzadas
+const PDF_UNA_PAGINA = Buffer.from(
+  [
+    '%PDF-1.4',
+    '1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj',
+    '2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj',
+    '3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >> endobj',
+    '4 0 obj << /Length 47 >>',
+    'stream',
+    'BT /F1 12 Tf 20 50 Td (Billete de prueba) Tj ET',
+    'endstream endobj',
+    '5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj',
+    'trailer << /Root 1 0 R /Size 6 >>',
+    '%%EOF',
+  ].join('\n'),
+);
 
 Before(() => {
   documentos = [];
   subidas = [];
   rechazaPorContenido = false;
+  borrados = [];
+  enlacesEntregados = [];
 });
 
 const json = (status: number, cuerpo: unknown) => ({ status, contentType: 'application/json', body: JSON.stringify(cuerpo) });
@@ -63,6 +92,31 @@ const simularDocumentos = async () => {
   });
 };
 
+// Enlaces firmados (GET .../documentos/:id/url) y Supabase Storage con CORS abierto, que sirve el PDF o la imagen
+const simularApertura = async () => {
+  await paginaActual().route('**/api/viajes/*/documentos/*/url', (route) => {
+    const id = new URL(route.request().url()).pathname.split('/').at(-2) ?? '';
+    const documento = documentos.find((d) => d.id === id);
+    if (!documento || borrados.includes(documento.nombre)) {
+      return route.fulfill(json(404, { error: { codigo: 'documento_no_encontrado', mensaje: 'No existe' } }));
+    }
+    enlacesEntregados.push(documento.nombre);
+    return route.fulfill(
+      json(200, { url: `${ARCHIVOS}/${id}`, expira_en: '2026-11-08T10:05:00Z', nombre: documento.nombre, tipo_mime: documento.tipo_mime }),
+    );
+  });
+  await paginaActual().route(`${ARCHIVOS}/**`, (route) => {
+    const id = route.request().url().split('/').at(-1);
+    const esPdf = documentos.find((d) => d.id === id)?.tipo_mime === 'application/pdf';
+    return route.fulfill({
+      status: 200,
+      headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*' },
+      contentType: esPdf ? 'application/pdf' : 'image/png',
+      body: esPdf ? PDF_UNA_PAGINA : PNG_1X1,
+    });
+  });
+};
+
 const idDe = (viaje: string) => {
   const id = idDelViaje(viaje);
   expect(id, `el viaje "${viaje}" no está preparado`).toBeDefined();
@@ -86,6 +140,22 @@ Given('que en la cartera del viaje {string} está el documento {string}', (viaje
   });
 });
 
+Given('que en la cartera del viaje {string} está la imagen {string}', (viaje: string, nombre: string) => {
+  documentos.unshift({
+    id: `documento-${documentos.length + 1}`,
+    viaje_id: idDe(viaje),
+    nombre,
+    tipo_mime: 'image/png',
+    tamano_bytes: 1572864,
+    subido_por: BERTA,
+    creado_en: '2026-11-07T10:00:00Z',
+  });
+});
+
+Given('que el documento {string} ya se ha eliminado del servidor', (nombre: string) => {
+  borrados.push(nombre);
+});
+
 Given('que el servidor rechaza los documentos porque su contenido no es un PDF ni una imagen', () => {
   rechazaPorContenido = true;
 });
@@ -95,6 +165,7 @@ Given('que el servidor rechaza los documentos porque su contenido no es un PDF n
 When('abro la cartera de documentos del viaje {string}', async (viaje: string) => {
   const id = idDe(viaje);
   await simularDocumentos();
+  await simularApertura();
   await paginaActual().goto(new URL(`/viajes/${id}/documentos`, paginaActual().url()).toString());
   await expect(paginaActual().getByText('Documentos del viaje', { exact: true })).toBeVisible();
 });
@@ -105,6 +176,14 @@ When('subo el archivo {string} de tipo {string}', async (nombre: string, tipo: s
 
 When('subo un archivo {string} de tipo {string} de {int} bytes', async (nombre: string, tipo: string, bytes: number) => {
   await selectorDeArchivo().setInputFiles({ name: nombre, mimeType: tipo, buffer: Buffer.alloc(bytes, 1) });
+});
+
+When('abro el documento {string}', async (nombre: string) => {
+  await paginaActual().getByRole('button', { name: `Abrir ${nombre}` }).click();
+});
+
+When('cierro la vista previa del documento', async () => {
+  await paginaActual().getByRole('dialog').getByRole('button', { name: 'Cerrar' }).click();
 });
 
 // ── Comprobaciones ───────────────────────────────────────────────────────────
@@ -130,4 +209,33 @@ Then('el servidor ha recibido {int} documento(s)', (cantidad: number) => {
 Then('el servidor ha recibido 1 documento {string}', (nombre: string) => {
   expect(subidas.map((s) => s.nombre)).toEqual([nombre]);
   expect(subidas[0].cabecera).toMatch(/^Bearer .+/);
+});
+
+Then('la página {int} del documento está dibujada', async (numero: number) => {
+  const lienzo = paginaActual().getByRole('dialog').getByLabel(`Página ${numero} del documento`);
+  await expect(lienzo).toBeVisible();
+  // Un lienzo en blanco no tiene píxeles oscuros: con el texto del PDF dibujado, sí
+  await expect
+    .poll(() =>
+      lienzo.evaluate((elemento: HTMLCanvasElement) => {
+        const datos = elemento.getContext('2d')?.getImageData(0, 0, elemento.width, elemento.height).data ?? [];
+        return datos.some((valor, indice) => indice % 4 !== 3 && valor < 200);
+      }),
+    )
+    .toBe(true);
+});
+
+Then('veo la imagen {string} ampliada', async (nombre: string) => {
+  const imagen = paginaActual().getByRole('dialog').getByRole('img', { name: nombre });
+  await expect(imagen).toBeVisible();
+  await expect.poll(() => imagen.evaluate((elemento: HTMLImageElement) => elemento.naturalWidth)).toBe(1);
+});
+
+Then('no veo la vista previa del documento', async () => {
+  await expect(paginaActual().getByRole('dialog')).toHaveCount(0);
+});
+
+Then('el servidor ha entregado un enlace para abrir el documento {string}', (nombre: string) => {
+  // En desarrollo React monta los efectos dos veces, así que la misma petición puede repetirse
+  expect(new Set(enlacesEntregados)).toEqual(new Set([nombre]));
 });
