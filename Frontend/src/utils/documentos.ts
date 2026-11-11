@@ -1,5 +1,6 @@
 // Formato y validación de los documentos de la cartera, compartidos por la pantalla y sus pruebas
-import { MAX_BYTES_DOCUMENTO, TIPOS_DOCUMENTO, type TipoDocumento } from "../services/documentosApi"
+import { ApiError } from "../services/authApi"
+import { MAX_BYTES_DOCUMENTO, TIPOS_DOCUMENTO, urlDeDocumento, type TipoDocumento } from "../services/documentosApi"
 import { C } from "../styles/tokens"
 
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
@@ -36,3 +37,15 @@ export const aspectoDeDocumento = (tipo: TipoDocumento) =>
   tipo === "application/pdf"
     ? { icono: "document", texto: "PDF", color: C.red, fondo: C.redBg }
     : { icono: "gallery", texto: "Imagen", color: C.green, fondo: C.greenBg }
+
+// Mensaje cuando no se puede abrir o descargar un documento. Si otro miembro lo ha borrado, lo dice
+export const mensajeAlAbrir = (error: unknown) => {
+  if (error instanceof ApiError && error.estado === 404) return "Este documento ya no existe: es posible que lo hayan eliminado"
+  return `No se ha podido abrir el documento: ${error instanceof ApiError ? error.message : "ha ocurrido un error"}`
+}
+
+// Pide un enlace nuevo (caducan a los 5 minutos) y deja que el navegador guarde el archivo con el nombre del documento
+export const descargarDocumento = async (viajeId: string, documentoId: string, tokenSesion: string) => {
+  const { url } = await urlDeDocumento(viajeId, documentoId, tokenSesion, true)
+  window.location.assign(url)
+}

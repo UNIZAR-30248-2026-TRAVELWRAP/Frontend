@@ -36,3 +36,20 @@ export const subirDocumento = (viajeId: string, archivo: File, tokenSesion: stri
   formulario.append("archivo", archivo)
   return peticion<Documento>(rutaDocumentos(viajeId), { metodo: "POST", formulario, token: tokenSesion })
 }
+
+export type UrlDocumento = {
+  // Enlace firmado de Supabase Storage; el archivo no pasa por el backend
+  url: string
+  // Cuándo caduca el enlace (5 minutos después de pedirlo)
+  expira_en: string
+  nombre: string
+  tipo_mime: TipoDocumento
+}
+
+// Enlace temporal para abrir un documento. Con descargar = true el archivo se guarda con el nombre del documento.
+// Caduca, así que hay que pedir uno nuevo cada vez que se abre o se descarga
+export const urlDeDocumento = (viajeId: string, documentoId: string, tokenSesion: string, descargar = false) =>
+  peticion<UrlDocumento>(
+    `${rutaDocumentos(viajeId)}/${encodeURIComponent(documentoId)}/url${descargar ? "?descargar=true" : ""}`,
+    { token: tokenSesion }
+  )
