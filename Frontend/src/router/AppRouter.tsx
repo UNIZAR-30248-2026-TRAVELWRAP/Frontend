@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { ComponentProps } from "react";
-import type { Sesion } from "../services/authApi";
+import type { Sesion, Usuario } from "../services/authApi";
 import Login from "../screens/Login";
 import MisViajes from "../screens/MisViajes";
 import CrearViaje from "../screens/CrearViaje";
@@ -38,6 +38,7 @@ interface AppRouterProps {
   handleSesionGoogle: (sesion: Sesion) => void;
   handleErrorGoogle: (mensaje: string) => void;
   handleCerrarSesion: () => void;
+  actualizarUsuario: (usuario: Usuario) => void;
   cerrandoSesion: boolean;
   error: string;
   loading: boolean;
@@ -340,6 +341,7 @@ export default function AppRouter({
   handleSesionGoogle,
   handleErrorGoogle,
   handleCerrarSesion,
+  actualizarUsuario,
   cerrandoSesion,
   error,
   loading,
@@ -392,6 +394,9 @@ export default function AppRouter({
               <RutaPerfil
                 nombre={session.usuario.nombre ?? session.usuario.email.split("@")[0]}
                 email={session.usuario.email}
+                avatarUrl={session.usuario.avatar_url}
+                token={session.token}
+                onPerfilActualizado={actualizarUsuario}
                 onCerrarSesion={handleCerrarSesion}
                 cerrandoSesion={cerrandoSesion}
               />
