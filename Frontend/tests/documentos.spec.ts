@@ -36,6 +36,8 @@ const viaje = {
   ],
 };
 
+const ARCHIVOS = 'https://storage.test/firmado';
+
 const documentoExistente = {
   id: 'doc-1',
   viaje_id: VIAJE_ID,
@@ -48,6 +50,43 @@ const documentoExistente = {
 
 // PDF mínimo de prueba, en memoria
 const PDF = { name: 'billete.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%billete de prueba') };
+
+const imagenExistente = {
+  ...documentoExistente,
+  id: 'doc-img',
+  nombre: 'Foto del hotel.png',
+  tipo_mime: 'image/png',
+};
+
+// Respuesta de GET .../documentos/:id/url
+const enlaceDe = (documento: typeof documentoExistente) => ({
+  url: `${ARCHIVOS}/${documento.id}`,
+  expira_en: '2026-11-08T10:05:00Z',
+  nombre: documento.nombre,
+  tipo_mime: documento.tipo_mime,
+});
+
+const PNG_1X1 = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64',
+);
+
+// PDF de una página con texto; pdf.js reconstruye solo la tabla de referencias cruzadas
+const PDF_UNA_PAGINA = Buffer.from(
+  [
+    '%PDF-1.4',
+    '1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj',
+    '2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj',
+    '3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >> endobj',
+    '4 0 obj << /Length 47 >>',
+    'stream',
+    'BT /F1 12 Tf 20 50 Td (Billete de prueba) Tj ET',
+    'endstream endobj',
+    '5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj',
+    'trailer << /Root 1 0 R /Size 6 >>',
+    '%%EOF',
+  ].join('\n'),
+);
 
 // Sesión guardada como la deja el login, solo en la primera carga de la página
 const entrarConSesion = async (page: Page) => {
@@ -78,8 +117,17 @@ const simularBackend = async (
   {
     estado = 'activo',
     respuestaSubida,
-  }: { estado?: string; respuestaSubida?: (nombre: string) => { status: number; cuerpo: unknown } } = {},
+    documentos = [documentoExistente],
+    respuestaUrl,
+  }: {
+    estado?: string;
+    respuestaSubida?: (nombre: string) => { status: number; cuerpo: unknown };
+    documentos?: (typeof documentoExistente)[];
+    respuestaUrl?: (documento: typeof documentoExistente) => { status: number; cuerpo: unknown };
+  } = {},
 ) => {
+  // Rutas (con su consulta) de los enlaces que ha pedido la pantalla
+  const enlacesPedidos: string[] = [];
   const recibidas: Subida[] = [];
   const subidos: unknown[] = [];
   const respuesta =
@@ -101,7 +149,14 @@ const simularBackend = async (
     const ruta = new URL(peticion.url()).pathname.replace(/^.*\/api/, '');
 
     if (ruta === `/viajes/${VIAJE_ID}/documentos` && peticion.method() === 'GET') {
-      return json(route, 200, { documentos: [...subidos, documentoExistente] });
+      return json(route, 200, { documentos: [...subidos, ...documentos] });
+    }
+    const enlace = /^\/viajes\/[^/]+\/documentos\/([^/]+)\/url$/.exec(ruta);
+    if (enlace && peticion.method() === 'GET') {
+      enlacesPedidos.push(ruta + new URL(peticion.url()).search);
+      const documento = documentos.find((d) => d.id === enlace[1]) ?? documentoExistente;
+      const { status, cuerpo } = respuestaUrl ? respuestaUrl(documento) : { status: 200, cuerpo: enlaceDe(documento) };
+      return json(route, status, cuerpo);
     }
     if (ruta === `/viajes/${VIAJE_ID}/documentos` && peticion.method() === 'POST') {
       const cuerpo = peticion.postData() ?? '';
@@ -118,7 +173,27 @@ const simularBackend = async (
     return json(route, 200, { ...viaje, estado });
   });
 
-  return { recibidas };
+  return { recibidas, enlacesPedidos };
+};
+
+// Supabase Storage simulado: sirve un PDF de una página o un PNG de 1×1 según el documento, con CORS abierto como
+// el de Supabase para que pdf.js pueda leerlo desde otro origen. Devuelve las URL que ha servido
+const simularArchivos = async (page: Page) => {
+  const servidas: string[] = [];
+  await page.route(`${ARCHIVOS}/**`, (route) => {
+    const peticion = route.request();
+    const cabeceras = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*' };
+    if (peticion.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cabeceras });
+    servidas.push(peticion.url());
+    const esPdf = peticion.url().endsWith('/doc-1');
+    return route.fulfill({
+      status: 200,
+      headers: cabeceras,
+      contentType: esPdf ? 'application/pdf' : 'image/png',
+      body: esPdf ? PDF_UNA_PAGINA : PNG_1X1,
+    });
+  });
+  return { servidas };
 };
 
 const rutaCartera = `/viajes/${VIAJE_ID}/documentos`;
@@ -213,6 +288,117 @@ test.describe('Cartera de documentos', () => {
     await expect(page.getByText(/ya no se pueden subir/)).toBeVisible();
     await expect(page.getByRole('button', { name: 'Subir documento' })).toHaveCount(0);
     await expect(page.getByLabel('Elegir el documento que se va a subir')).toHaveCount(0);
+  });
+
+  test('se abre un PDF: pdf.js dibuja la página y «Cerrar» vuelve a la cartera', async ({ page }) => {
+    await entrarConSesion(page);
+    const { enlacesPedidos } = await simularBackend(page);
+    const { servidas } = await simularArchivos(page);
+
+    await page.goto(rutaCartera);
+    await page.getByRole('button', { name: 'Abrir Reserva del hotel.pdf' }).click();
+
+    const dialogo = page.getByRole('dialog', { name: 'Documento: Reserva del hotel.pdf' });
+    await expect(dialogo.getByLabel('Página 1 del documento')).toBeVisible();
+    await expect(dialogo.getByText('Página 1 de 1')).toBeVisible();
+    // El lienzo se ha dibujado: ya no está en blanco
+    await expect
+      .poll(() =>
+        dialogo.getByLabel('Página 1 del documento').evaluate((lienzo: HTMLCanvasElement) => {
+          const datos = lienzo.getContext('2d')?.getImageData(0, 0, lienzo.width, lienzo.height).data ?? [];
+          return datos.some((valor, indice) => indice % 4 !== 3 && valor < 200);
+        }),
+      )
+      .toBe(true);
+    // En desarrollo React monta los efectos dos veces, así que una misma petición puede repetirse
+    expect(new Set(enlacesPedidos)).toEqual(new Set([`/viajes/${VIAJE_ID}/documentos/doc-1/url`]));
+    expect(new Set(servidas)).toEqual(new Set([`${ARCHIVOS}/doc-1`]));
+
+    await dialogo.getByRole('button', { name: 'Cerrar' }).click();
+    await expect(dialogo).toHaveCount(0);
+    await expect(filas(page)).toHaveCount(1);
+  });
+
+  test('se abre una imagen ampliada y Escape la cierra', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularBackend(page, { documentos: [imagenExistente] });
+    await simularArchivos(page);
+
+    await page.goto(rutaCartera);
+    await page.getByRole('button', { name: 'Abrir Foto del hotel.png' }).click();
+
+    const imagen = page.getByRole('dialog').getByRole('img', { name: 'Foto del hotel.png' });
+    await expect(imagen).toBeVisible();
+    await expect(imagen).toHaveAttribute('src', `${ARCHIVOS}/doc-img`);
+    await expect.poll(() => imagen.evaluate((elemento: HTMLImageElement) => elemento.naturalWidth)).toBe(1);
+
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+  });
+
+  test('se descarga un documento: pide el enlace con descargar=true y el navegador lo descarga', async ({ page }) => {
+    await entrarConSesion(page);
+    const { enlacesPedidos } = await simularBackend(page);
+    await page.route(`${ARCHIVOS}/**`, (route) =>
+      route.fulfill({
+        status: 200,
+        headers: { 'content-disposition': 'attachment; filename="Reserva del hotel.pdf"' },
+        contentType: 'application/pdf',
+        body: PDF_UNA_PAGINA,
+      }),
+    );
+
+    await page.goto(rutaCartera);
+    const descarga = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Descargar Reserva del hotel.pdf' }).click();
+
+    expect((await descarga).suggestedFilename()).toBe('Reserva del hotel.pdf');
+    expect(enlacesPedidos).toEqual([`/viajes/${VIAJE_ID}/documentos/doc-1/url?descargar=true`]);
+  });
+
+  test('si el servidor falla, la vista previa muestra el error y «Reintentar» abre el documento', async ({ page }) => {
+    await entrarConSesion(page);
+    let servidorCaido = true;
+    await simularBackend(page, {
+      documentos: [imagenExistente],
+      respuestaUrl: (documento) =>
+        servidorCaido
+          ? { status: 502, cuerpo: { error: { codigo: 'error_documento', mensaje: 'No se ha podido obtener el enlace del documento' } } }
+          : { status: 200, cuerpo: enlaceDe(documento) },
+    });
+    await simularArchivos(page);
+
+    await page.goto(rutaCartera);
+    await page.getByRole('button', { name: 'Abrir Foto del hotel.png' }).click();
+
+    await expect(page.getByRole('alert')).toContainText('No se ha podido abrir el documento');
+    servidorCaido = false;
+    await page.getByRole('button', { name: 'Reintentar' }).click();
+
+    await expect(page.getByRole('dialog').getByRole('img', { name: 'Foto del hotel.png' })).toBeVisible();
+  });
+
+  test('si el documento ya no existe, la vista previa lo dice', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularBackend(page, {
+      respuestaUrl: () => ({ status: 404, cuerpo: { error: { codigo: 'documento_no_encontrado', mensaje: 'No existe' } } }),
+    });
+
+    await page.goto(rutaCartera);
+    await page.getByRole('button', { name: 'Abrir Reserva del hotel.pdf' }).click();
+
+    await expect(page.getByRole('alert')).toContainText('ya no existe');
+  });
+
+  test('en un viaje archivado también se abre un documento', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularBackend(page, { estado: 'archivado', documentos: [imagenExistente] });
+    await simularArchivos(page);
+
+    await page.goto(rutaCartera);
+    await page.getByRole('button', { name: 'Abrir Foto del hotel.png' }).click();
+
+    await expect(page.getByRole('dialog').getByRole('img', { name: 'Foto del hotel.png' })).toBeVisible();
   });
 
   test('sin sesión lleva al login', async ({ page }) => {
