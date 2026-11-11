@@ -66,7 +66,7 @@ export default function CarteraDocumentos({ viajeId, tokenSesion, onVolver, onCa
   // Nombre y color de quien lo subió, con el mismo color que su avatar en el resto de pantallas
   const autor = (usuarioId: string | null) => {
     const indice = miembros.findIndex((m) => m.usuario_id === usuarioId)
-    return indice === -1 ? { name: "Un antiguo miembro", color: C.muted } : aMiembro(miembros[indice].nombre, indice)
+    return indice === -1 ? { name: "Un antiguo miembro", color: C.muted } : aMiembro(miembros[indice].nombre, indice, miembros[indice].avatar_url)
   }
   const activo = viaje?.estado === "activo"
 

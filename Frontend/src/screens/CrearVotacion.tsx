@@ -77,7 +77,7 @@ export default function CrearVotacion({ viajeId, tokenSesion, onVolver, onCreada
     }
   }, [viajeId, tokenSesion])
 
-  const miembros = (viaje?.miembros ?? []).map((m, i) => aMiembro(m.nombre, i))
+  const miembros = (viaje?.miembros ?? []).map((m, i) => aMiembro(m.nombre, i, m.avatar_url))
 
   const cambiarOpcion = (indice: number, cambios: Partial<OpcionEnEdicion>) => {
     setOpciones((lista) => lista.map((o, i) => (i === indice ? { ...o, ...cambios } : o)))

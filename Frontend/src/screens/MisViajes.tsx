@@ -67,7 +67,7 @@ const aTarjetaActiva = (viaje: ViajeDelUsuario): TarjetaActiva | TarjetaPendient
         nombre: viaje.nombre,
         fechas: formatearFechasActivo(viaje.fecha_inicio, viaje.fecha_fin),
         presupuesto: formatearImporte(viaje.presupuesto, viaje.moneda),
-        miembros: viaje.miembros.map((m, i) => aMiembro(m.nombre, i)),
+        miembros: viaje.miembros.map((m, i) => aMiembro(m.nombre, i, m.avatar_url)),
       }
 
 const aTarjetaAnterior = (viaje: ViajeDelUsuario, indice: number): TarjetaAnterior => ({
@@ -92,6 +92,7 @@ const tarjetaBotonStyle: CSSProperties = {
 type MisViajesProps = {
   nombreUsuario?: string
   emailUsuario?: string
+  avatarUsuario?: string | null
   // Con el token de sesión se cargan los viajes reales del usuario
   tokenSesion?: string
   // De momento los viajes de ejemplo se muestran junto a los reales
@@ -106,6 +107,7 @@ type MisViajesProps = {
 export default function MisViajes({
   nombreUsuario = "Adriana",
   emailUsuario,
+  avatarUsuario,
   tokenSesion,
   mostrarEjemplos = true,
   onSelectTrip,
@@ -150,6 +152,7 @@ export default function MisViajes({
     name: nombreUsuario,
     initial: nombreUsuario.charAt(0).toUpperCase(),
     color: C.accent,
+    imageUrl: avatarUsuario,
   }
 
   return (

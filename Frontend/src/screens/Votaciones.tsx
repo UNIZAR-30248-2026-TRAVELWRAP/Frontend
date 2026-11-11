@@ -107,7 +107,7 @@ export default function Votaciones({ viajeId, tokenSesion, onVolver, onCrearVota
   const avataresDe = (votacion: Votacion) => {
     const votantes = votantesDe(votacion)
     return (viaje?.miembros ?? [])
-      .map((m, i) => ({ miembro: m, avatar: aMiembro(m.nombre, i) }))
+      .map((m, i) => ({ miembro: m, avatar: aMiembro(m.nombre, i, m.avatar_url) }))
       .filter(({ miembro }) => votantes.has(miembro.usuario_id))
       .map(({ avatar }) => avatar)
   }

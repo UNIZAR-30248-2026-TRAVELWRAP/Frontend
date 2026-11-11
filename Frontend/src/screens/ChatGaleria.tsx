@@ -67,7 +67,7 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
     [],
   )
 
-  const miembros = (viaje?.miembros ?? []).map((m, indice) => aMiembro(m.nombre, indice))
+  const miembros = (viaje?.miembros ?? []).map((m, indice) => aMiembro(m.nombre, indice, m.avatar_url))
   const activo = viaje?.estado === "activo"
 
   const cerrarVisor = () => {

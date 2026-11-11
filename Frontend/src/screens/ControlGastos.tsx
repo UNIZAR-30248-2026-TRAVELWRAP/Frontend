@@ -92,7 +92,7 @@ export default function ControlGastos({
   // Nombre y color de quien pagó, con el mismo color que su avatar en el resto de pantallas
   const pagador = (usuarioId: string) => {
     const indice = miembros.findIndex((m) => m.usuario_id === usuarioId)
-    return indice === -1 ? { name: "Un antiguo miembro", color: C.muted } : aMiembro(miembros[indice].nombre, indice)
+    return indice === -1 ? { name: "Un antiguo miembro", color: C.muted } : aMiembro(miembros[indice].nombre, indice, miembros[indice].avatar_url)
   }
   const activo = viaje?.estado === "activo"
   const miSaldo = saldos.find((s) => s.usuario_id === usuarioId)
@@ -270,7 +270,7 @@ export default function ControlGastos({
                     {saldos.map((s) => {
                       const indice = miembros.findIndex((m) => m.usuario_id === s.usuario_id)
                       const miembro =
-                        indice === -1 ? { name: "Antiguo miembro", initial: "?", color: C.muted } : aMiembro(s.nombre, indice)
+                        indice === -1 ? { name: "Antiguo miembro", initial: "?", color: C.muted } : aMiembro(s.nombre, indice, miembros[indice].avatar_url)
                       const estado = estadoDelSaldo(s.saldo)
                       return (
                         <li

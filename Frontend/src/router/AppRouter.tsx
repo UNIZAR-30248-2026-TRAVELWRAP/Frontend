@@ -374,6 +374,7 @@ export default function AppRouter({
               <RutaMisViajes
                 nombreUsuario={session.usuario.nombre ?? session.usuario.email.split("@")[0]}
                 emailUsuario={session.usuario.email}
+                avatarUsuario={session.usuario.avatar_url}
                 tokenSesion={session.token}
                 mostrarEjemplos={false}
               />

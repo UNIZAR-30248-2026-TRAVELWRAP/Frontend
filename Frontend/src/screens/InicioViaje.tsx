@@ -105,7 +105,7 @@ export default function InicioViaje({
 
   const activo = viaje?.estado === "activo"
   const esCreador = viaje?.rol === "creador"
-  const miembros = (viaje?.miembros ?? []).map((m, i) => aMiembro(m.nombre, i))
+  const miembros = (viaje?.miembros ?? []).map((m, i) => aMiembro(m.nombre, i, m.avatar_url))
 
   if (pendiente) return null
 

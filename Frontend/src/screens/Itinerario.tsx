@@ -641,6 +641,7 @@ export default function Itinerario({
                                       member={aMiembro(
                                         viaje.miembros[indiceDeMiembro(actividad.creado_por)].nombre,
                                         indiceDeMiembro(actividad.creado_por),
+                                        viaje.miembros[indiceDeMiembro(actividad.creado_por)].avatar_url,
                                       )}
                                       size={26}
                                       showBorder={false}

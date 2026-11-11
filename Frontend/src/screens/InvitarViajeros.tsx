@@ -154,7 +154,7 @@ export default function InvitarViajeros({ viajeId, tokenSesion, onBack }: Invita
         setDatos({
           enlace: invitacion.enlace,
           nombreViaje: viaje.nombre,
-          miembros: viaje.miembros.map((m, i) => aMiembro(m.nombre, i)),
+          miembros: viaje.miembros.map((m, i) => aMiembro(m.nombre, i, m.avatar_url)),
         })
       })
       .catch((e) => {
