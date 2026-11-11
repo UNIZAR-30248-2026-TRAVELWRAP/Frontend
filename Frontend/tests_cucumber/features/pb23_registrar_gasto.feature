@@ -31,8 +31,16 @@ Característica: Registrar un gasto compartido (PB-23)
     Cuando abro la pantalla para añadir un gasto al viaje "Roma 2027"
     Y relleno el gasto con importe "0" y concepto "Cena"
     Y pulso el botón "Registrar gasto"
-    Entonces veo el mensaje de error "Escribe un importe mayor que 0 con dos decimales como máximo"
+    Entonces veo el mensaje de error "El importe tiene que ser mayor que 0"
     Y sigo en la pantalla de añadir gasto
+    Y el servidor no ha guardado ningún gasto
+
+  Escenario: Importe negativo
+    Cuando abro la pantalla para añadir un gasto al viaje "Roma 2027"
+    Y relleno el gasto con importe "-20" y concepto "Cena"
+    Entonces veo el mensaje de error "El importe no puede ser negativo"
+    Cuando pulso el botón "Registrar gasto"
+    Entonces sigo en la pantalla de añadir gasto
     Y el servidor no ha guardado ningún gasto
 
   Escenario: No se puede registrar un gasto sin nadie en el reparto

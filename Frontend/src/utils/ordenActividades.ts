@@ -49,7 +49,7 @@ export const ordenarAgenda = <T extends ActividadOrdenable>(actividades: T[]) =>
     if (delDia) delDia.push(actividad)
     else porDia.set(actividad.fecha, [actividad])
   }
-  return [...porDia.keys()].sort().flatMap((fecha) => ordenarDia(porDia.get(fecha) as T[]))
+  return [...porDia.keys()].sort((a, b) => a.localeCompare(b)).flatMap((fecha) => ordenarDia(porDia.get(fecha) as T[]))
 }
 
 export const puedeReordenarse = <T extends ActividadOrdenable>(delDia: T[], id: string) => {

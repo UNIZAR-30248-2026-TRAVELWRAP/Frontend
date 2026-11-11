@@ -56,6 +56,20 @@ export type Balance = {
   saldos: SaldoMiembro[]
 }
 
+// Un pago para saldar cuentas: quien paga (de) le da importe a quien recibe (a). Los nombres son null si ya abandonaron el viaje
+export type Transferencia = {
+  de: string
+  de_nombre: string | null
+  a: string
+  a_nombre: string | null
+  importe: number
+}
+
+export type Liquidacion = {
+  // Lista vacía si todos los saldos están a 0
+  transferencias: Transferencia[]
+}
+
 const rutaGastos = (viajeId: string) => `/viajes/${encodeURIComponent(viajeId)}/gastos`
 
 // Historial de gastos del viaje con el total gastado
@@ -65,6 +79,10 @@ export const listarGastos = (viajeId: string, tokenSesion: string) =>
 // Saldo de cada miembro del viaje
 export const obtenerBalance = (viajeId: string, tokenSesion: string) =>
   peticion<Balance>(`${rutaGastos(viajeId)}/balance`, { token: tokenSesion })
+
+// Transferencias propuestas para saldar las cuentas del viaje
+export const obtenerLiquidacion = (viajeId: string, tokenSesion: string) =>
+  peticion<Liquidacion>(`${rutaGastos(viajeId)}/liquidacion`, { token: tokenSesion })
 
 // Registra el gasto y su reparto a partes iguales. Devuelve el gasto con la parte de cada participante
 export const crearGasto = (viajeId: string, gasto: NuevoGasto, tokenSesion: string) =>

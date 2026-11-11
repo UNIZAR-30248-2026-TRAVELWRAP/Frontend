@@ -7,6 +7,7 @@ import ControlGastos from '../src/screens/ControlGastos'
 const VIAJE_ID = '123e4567-e89b-12d3-a456-426614174000'
 const ADRIANA = 'df77cba6-4be5-4cbc-814b-1e228dd73dcc'
 const BERTA = '5b1f0c2e-8a7d-4c3b-9e6f-2d4a1b3c5e7f'
+const DANIEL = '8c4d2e1f-3a5b-4c6d-9e7f-1a2b3c4d5e6f'
 
 const miembros = [
   { usuario_id: BERTA, nombre: 'Berta', avatar_url: null, rol: 'creador' },
@@ -41,9 +42,11 @@ const simularBackend = ({
   viaje = (): Promise<Response> => json(200, { id: VIAJE_ID, nombre: 'Roma 2027', estado: 'activo', miembros }),
   historial = (): Promise<Response> => json(200, { gastos: HISTORIAL, total: 95.5 }),
   balance = (): Promise<Response> => json(200, { saldos: [] }),
+  liquidacion = (): Promise<Response> => json(200, { transferencias: [] }),
 } = {}) => {
   const fetchMock = vi.fn((url: string) => {
     if (url.endsWith('/gastos/balance')) return balance()
+    if (url.endsWith('/gastos/liquidacion')) return liquidacion()
     return url.endsWith('/gastos') ? historial() : viaje()
   })
   vi.stubGlobal('fetch', fetchMock)
@@ -93,6 +96,27 @@ describe('ControlGastos', () => {
     expect(segunda.textContent).toContain('Cena en el Trastevere')
     expect(segunda.textContent).toContain('Pagó Adriana · 12 may')
     expect(segunda.textContent).toContain('60,50 €')
+  })
+
+  it('con importes de diez cifras separa los miles, no parte el total y reduce su tamaño', async () => {
+    simularBackend({
+      historial: () =>
+        json(200, { gastos: [gasto({ importe: 9999999999.99 }), gasto({ id: 'g2', importe: 150.6 })], total: 10000000150.59 }),
+    })
+    await abrir()
+
+    const region = screen.getByRole('region', { name: 'Total gastado' })
+    const total = within(region).getByText('10.000.000.150,59 €')
+    expect(total.style.whiteSpace).toBe('nowrap')
+    expect(Number.parseInt(total.style.fontSize)).toBeLessThan(34)
+    expect(filas()[0].textContent).toContain('9.999.999.999,99 €')
+  })
+
+  it('con importes cortos el total mantiene su tamaño', async () => {
+    simularBackend()
+    await abrir()
+
+    expect(within(screen.getByRole('region', { name: 'Total gastado' })).getByText('95,50 €').style.fontSize).toBe('34px')
   })
 
   it('si quien pagó ya no es miembro del viaje, lo indica', async () => {
@@ -246,6 +270,15 @@ describe('ControlGastos · balance', () => {
     expect(saldoDe('Berta')?.textContent).toContain('0,00 €')
   })
 
+  it('con saldos de diez cifras «Tu saldo» puede bajar debajo del total y la cifra no se parte', async () => {
+    conSaldos([saldo(BERTA, 'Berta', -5000000075.3), saldo(ADRIANA, 'Adriana', 5000000075.3)])
+    await abrir()
+
+    expect(tuSaldo().parentElement?.style.flexWrap).toBe('wrap')
+    expect(within(tuSaldo()).getByText('+5.000.000.075,30 €').style.whiteSpace).toBe('nowrap')
+    expect(saldoDe('Berta')?.textContent).toContain('-5.000.000.075,30 €')
+  })
+
   it('sin saldos no muestra la lista de saldos', async () => {
     conSaldos([])
     await abrir()
@@ -261,6 +294,86 @@ describe('ControlGastos · balance', () => {
 
     expect((await screen.findByRole('alert')).textContent).toBe(
       'No se han podido cargar los gastos: No se ha podido calcular el balance',
+    )
+  })
+})
+
+// Liquidación pendiente: transferencias para saldar el viaje, con las tuyas destacadas
+describe('ControlGastos · liquidación', () => {
+  const transferencia = (de: string, deNombre: string | null, a: string, aNombre: string | null, importe: number) => ({
+    de,
+    de_nombre: deNombre,
+    a,
+    a_nombre: aNombre,
+    importe,
+  })
+  const conTransferencias = (transferencias: unknown[]) =>
+    simularBackend({ liquidacion: () => json(200, { transferencias }) })
+
+  const seccion = () => screen.getByRole('region', { name: 'Liquidación pendiente' })
+  const filasLiquidacion = () =>
+    within(screen.getByRole('list', { name: 'Transferencias pendientes' })).getAllByRole('listitem')
+
+  it('pide la liquidación del viaje con el token de la sesión', async () => {
+    const fetchMock = simularBackend()
+    await abrir()
+
+    const [url, init] = fetchMock.mock.calls.find(([u]) => u.endsWith('/gastos/liquidacion')) as unknown as [
+      string,
+      RequestInit,
+    ]
+    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/gastos/liquidacion$`))
+    expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer token-acceso')
+  })
+
+  it('sin transferencias dice que las cuentas están saldadas', async () => {
+    simularBackend()
+    await abrir()
+
+    expect(seccion().textContent).toContain('Cuentas saldadas')
+    expect(screen.queryByRole('list', { name: 'Transferencias pendientes' })).toBeNull()
+  })
+
+  it('muestra cada transferencia con quién paga, a quién y cuánto', async () => {
+    conTransferencias([transferencia(BERTA, 'Berta', DANIEL, 'Daniel', 1234.5)])
+    await abrir()
+
+    expect(filasLiquidacion().map((fila) => fila.textContent)).toEqual([
+      expect.stringContaining('Berta paga a Daniel1.234,50 €'),
+    ])
+  })
+
+  it('si la transferencia es tuya dice «Tú pagas a…» y la destaca', async () => {
+    conTransferencias([transferencia(ADRIANA, 'Adriana', BERTA, 'Berta', 30)])
+    await abrir()
+
+    const [fila] = filasLiquidacion()
+    expect(fila.textContent).toContain('Tú pagas a Berta30,00 €')
+    expect(fila.style.background).not.toBe('')
+  })
+
+  it('si te paga a ti dice «… te paga a ti»', async () => {
+    conTransferencias([transferencia(BERTA, 'Berta', ADRIANA, 'Adriana', 12)])
+    await abrir()
+
+    expect(filasLiquidacion()[0].textContent).toContain('Berta te paga a ti12,00 €')
+  })
+
+  it('a quien ya dejó el viaje lo nombra como un antiguo miembro', async () => {
+    conTransferencias([transferencia('antiguo', null, BERTA, 'Berta', 7)])
+    await abrir()
+
+    expect(filasLiquidacion()[0].textContent).toContain('Un antiguo miembro paga a Berta7,00 €')
+  })
+
+  it('si no se puede calcular la liquidación lo explica', async () => {
+    simularBackend({
+      liquidacion: () => json(502, { error: { codigo: 'error_gasto', mensaje: 'No se ha podido calcular la liquidación' } }),
+    })
+    render(<ControlGastos viajeId={VIAJE_ID} tokenSesion="token-acceso" usuarioId={ADRIANA} />)
+
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'No se han podido cargar los gastos: No se ha podido calcular la liquidación',
     )
   })
 })

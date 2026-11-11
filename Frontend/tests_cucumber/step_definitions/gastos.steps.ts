@@ -66,10 +66,35 @@ const balance = () => {
   return { saldos };
 };
 
+// Transferencias para saldar los saldos del escenario: cada deudor paga a los acreedores hasta quedar a 0
+const liquidacion = () => {
+  const cuentas = balance().saldos.map((s) => ({ ...s, centimos: Math.round(s.saldo * 100) }));
+  const transferencias: Record<string, unknown>[] = [];
+  for (const deudor of cuentas.filter((c) => c.centimos < 0)) {
+    for (const acreedor of cuentas.filter((c) => c.centimos > 0)) {
+      const centimos = Math.min(-deudor.centimos, acreedor.centimos);
+      if (centimos === 0) continue;
+      transferencias.push({
+        de: deudor.usuario_id,
+        de_nombre: deudor.nombre,
+        a: acreedor.usuario_id,
+        a_nombre: acreedor.nombre,
+        importe: centimos / 100,
+      });
+      deudor.centimos += centimos;
+      acreedor.centimos -= centimos;
+    }
+  }
+  return { transferencias };
+};
+
 // Se registra después de la ruta de viajes, así que tiene prioridad para /viajes/:id/gastos
 const simularGastos = async () => {
   await paginaActual().route('**/api/viajes/*/gastos/balance', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(balance()) }),
+  );
+  await paginaActual().route('**/api/viajes/*/gastos/liquidacion', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(liquidacion()) }),
   );
   await paginaActual().route('**/api/viajes/*/gastos', (route) => {
     // Historial de Control de Gastos con lo registrado en el escenario
@@ -225,4 +250,17 @@ Then('el saldo de {string} es {string}', async (nombre: string, saldo: string) =
     .getByRole('listitem')
     .filter({ hasText: nombre });
   await expect(fila).toContainText(saldo);
+});
+
+// Liquidación pendiente (PB-28): transferencias propuestas, con quién paga, a quién y cuánto
+Then('en la liquidación pendiente veo {string} con {string}', async (texto: string, importe: string) => {
+  const fila = paginaActual()
+    .getByRole('list', { name: 'Transferencias pendientes' })
+    .getByRole('listitem')
+    .filter({ hasText: texto });
+  await expect(fila).toContainText(importe);
+});
+
+Then('en la liquidación pendiente veo {string}', async (texto: string) => {
+  await expect(paginaActual().getByRole('region', { name: 'Liquidación pendiente' })).toContainText(texto);
 });

@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type FormEvent } from "react"
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react"
 import Avatar from "../components/Avatar"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
@@ -8,7 +8,15 @@ import { crearGasto, type CategoriaGasto, type Gasto } from "../services/gastosA
 import { obtenerViaje, type MiembroDelViaje } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
-import { CATEGORIAS_GASTO, conEuros, leerImporte, repartirAPartesIguales } from "../utils/gastos"
+import {
+  avisoAlEscribirImporte,
+  CATEGORIAS_GASTO,
+  conEuros,
+  leerImporte,
+  repartirAPartesIguales,
+  tamanoSegunLongitud,
+  validarImporte,
+} from "../utils/gastos"
 
 const MAX_CONCEPTO = 100
 
@@ -38,14 +46,26 @@ const labelStyle: CSSProperties = {
 
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
 
-// Comprueba el formulario antes de enviarlo. Devuelve el motivo por el que no es válido, o "" si lo es
-const validar = (importe: string, concepto: string, pagadoPor: string, participantes: string[]) => {
-  if (leerImporte(importe) === null) return "Escribe un importe mayor que 0 con dos decimales como máximo"
-  if (concepto.trim() === "") return "Escribe el concepto del gasto"
+const SIN_CONCEPTO = "Escribe el concepto del gasto"
+
+// Comprueba lo que no tiene aviso junto a su campo. Devuelve el motivo por el que no es válido, o "" si lo es
+const validarReparto = (pagadoPor: string, participantes: string[]) => {
   if (!pagadoPor) return "Elige quién ha pagado"
   if (participantes.length === 0) return "Elige al menos un miembro entre los que dividir el gasto"
   return ""
 }
+
+// Aviso debajo de un campo. Con role="alert" el lector de pantalla lo lee en cuanto aparece
+const AvisoDelCampo = ({ id, texto }: { id: string; texto: string }) =>
+  texto ? (
+    <p
+      id={id}
+      role="alert"
+      style={{ fontFamily: NUNITO, color: C.red, fontSize: 12, fontWeight: 700, margin: "6px 0 0" }}
+    >
+      {texto}
+    </p>
+  ) : null
 
 // ─── Pantalla: Añadir gasto ───────────────────────────────────────────────────
 type AnadirGastoProps = {
@@ -67,6 +87,11 @@ export default function AnadirGasto({ viajeId, tokenSesion, usuarioId, onVolver,
   const [participantes, setParticipantes] = useState<string[]>([])
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState("")
+  // Un campo está «tocado» al salir de él o al intentar registrar: desde entonces se avisa también de que falta
+  const [importeTocado, setImporteTocado] = useState(false)
+  const [conceptoTocado, setConceptoTocado] = useState(false)
+  const importeRef = useRef<HTMLInputElement>(null)
+  const conceptoRef = useRef<HTMLInputElement>(null)
 
   // Los miembros del viaje son los que pueden pagar y entre los que se divide. Por defecto paga quien
   // registra el gasto y se divide entre todos
@@ -100,14 +125,30 @@ export default function AnadirGasto({ viajeId, tokenSesion, usuarioId, onVolver,
   }
 
   const importeValido = leerImporte(importe)
+  // 40 px hasta 6 caracteres y 24 px con los 13 del máximo (9999999999,99)
+  const tamanoImporte = tamanoSegunLongitud(importe.length, 40, 24, 6, 13)
   const partes = importeValido !== null && participantes.length > 0
     ? repartirAPartesIguales(importeValido, participantes.length)
     : []
 
+  const avisoImporte = importeTocado ? validarImporte(importe) : avisoAlEscribirImporte(importe)
+  const avisoConcepto = conceptoTocado && concepto.trim() === "" ? SIN_CONCEPTO : ""
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
     if (enviando) return
-    const motivo = validar(importe, concepto, pagadoPor, participantes)
+    setImporteTocado(true)
+    setConceptoTocado(true)
+    // Los avisos de importe y concepto salen junto a su campo; el foco va al primero que está mal
+    if (validarImporte(importe)) {
+      importeRef.current?.focus()
+      return
+    }
+    if (concepto.trim() === "") {
+      conceptoRef.current?.focus()
+      return
+    }
+    const motivo = validarReparto(pagadoPor, participantes)
     if (motivo) {
       setError(motivo)
       return
@@ -189,39 +230,47 @@ export default function AnadirGasto({ viajeId, tokenSesion, usuarioId, onVolver,
               textAlign: "center",
               marginBottom: 18,
               boxShadow: SHADOWS.cardRaised,
-              border: `1.5px solid ${C.border}`,
+              border: `1.5px solid ${avisoImporte ? C.red : C.border}`,
             }}
           >
             <label htmlFor="gasto-importe" style={{ ...labelStyle, textAlign: "center" }}>
               Importe
             </label>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
-              <span aria-hidden="true" style={{ fontFamily: NUNITO, fontSize: 40, fontWeight: 900, color: C.navy }}>
+            {/* El campo crece con la cifra y la letra encoge cuando es larga, para que no se corte ni pise el € */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, minWidth: 0 }}>
+              <span aria-hidden="true" style={{ fontFamily: NUNITO, fontSize: tamanoImporte, fontWeight: 900, color: C.navy }}>
                 €
               </span>
               <input
                 id="gasto-importe"
+                ref={importeRef}
                 value={importe}
                 onChange={(event) => {
                   setImporte(event.target.value)
                   setError("")
                 }}
+                onBlur={() => setImporteTocado(true)}
+                aria-invalid={avisoImporte !== ""}
+                aria-describedby={avisoImporte ? "gasto-importe-aviso" : undefined}
                 inputMode="decimal"
                 autoComplete="off"
                 placeholder="0,00"
                 style={{
                   fontFamily: NUNITO,
-                  fontSize: 40,
+                  fontSize: tamanoImporte,
                   fontWeight: 900,
                   color: C.navy,
                   border: "none",
                   outline: "none",
-                  width: 170,
+                  width: `${Math.max(importe.length, 4) + 1}ch`,
+                  maxWidth: "100%",
                   minWidth: 0,
+                  padding: 0,
                   background: "transparent",
                 }}
               />
             </div>
+            <AvisoDelCampo id="gasto-importe-aviso" texto={avisoImporte} />
           </div>
 
           <div style={{ marginBottom: 16 }}>
@@ -230,15 +279,20 @@ export default function AnadirGasto({ viajeId, tokenSesion, usuarioId, onVolver,
             </label>
             <input
               id="gasto-concepto"
+              ref={conceptoRef}
               value={concepto}
               onChange={(event) => {
                 setConcepto(event.target.value)
                 setError("")
               }}
+              onBlur={() => setConceptoTocado(true)}
               maxLength={MAX_CONCEPTO}
               placeholder="Ej. Cena Trastevere"
-              style={inputStyle}
+              aria-invalid={avisoConcepto !== ""}
+              aria-describedby={avisoConcepto ? "gasto-concepto-aviso" : undefined}
+              style={{ ...inputStyle, border: `1.5px solid ${avisoConcepto ? C.red : C.border}` }}
             />
+            <AvisoDelCampo id="gasto-concepto-aviso" texto={avisoConcepto} />
           </div>
 
           <SectionLabel>Categoría</SectionLabel>
