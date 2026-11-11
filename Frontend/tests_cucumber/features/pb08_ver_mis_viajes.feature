@@ -37,7 +37,7 @@ Característica: Ver mis viajes (PB-08)
     Y que estuve en el viaje "Oporto 2026", que ya ha finalizado
     Cuando abro mis viajes
     Y pulso el viaje "Oporto 2026"
-    Entonces estoy en el inicio del viaje "Oporto 2026"
+    Entonces estoy en el resumen del viaje "Oporto 2026"
 
   Escenario: Un viaje pendiente de destino abre su votación del destino
     Dado que he iniciado sesión con el email "adriana@travelwrap.app" y la contraseña "secreta123"

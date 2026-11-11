@@ -150,6 +150,10 @@ Then('estoy en el inicio del viaje {string}', async (nombre: string) => {
   await expect(paginaActual().getByRole('navigation', { name: 'Secciones del viaje' })).toBeVisible();
 });
 
+Then('estoy en el resumen del viaje {string}', async (nombre: string) => {
+  await expect(paginaActual()).toHaveURL(new RegExp(`/viajes/${elViaje(nombre).id}/resumen$`));
+});
+
 Then('estoy en la votación del destino del viaje {string}', async (nombre: string) => {
   await expect(paginaActual()).toHaveURL(new RegExp(`/viajes/${elViaje(nombre).id}/destino$`));
 });

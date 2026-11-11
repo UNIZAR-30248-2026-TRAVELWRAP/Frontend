@@ -21,6 +21,7 @@ import ControlGastos from "../screens/ControlGastos";
 import Itinerario from "../screens/Itinerario";
 import CarteraDocumentos from "../screens/CarteraDocumentos";
 import ChatGaleria from "../screens/ChatGaleria";
+import FinDeViaje from "../screens/FinDeViaje";
 import { buscarDirecciones } from "../services/actividadesApi";
 import type { SeccionViaje } from "../components/BarraInferior";
 import { rutaTrasLogin } from "../services/invitacionPendiente";
@@ -60,6 +61,7 @@ type NavegacionMisViajes = "onCreateTrip" | "onViewPerfil" | "onSelectTrip" | "o
 function RutaMisViajes(props: Omit<ComponentProps<typeof MisViajes>, NavegacionMisViajes>) {
   const navigate = useNavigate();
   const abrirViaje = (id: string) => navigate(`/viajes/${id}`);
+  const abrirResumen = (id: string) => navigate(`/viajes/${id}/resumen`);
   return (
     <MisViajes
       {...props}
@@ -67,7 +69,7 @@ function RutaMisViajes(props: Omit<ComponentProps<typeof MisViajes>, NavegacionM
       onViewPerfil={() => navigate("/perfil")}
       onSelectTrip={abrirViaje}
       onSelectPendingTrip={(id) => navigate(`/viajes/${id}/destino`)}
-      onViewPastTrip={abrirViaje}
+      onViewPastTrip={abrirResumen}
     />
   );
 }
@@ -101,9 +103,10 @@ function RutaInicioViaje({ sesion }: { sesion: Sesion }) {
       onInvitar={() => navigate(`/viajes/${viajeId}/invitar`)}
       onVotaciones={() => navigate(`/viajes/${viajeId}/votaciones`)}
       onDocumentos={() => navigate(`/viajes/${viajeId}/documentos`)}
+      onResumen={() => navigate(`/viajes/${viajeId}/resumen`)}
       onCambiarSeccion={(seccion) => navigate(rutaDeSeccion(viajeId, seccion))}
       onPendienteDestino={() => navigate(`/viajes/${viajeId}/destino`, { replace: true })}
-      onArchivado={() => navigate("/viajes/archivados")}
+      onArchivado={() => navigate(`/viajes/${viajeId}/resumen`)}
     />
   );
 }
@@ -129,7 +132,7 @@ function RutaViajesArchivados({ sesion }: { sesion: Sesion }) {
     <ViajesArchivados
       tokenSesion={sesion.token}
       onVolver={() => navigate("/perfil")}
-      onVerViaje={(id) => navigate(`/viajes/${id}`)}
+      onVerViaje={(id) => navigate(`/viajes/${id}/resumen`)}
     />
   );
 }
@@ -276,6 +279,25 @@ function RutaCarteraDocumentos({ sesion }: { sesion: Sesion }) {
       tokenSesion={sesion.token}
       onVolver={() => navigate(`/viajes/${viajeId}`)}
       onCambiarSeccion={(seccion) => navigate(rutaDeSeccion(viajeId, seccion))}
+    />
+  );
+}
+
+function RutaFinDeViaje({ sesion }: { sesion: Sesion }) {
+  const { viajeId = "" } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const volver = () => {
+    if (location.key === "default") void navigate("/", { replace: true });
+    else void navigate(-1);
+  };
+  return (
+    <FinDeViaje
+      key={viajeId}
+      viajeId={viajeId}
+      tokenSesion={sesion.token}
+      onVolver={volver}
+      onTerminar={() => navigate("/", { replace: true })}
     />
   );
 }
@@ -467,6 +489,11 @@ export default function AppRouter({
         <Route
           path="/viajes/:viajeId/documentos"
           element={session ? <RutaCarteraDocumentos sesion={session} /> : <Navigate to="/login" replace />}
+        />
+
+        <Route
+          path="/viajes/:viajeId/resumen"
+          element={session ? <RutaFinDeViaje sesion={session} /> : <Navigate to="/login" replace />}
         />
 
         <Route

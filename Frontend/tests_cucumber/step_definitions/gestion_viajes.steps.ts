@@ -128,8 +128,9 @@ When('abro el viaje {string} desde mis viajes', async (nombre: string) => {
   await expect(paginaActual()).toHaveURL(/\/viajes\/[^/]+$/);
 });
 
-When('abro el viaje archivado {string}', async (nombre: string) => {
-  await paginaActual().getByRole('button', { name: new RegExp(`^${nombre}`) }).click();
+When('abro el inicio del viaje archivado', async () => {
+  await expect(paginaActual()).toHaveURL(/\/viajes\/[^/]+\/resumen$/);
+  await irA(new URL(paginaActual().url()).pathname.replace(/\/resumen$/, ''));
 });
 
 When('cambio el nombre a {string} y el presupuesto a {string}', async (nombre: string, presupuesto: string) => {
@@ -144,6 +145,10 @@ When('pongo como fecha de fin {string}', async (fecha: string) => {
 Then('estoy en el inicio del viaje', async () => {
   await expect(paginaActual()).toHaveURL(/\/viajes\/viaje-\d+$/);
   await expect(paginaActual().getByRole('navigation', { name: 'Secciones del viaje' })).toBeVisible();
+});
+
+Then('estoy en el resumen del viaje finalizado', async () => {
+  await expect(paginaActual()).toHaveURL(/\/viajes\/[^/]+\/resumen$/);
 });
 
 Then('estoy en la pantalla de viajes archivados', async () => {

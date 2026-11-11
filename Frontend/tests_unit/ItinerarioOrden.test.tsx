@@ -68,9 +68,6 @@ const titulosDeLaAgenda = () =>
     .getAllByRole('listitem')
     .map((item) => within(item).getAllByText(/./)[0]?.textContent)
 
-const AVISO =
-  'Las actividades sin hora se pueden colocar donde quieras arrastrando el asa; las que empiezan a la misma hora, entre sí.'
-
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
@@ -89,7 +86,6 @@ describe('Itinerario · asas para reordenar', () => {
     expect(await screen.findByRole('button', { name: 'Mover Paseo' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Mover Compras' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Mover Desayuno' })).toBeNull()
-    expect(screen.getByText(AVISO)).toBeTruthy()
   })
 
   it('muestra el asa en las actividades que empiezan a la misma hora', async () => {
@@ -112,10 +108,9 @@ describe('Itinerario · asas para reordenar', () => {
     expect(await screen.findByRole('button', { name: 'Mover Paseo' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Mover Desayuno' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Mover Museo' })).toBeNull()
-    expect(screen.getByText(AVISO)).toBeTruthy()
   })
 
-  it('no muestra asas ni aviso si todas tienen una hora distinta', async () => {
+  it('no muestra asas si todas tienen una hora distinta', async () => {
     simularBackend([
       actividad('Desayuno', { hora_inicio: '08:30:00' }),
       actividad('Museo', { hora_inicio: '10:00:00' }),
@@ -125,7 +120,6 @@ describe('Itinerario · asas para reordenar', () => {
 
     await screen.findByText('Desayuno')
     expect(screen.queryByRole('button', { name: /^Mover / })).toBeNull()
-    expect(screen.queryByText(AVISO)).toBeNull()
   })
 
   it('una sin hora colocada entre las de hora se muestra entre ellas', async () => {
@@ -150,13 +144,12 @@ describe('Itinerario · asas para reordenar', () => {
     expect(screen.queryByRole('button', { name: /^Mover / })).toBeNull()
   })
 
-  it('en un viaje archivado no hay asas ni aviso', async () => {
+  it('en un viaje archivado no hay asas', async () => {
     simularBackend([actividad('Paseo', { orden: 1 }), actividad('Compras', { orden: 2 })], { estado: 'archivado' })
     renderizar()
 
     await screen.findByText('Paseo')
     expect(screen.queryByRole('button', { name: /^Mover / })).toBeNull()
-    expect(screen.queryByText(AVISO)).toBeNull()
   })
 
   it('el asa es un botón enfocable con el nombre de la actividad y de al menos 36 px de ancho', async () => {

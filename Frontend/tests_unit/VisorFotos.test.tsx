@@ -81,22 +81,26 @@ describe('VisorFotos', () => {
 describe('ChatGaleria · ampliar una foto', () => {
   beforeEach(() => {
     let n = 0
-    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: () => `blob:foto-${n++}`, revokeObjectURL: () => undefined }))
+    const json = (cuerpo: unknown, estado = 200) =>
+      Promise.resolve(new Response(JSON.stringify(cuerpo), { status: estado, headers: { 'Content-Type': 'application/json' } }))
     vi.stubGlobal(
       'fetch',
-      vi.fn(() =>
-        Promise.resolve(
-          new Response(
-            JSON.stringify({
-              id: 'v',
-              nombre: 'Roma',
-              estado: 'activo',
-              miembros: [{ usuario_id: 'u', nombre: 'Ana', avatar_url: null, rol: 'creador' }],
-            }),
-            { status: 200, headers: { 'Content-Type': 'application/json' } },
-          ),
-        ),
-      ),
+      vi.fn((url: string, init?: RequestInit) => {
+        if (String(url).endsWith('/fotos')) {
+          if (init?.method === 'POST') {
+            const archivo = (init.body as FormData).get('archivo') as File
+            n += 1
+            return json({ id: `f${n}`, viaje_id: 'v', nombre: archivo.name, tipo_mime: 'image/jpeg', tamano_bytes: 1, subido_por: 'u', creado_en: '2027-05-12T10:00:00Z', url: `https://storage/f${n}` }, 201)
+          }
+          return json({ fotos: [] })
+        }
+        return json({
+          id: 'v',
+          nombre: 'Roma',
+          estado: 'activo',
+          miembros: [{ usuario_id: 'u', nombre: 'Ana', avatar_url: null, rol: 'creador' }],
+        })
+      }),
     )
   })
 
@@ -104,6 +108,7 @@ describe('ChatGaleria · ampliar una foto', () => {
     const selector = await screen.findByLabelText('Elegir la foto que se va a subir')
     for (const nombre of nombres) {
       await user.upload(selector, new File(['x'], nombre, { type: 'image/jpeg' }))
+      await screen.findByRole('button', { name: `Ampliar ${nombre}` })
     }
   }
 
