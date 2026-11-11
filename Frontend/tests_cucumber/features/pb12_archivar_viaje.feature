@@ -14,15 +14,14 @@ Característica: Cerrar y archivar un viaje (PB-12)
     Y pulso el botón "Finalizar viaje"
     Entonces veo el diálogo de confirmación "¿Finalizar este viaje?"
     Cuando confirmo en el diálogo "Finalizar viaje"
-    Entonces estoy en la pantalla de viajes archivados
-    Y veo el viaje archivado "Roma 2027"
+    Entonces estoy en el resumen del viaje finalizado
     Y el servidor ha archivado 1 viaje
 
   Escenario: Un viaje archivado es de solo lectura
     Cuando abro el viaje "Roma 2027" desde mis viajes
     Y pulso el botón "Finalizar viaje"
     Y confirmo en el diálogo "Finalizar viaje"
-    Y abro el viaje archivado "Roma 2027"
+    Y abro el inicio del viaje archivado
     Entonces veo el texto "Este viaje está archivado"
     Y no veo el botón "Editar viaje"
     Y no veo el botón "Finalizar viaje"

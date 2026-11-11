@@ -146,8 +146,8 @@ test.describe('Inicio del viaje y su gestión', () => {
     await expect(dialogo).toContainText('¿Finalizar este viaje?');
     await dialogo.getByRole('button', { name: 'Finalizar viaje' }).click();
 
-    await expect(page).toHaveURL(/\/viajes\/archivados$/);
-    await page.getByRole('button', { name: /^Roma 2027/ }).click();
+    await expect(page).toHaveURL(/\/viajes\/roma\/resumen$/);
+    await page.goto('/viajes/roma');
     await expect(page.getByText(/Este viaje está archivado/)).toBeVisible();
     await expect(page.getByRole('button', { name: /Editar viaje/ })).toHaveCount(0);
 

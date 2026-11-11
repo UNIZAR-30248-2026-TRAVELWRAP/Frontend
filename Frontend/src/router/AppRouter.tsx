@@ -60,6 +60,7 @@ type NavegacionMisViajes = "onCreateTrip" | "onViewPerfil" | "onSelectTrip" | "o
 function RutaMisViajes(props: Omit<ComponentProps<typeof MisViajes>, NavegacionMisViajes>) {
   const navigate = useNavigate();
   const abrirViaje = (id: string) => navigate(`/viajes/${id}`);
+  const abrirResumen = (id: string) => navigate(`/viajes/${id}/resumen`);
   return (
     <MisViajes
       {...props}
@@ -67,7 +68,7 @@ function RutaMisViajes(props: Omit<ComponentProps<typeof MisViajes>, NavegacionM
       onViewPerfil={() => navigate("/perfil")}
       onSelectTrip={abrirViaje}
       onSelectPendingTrip={(id) => navigate(`/viajes/${id}/destino`)}
-      onViewPastTrip={abrirViaje}
+      onViewPastTrip={abrirResumen}
     />
   );
 }
@@ -104,7 +105,7 @@ function RutaInicioViaje({ sesion }: { sesion: Sesion }) {
       onResumen={() => navigate(`/viajes/${viajeId}/resumen`)}
       onCambiarSeccion={(seccion) => navigate(rutaDeSeccion(viajeId, seccion))}
       onPendienteDestino={() => navigate(`/viajes/${viajeId}/destino`, { replace: true })}
-      onArchivado={() => navigate("/viajes/archivados")}
+      onArchivado={() => navigate(`/viajes/${viajeId}/resumen`)}
     />
   );
 }
@@ -130,7 +131,7 @@ function RutaViajesArchivados({ sesion }: { sesion: Sesion }) {
     <ViajesArchivados
       tokenSesion={sesion.token}
       onVolver={() => navigate("/perfil")}
-      onVerViaje={(id) => navigate(`/viajes/${id}`)}
+      onVerViaje={(id) => navigate(`/viajes/${id}/resumen`)}
     />
   );
 }
@@ -284,12 +285,18 @@ function RutaCarteraDocumentos({ sesion }: { sesion: Sesion }) {
 function RutaFinDeViaje({ sesion }: { sesion: Sesion }) {
   const { viajeId = "" } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const volver = () => {
+    if (location.key === "default") void navigate("/", { replace: true });
+    else void navigate(-1);
+  };
   return (
     <FinDeViaje
       key={viajeId}
       viajeId={viajeId}
       tokenSesion={sesion.token}
-      onVolver={() => navigate(`/viajes/${viajeId}`)}
+      onVolver={volver}
+      onTerminar={() => navigate("/", { replace: true })}
     />
   );
 }
