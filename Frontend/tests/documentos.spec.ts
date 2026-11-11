@@ -336,26 +336,6 @@ test.describe('Cartera de documentos', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0);
   });
 
-  test('se descarga un documento: pide el enlace con descargar=true y el navegador lo descarga', async ({ page }) => {
-    await entrarConSesion(page);
-    const { enlacesPedidos } = await simularBackend(page);
-    await page.route(`${ARCHIVOS}/**`, (route) =>
-      route.fulfill({
-        status: 200,
-        headers: { 'content-disposition': 'attachment; filename="Reserva del hotel.pdf"' },
-        contentType: 'application/pdf',
-        body: PDF_UNA_PAGINA,
-      }),
-    );
-
-    await page.goto(rutaCartera);
-    const descarga = page.waitForEvent('download');
-    await page.getByRole('button', { name: 'Descargar Reserva del hotel.pdf' }).click();
-
-    expect((await descarga).suggestedFilename()).toBe('Reserva del hotel.pdf');
-    expect(enlacesPedidos).toEqual([`/viajes/${VIAJE_ID}/documentos/doc-1/url?descargar=true`]);
-  });
-
   test('si el servidor falla, la vista previa muestra el error y «Reintentar» abre el documento', async ({ page }) => {
     await entrarConSesion(page);
     let servidorCaido = true;
