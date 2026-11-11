@@ -226,7 +226,7 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar 
                     <div style={{ fontSize: 15, color: "rgba(255,255,255,0.95)", marginBottom: 28 }}>Pagó la cuenta más veces</div>
                     <ul
                       aria-label={`Estadísticas de ${alma.nombre ?? "este viajero"}`}
-                      style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", gap: 12 }}
+                      style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 10 }}
                     >
                       {[
                         { etiqueta: "Pagos", valor: alma.pagos },
