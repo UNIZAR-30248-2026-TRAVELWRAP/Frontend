@@ -229,7 +229,7 @@ export default function ViajesArchivados({ tokenSesion, onVolver, onVerViaje }: 
                           flexShrink: 0,
                         }}
                       >
-                        <Icon name="folder" size={17} color={C.blue} strokeWidth={1.9} />
+                        <Icon name="desarchivar" size={17} color={C.blue} strokeWidth={1.9} />
                       </button>
                     )}
                     {/* Solo el creador puede eliminar el viaje, para todos sus miembros */}
@@ -268,7 +268,7 @@ export default function ViajesArchivados({ tokenSesion, onVolver, onVerViaje }: 
       {aDesarchivar && (
         <DialogoConfirmacion
           titulo="¿Desarchivar este viaje?"
-          icono="folder"
+          icono="desarchivar"
           color={C.blue}
           colorFondo={C.lightBlue}
           textoConfirmar="Desarchivar viaje"
