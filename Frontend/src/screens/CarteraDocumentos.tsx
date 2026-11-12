@@ -372,7 +372,7 @@ export default function CarteraDocumentos({ viajeId, tokenSesion, onVolver, onCa
                         >
                           <Icon name="download" size={18} color={C.navy} strokeWidth={1.8} />
                         </button>
-                        {/* Solo con el viaje activo: en uno archivado o finalizado la cartera es de solo lectura */}
+                        {/* Solo con el viaje activo: en uno finalizado la cartera es de solo lectura */}
                         {activo && (
                           <button
                             type="button"

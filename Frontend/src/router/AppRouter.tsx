@@ -434,7 +434,7 @@ export default function AppRouter({
           element={session ? <RutaCrearViaje sesion={session} /> : <Navigate to="/login" replace />}
         />
 
-        {/* Viajes archivados, de solo lectura, con la opción de eliminarlos (privada) */}
+        {/* Viajes que el usuario ha archivado, con la opción de desarchivarlos o eliminarlos para sí mismo (privada) */}
         <Route
           path="/viajes/archivados"
           element={session ? <RutaViajesArchivados sesion={session} /> : <Navigate to="/login" replace />}

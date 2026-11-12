@@ -32,7 +32,7 @@ type FinDeViajeProps = {
   tokenSesion: string
   onVolver?: () => void
   onTerminar?: () => void
-  // Tras archivar el viaje desde el balance final (solo el creador, con el viaje finalizado)
+  // Tras archivar el viaje desde el balance final (cualquier miembro, con el viaje finalizado y sin archivar)
   onArchivado?: () => void
 }
 
@@ -151,7 +151,7 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
     }
   }
 
-  const puedeArchivar = viaje?.estado === "finalizado" && viaje.rol === "creador"
+  const puedeArchivar = viaje?.estado === "finalizado" && !viaje.archivado
   const miembros = (viaje?.miembros ?? []).map((m, indice) => aMiembro(m.nombre, indice))
   const nombres = miembros.map((m) => m.name)
   const dias = viaje?.fecha_inicio && viaje.fecha_fin ? diasDelViaje(viaje.fecha_inicio, viaje.fecha_fin) : []
@@ -620,7 +620,8 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
             onConfirmar={handleArchivar}
             onCancelar={() => setConfirmandoArchivar(false)}
           >
-            {viaje?.nombre} pasará a «Viajes archivados» en tu perfil. Desde allí podrás desarchivarlo o eliminarlo.
+            {viaje?.nombre} pasará a «Viajes archivados» solo en tu perfil. Los demás viajeros lo seguirán viendo como ahora. Podrás
+            desarchivarlo cuando quieras.
           </DialogoConfirmacion>
         )}
       </div>

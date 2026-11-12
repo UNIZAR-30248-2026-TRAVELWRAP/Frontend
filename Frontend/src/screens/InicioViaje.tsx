@@ -229,7 +229,7 @@ export default function InicioViaje({
             )}
             {viaje && !activo && (
               <Badge bg="rgba(255,255,255,0.2)" color="white">
-                {viaje.estado === "archivado" ? "Archivado" : "Finalizado"}
+                Finalizado
               </Badge>
             )}
           </div>
@@ -290,7 +290,7 @@ export default function InicioViaje({
             <div style={avisoStyle(C.lightAccent, `${C.accent}40`)}>
               <Icon name="lock" size={18} color={C.accent} strokeWidth={2} />
               <span>
-                Este viaje está {viaje.estado === "archivado" ? "archivado" : "finalizado"}: puedes consultarlo, pero ya no se
+                Este viaje está finalizado: puedes consultarlo, pero ya no se
                 pueden modificar sus datos ni añadir actividades o gastos.
               </span>
             </div>

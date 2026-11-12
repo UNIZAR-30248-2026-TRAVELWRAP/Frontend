@@ -410,7 +410,7 @@ export default function MisViajes({
             ),
           )}
 
-          {/* Viajes anteriores: los finalizados (los archivados no se muestran aquí) */}
+          {/* Viajes anteriores: los finalizados que el usuario no ha archivado (el servidor no devuelve los archivados) */}
           {anteriores.length > 0 && (
             <>
               <SectionLabel>Viajes anteriores</SectionLabel>
