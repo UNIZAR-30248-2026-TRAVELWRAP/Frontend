@@ -30,10 +30,12 @@ afterEach(() => {
 })
 
 describe('CrearVotacion', () => {
-  it('empieza con el tipo Fechas, dos opciones en blanco y todos los miembros como votantes', async () => {
+  it('empieza con el tipo Otro, dos opciones en blanco y todos los miembros como votantes', async () => {
     await abrir()
 
-    expect(screen.getByRole('radio', { name: 'Fechas' }).getAttribute('aria-checked')).toBe('true')
+    const tipo = screen.getByRole('combobox', { name: 'Tipo de votación' }) as HTMLSelectElement
+    expect(tipo.value).toBe('otro')
+    expect([...tipo.options].map((o) => o.text)).toEqual(['Fechas', 'Actividades', 'Otro'])
     expect(screen.getByLabelText('Opción A')).toBeTruthy()
     expect(screen.getByLabelText('Opción B')).toBeTruthy()
     expect(screen.queryByLabelText('Opción C')).toBeNull()
@@ -63,7 +65,7 @@ describe('CrearVotacion', () => {
     await user.click(screen.getByRole('button', { name: 'Publicar votación' }))
 
     await vi.waitFor(() => expect(onCreada).toHaveBeenCalled())
-    expect(enviada(fetchMock)).toEqual({ titulo: '¿Dónde cenamos el sábado?', tipo: 'fecha', opciones: [] })
+    expect(enviada(fetchMock)).toEqual({ titulo: '¿Dónde cenamos el sábado?', tipo: 'otro', opciones: [] })
     expect(onCreada.mock.calls[0][0].opciones).toEqual([])
   })
 
@@ -83,7 +85,7 @@ describe('CrearVotacion', () => {
     const onCreada = vi.fn()
     const { fetchMock } = await abrir({ onCreada })
 
-    await user.click(screen.getByRole('radio', { name: 'Actividades' }))
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Tipo de votación' }), 'Actividades')
     await rellenar(user, '  ¿Qué visitamos? ', [' Coliseo ', 'Vaticano'])
     await user.click(screen.getByRole('button', { name: 'Añadir opción' }))
     await user.type(screen.getByLabelText('Opción C'), 'Trastevere')
@@ -106,6 +108,7 @@ describe('CrearVotacion', () => {
     const user = userEvent.setup()
     const { fetchMock } = await abrir({ onCreada: vi.fn() })
 
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Tipo de votación' }), 'Fechas')
     await rellenar(user, '¿Qué día salimos?', ['Viernes', 'Sábado'])
     await user.type(screen.getByLabelText('Fecha de la opción A'), '2027-05-14')
     await user.click(screen.getByRole('button', { name: 'Publicar votación' }))
@@ -121,8 +124,10 @@ describe('CrearVotacion', () => {
     const user = userEvent.setup()
     await abrir()
 
-    await user.click(screen.getByRole('radio', { name: 'Otro' }))
-
+    expect(screen.queryByLabelText('Fecha de la opción A')).toBeNull()
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Tipo de votación' }), 'Fechas')
+    expect(screen.getByLabelText('Fecha de la opción A')).toBeTruthy()
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Tipo de votación' }), 'Otro')
     expect(screen.queryByLabelText('Fecha de la opción A')).toBeNull()
   })
 
