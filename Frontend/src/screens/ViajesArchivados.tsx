@@ -5,7 +5,7 @@ import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import SectionLabel from "../components/SectionLabel"
 import { ApiError } from "../services/authApi"
-import { eliminarViaje, listarViajes, type ViajeDelUsuario } from "../services/viajesApi"
+import { desarchivarViaje, eliminarViaje, listarViajes, type ViajeDelUsuario } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { formatearFechasAnterior, formatearImporte } from "../utils/formatoViaje"
 import BotonVolver from "../components/BotonVolver"
@@ -28,6 +28,9 @@ export default function ViajesArchivados({ tokenSesion, onVolver, onVerViaje }: 
   const [aEliminar, setAEliminar] = useState<ViajeDelUsuario | null>(null)
   const [eliminando, setEliminando] = useState(false)
   const [errorEliminar, setErrorEliminar] = useState("")
+  const [aDesarchivar, setADesarchivar] = useState<ViajeDelUsuario | null>(null)
+  const [desarchivando, setDesarchivando] = useState(false)
+  const [errorDesarchivar, setErrorDesarchivar] = useState("")
 
   useEffect(() => {
     let vigente = true
@@ -61,7 +64,23 @@ export default function ViajesArchivados({ tokenSesion, onVolver, onVerViaje }: 
     }
   }
 
-  const sinViajes = !cargando && !error && viajes.length === 0
+  // El viaje vuelve a estar activo: sale de esta lista y «Mis viajes» lo mostrará al abrirse
+  const handleDesarchivar = async () => {
+    if (!aDesarchivar) return
+    setDesarchivando(true)
+    setErrorDesarchivar("")
+    try {
+      await desarchivarViaje(aDesarchivar.id, tokenSesion)
+      setViajes((actuales) => actuales.filter((v) => v.id !== aDesarchivar.id))
+      setADesarchivar(null)
+    } catch (e) {
+      setErrorDesarchivar(mensajeDeError(e))
+    } finally {
+      setDesarchivando(false)
+    }
+  }
+
+  const sinViajes =!cargando && !error && viajes.length === 0
 
   return (
     <div style={{ background: C.bg, minHeight: "100vh" }}>
@@ -188,6 +207,31 @@ export default function ViajesArchivados({ tokenSesion, onVolver, onVerViaje }: 
                         </div>
                       </div>
                     </button>
+                    {/* Solo el creador puede desarchivar el viaje */}
+                    {viaje.rol === "creador" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setErrorDesarchivar("")
+                          setADesarchivar(viaje)
+                        }}
+                        aria-label={`Desarchivar ${viaje.nombre}`}
+                        style={{
+                          width: 38,
+                          height: 38,
+                          borderRadius: 11,
+                          background: C.lightBlue,
+                          border: `1px solid ${C.blue}30`,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Icon name="folder" size={17} color={C.blue} strokeWidth={1.9} />
+                      </button>
+                    )}
                     {/* Solo el creador puede eliminar el viaje, para todos sus miembros */}
                     {viaje.rol === "creador" && (
                       <button
@@ -220,6 +264,24 @@ export default function ViajesArchivados({ tokenSesion, onVolver, onVerViaje }: 
           )}
         </div>
       </div>
+
+      {aDesarchivar && (
+        <DialogoConfirmacion
+          titulo="¿Desarchivar este viaje?"
+          icono="folder"
+          color={C.blue}
+          colorFondo={C.lightBlue}
+          textoConfirmar="Desarchivar viaje"
+          textoConfirmando="Desarchivando..."
+          ocupado={desarchivando}
+          error={errorDesarchivar}
+          onConfirmar={handleDesarchivar}
+          onCancelar={() => setADesarchivar(null)}
+        >
+          <strong style={{ color: C.navy }}>{aDesarchivar.nombre}</strong> volverá a Mis viajes como activo y se podrá
+          editar de nuevo.
+        </DialogoConfirmacion>
+      )}
 
       {aEliminar && (
         <DialogoConfirmacion
