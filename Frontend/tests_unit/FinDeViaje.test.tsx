@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, configure, render, screen } from '@testing-library/react'
+import { cleanup, configure, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import FinDeViaje from '../src/screens/FinDeViaje'
 import { calcularTransferencias, listaDeNombres, textoDeDias, textoDeVotos } from '../src/utils/resumen'
@@ -54,16 +54,20 @@ const simularBackend = ({ resumen = RESUMEN as unknown, fotos = [foto] as unknow
     }),
   )
 
+const terminarBarra = () => {
+  const barra = screen.getByTestId('progreso-activo')
+  fireEvent(barra, new Event('animationend', { bubbles: true }))
+  fireEvent(barra, new Event('webkitAnimationEnd', { bubbles: true }))
+}
+
 const abrir = async (props = {}) => {
   render(<FinDeViaje viajeId={VIAJE_ID} tokenSesion="token-acceso" {...props} />)
   await screen.findByText('TravelWrap · Resumen')
 }
 
-const siguiente = (veces = 1) => {
+const siguiente = async (veces = 1) => {
   const usuario = userEvent.setup()
-  return (async () => {
-    for (let i = 0; i < veces; i++) await usuario.click(screen.getByRole('button', { name: 'Siguiente' }))
-  })()
+  for (let i = 0; i < veces; i++) await usuario.keyboard('{ArrowRight}')
 }
 
 afterEach(() => {
@@ -112,19 +116,19 @@ describe('FinDeViaje: diapositivas', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: 'Ir a Mis viajes' }))
 
     expect(alTerminar).toHaveBeenCalledTimes(1)
-    expect(screen.queryByRole('button', { name: 'Siguiente' })).toBeNull()
   })
 
-  it('Anterior vuelve atrás y está desactivado en la portada; las flechas del teclado también navegan', async () => {
+  it('las flechas del teclado navegan y no hay botones de Anterior ni Siguiente', async () => {
     simularBackend()
     await abrir()
     const usuario = userEvent.setup()
-    expect((screen.getByRole('button', { name: 'Anterior' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.queryByRole('button', { name: 'Anterior' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Siguiente' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Ir a Mis viajes' })).toBeNull()
 
     await usuario.keyboard('{ArrowRight}')
     expect(screen.getByRole('region').getAttribute('aria-label')).toContain('2 de 7')
-    await usuario.click(screen.getByRole('button', { name: 'Anterior' }))
-    expect(screen.getByRole('region').getAttribute('aria-label')).toContain('1 de 7')
+    await usuario.keyboard('{ArrowLeft}')
     await usuario.keyboard('{ArrowLeft}')
     expect(screen.getByRole('region').getAttribute('aria-label')).toContain('1 de 7')
   })
@@ -170,6 +174,165 @@ describe('FinDeViaje: diapositivas', () => {
     const alerta = await screen.findByRole('alert')
     expect(alerta.textContent).toContain('No se ha podido preparar el resumen')
     expect(screen.queryByRole('button', { name: 'Siguiente' })).toBeNull()
+  })
+})
+
+const region = () => {
+  const elemento = screen.getByRole('region')
+  elemento.getBoundingClientRect = () => ({ left: 0, top: 0, right: 400, bottom: 600, width: 400, height: 600, x: 0, y: 0, toJSON: () => ({}) })
+  return elemento
+}
+const pulsar = (x: number) => fireEvent.pointerDown(region(), { clientX: x, pointerId: 1, button: 0 })
+const mover = (x: number) => fireEvent.pointerMove(region(), { clientX: x, pointerId: 1 })
+const soltar = (x: number) => fireEvent.pointerUp(region(), { clientX: x, pointerId: 1 })
+const toque = (x: number) => {
+  pulsar(x)
+  soltar(x)
+}
+const diapositivaActual = () => screen.getByRole('region').getAttribute('aria-label')
+
+describe('FinDeViaje: como las historias', () => {
+  it('tocar la parte derecha avanza y la izquierda retrocede', async () => {
+    simularBackend()
+    await abrir()
+
+    toque(300)
+    toque(300)
+    expect(diapositivaActual()).toContain('3 de 7')
+
+    toque(50)
+    expect(diapositivaActual()).toContain('2 de 7')
+
+    toque(50)
+    toque(50)
+    expect(diapositivaActual()).toContain('1 de 7')
+  })
+
+  it('una pulsación larga pausa la barra y no cambia de diapositiva', async () => {
+    simularBackend()
+    await abrir()
+    const ahora = vi.spyOn(Date, 'now')
+
+    ahora.mockReturnValue(1000)
+    pulsar(300)
+    expect(screen.getByTestId('progreso-activo').style.animationPlayState).toBe('paused')
+
+    ahora.mockReturnValue(1800)
+    soltar(300)
+
+    expect(diapositivaActual()).toContain('1 de 7')
+    expect(screen.getByTestId('progreso-activo').style.animationPlayState).toBe('running')
+    ahora.mockRestore()
+  })
+
+  it('al arrastrar el cubo gira y se ve la historia vecina; al soltar pasado el umbral se cambia', async () => {
+    simularBackend()
+    await abrir()
+    toque(300)
+
+    pulsar(300)
+    mover(150)
+    const cubo = screen.getByText('Cena Trastevere', { exact: false }).closest('[style*="preserve-3d"]') as HTMLElement
+    expect(cubo.style.transform).toContain('rotateY(-33.75deg)')
+    expect(screen.getByText('Cena Trastevere', { exact: false }).closest('[aria-hidden="true"]')).not.toBeNull()
+    soltar(150)
+
+    await waitFor(() => expect(diapositivaActual()).toContain('3 de 7'))
+    expect(document.querySelector('[style*="preserve-3d"]')).toBeNull()
+  })
+
+  it('el cubo no gira más de 90 grados aunque se arrastre más allá del ancho', async () => {
+    simularBackend()
+    await abrir()
+    toque(300)
+
+    pulsar(390)
+    mover(-200)
+    const cubo = document.querySelector('[style*="preserve-3d"]') as HTMLElement
+    expect(cubo.style.transform).toContain('rotateY(-90deg)')
+
+    mover(900)
+    expect(cubo.style.transform).toContain('rotateY(90deg)')
+    soltar(900)
+    await waitFor(() => expect(document.querySelector('[style*="preserve-3d"]')).toBeNull())
+  })
+
+  it('arrastrar hacia la derecha vuelve a la anterior', async () => {
+    simularBackend()
+    await abrir()
+    await siguiente(2)
+
+    pulsar(100)
+    mover(300)
+    soltar(300)
+
+    await waitFor(() => expect(diapositivaActual()).toContain('2 de 7'))
+  })
+
+  it('si se vuelve a la posición normal o se arrastra poco no se cambia', async () => {
+    simularBackend()
+    await abrir()
+
+    pulsar(300)
+    mover(100)
+    mover(300)
+    soltar(300)
+    await waitFor(() => expect(document.querySelector('[style*="preserve-3d"]')).toBeNull())
+    expect(diapositivaActual()).toContain('1 de 7')
+
+    pulsar(300)
+    mover(260)
+    soltar(260)
+    await waitFor(() => expect(document.querySelector('[style*="preserve-3d"]')).toBeNull())
+    expect(diapositivaActual()).toContain('1 de 7')
+  })
+
+  it('en los extremos no hay vecina a la que ir', async () => {
+    simularBackend()
+    await abrir()
+
+    pulsar(100)
+    mover(350)
+    soltar(350)
+    await waitFor(() => expect(document.querySelector('[style*="preserve-3d"]')).toBeNull())
+    expect(diapositivaActual()).toContain('1 de 7')
+
+    await siguiente(6)
+    pulsar(300)
+    mover(50)
+    soltar(50)
+    await waitFor(() => expect(document.querySelector('[style*="preserve-3d"]')).toBeNull())
+    expect(diapositivaActual()).toContain('7 de 7')
+  })
+
+  it('al acabar la barra pasa sola a la siguiente y en la última se queda', async () => {
+    simularBackend()
+    const alTerminar = vi.fn()
+    await abrir({ onTerminar: alTerminar })
+
+    terminarBarra()
+    expect(diapositivaActual()).toContain('2 de 7')
+
+    await siguiente(5)
+    terminarBarra()
+    expect(diapositivaActual()).toContain('7 de 7')
+    expect(alTerminar).not.toHaveBeenCalled()
+  })
+
+  it('con «reducir movimiento» no avanza sola, no gira el cubo y el arrastre cambia sin animación', async () => {
+    vi.stubGlobal('matchMedia', (consulta: string) => ({ matches: consulta.includes('reduce'), addEventListener: () => {}, removeEventListener: () => {} }))
+    simularBackend()
+    await abrir()
+
+    expect(screen.queryByTestId('progreso-activo')).toBeNull()
+    toque(300)
+    expect(diapositivaActual()).toContain('2 de 7')
+
+    pulsar(300)
+    mover(100)
+    expect(document.querySelector('[style*="preserve-3d"]')).toBeNull()
+    soltar(100)
+    expect(diapositivaActual()).toContain('3 de 7')
   })
 })
 

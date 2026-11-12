@@ -50,18 +50,23 @@ When('abro el resumen del viaje {string}', async (viaje: string) => {
   const id = idDelViaje(viaje);
   expect(id, `el viaje "${viaje}" no está preparado`).toBeDefined();
   expect(datos, 'faltan los datos del resumen').not.toBeNull();
+  await paginaActual().emulateMedia({ reducedMotion: 'reduce' });
   await simularResumen(id as string, datos as DatosDelResumen);
   await paginaActual().goto(new URL(`/viajes/${id}/resumen`, paginaActual().url()).toString());
   await expect(paginaActual().getByRole('heading', { name: 'Roma' })).toBeVisible();
 });
 
+const tocarLaDerecha = async () => {
+  const caja = await paginaActual().getByRole('region').boundingBox();
+  await paginaActual().mouse.click((caja?.x ?? 0) + (caja?.width ?? 0) * 0.85, (caja?.y ?? 0) + (caja?.height ?? 0) / 2);
+};
+
 When('paso a la diapositiva siguiente', async () => {
-  await paginaActual().getByRole('button', { name: 'Siguiente' }).click();
+  await tocarLaDerecha();
 });
 
 When('paso a la última diapositiva', async () => {
-  const siguiente = paginaActual().getByRole('button', { name: 'Siguiente' });
-  for (let i = 0; i < 6; i++) await siguiente.click();
+  for (let i = 0; i < 6; i++) await tocarLaDerecha();
 });
 
 Then('veo la diapositiva {string}', async (titulo: string) => {
