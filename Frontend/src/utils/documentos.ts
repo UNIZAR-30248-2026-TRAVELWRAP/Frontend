@@ -44,6 +44,12 @@ export const mensajeAlAbrir = (error: unknown) => {
   return `No se ha podido abrir el documento: ${error instanceof ApiError ? error.message : "ha ocurrido un error"}`
 }
 
+// Mensaje cuando no se puede eliminar un documento. El 404 no llega aquí: la pantalla lo trata como ya eliminado
+export const mensajeAlEliminar = (error: unknown) => {
+  if (error instanceof ApiError && error.estado === 409) return "El viaje ya no está activo: no se pueden eliminar documentos"
+  return `No se ha podido eliminar el documento: ${error instanceof ApiError ? error.message : "ha ocurrido un error"}`
+}
+
 // Pide un enlace nuevo (caducan a los 5 minutos) y deja que el navegador guarde el archivo con el nombre del documento
 export const descargarDocumento = async (viajeId: string, documentoId: string, tokenSesion: string) => {
   const { url } = await urlDeDocumento(viajeId, documentoId, tokenSesion, true)

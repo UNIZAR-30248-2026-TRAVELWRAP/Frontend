@@ -1,12 +1,19 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react"
 import BarraInferior, { ALTO_BARRA_INFERIOR, type SeccionViaje } from "../components/BarraInferior"
 import BotonVolver from "../components/BotonVolver"
+import DialogoConfirmacion from "../components/DialogoConfirmacion"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import VistaPreviaDocumento from "../components/VistaPreviaDocumento"
 import SectionLabel from "../components/SectionLabel"
 import { ApiError } from "../services/authApi"
-import { listarDocumentos, subirDocumento, TIPOS_DOCUMENTO, type Documento } from "../services/documentosApi"
+import {
+  eliminarDocumento,
+  listarDocumentos,
+  subirDocumento,
+  TIPOS_DOCUMENTO,
+  type Documento,
+} from "../services/documentosApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { estiloAlerta } from "../styles/formulario"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
@@ -16,6 +23,7 @@ import {
   descargarDocumento,
   fechaDeSubida,
   mensajeAlAbrir,
+  mensajeAlEliminar,
   motivoParaNoSubir,
   tamanoLegible,
 } from "../utils/documentos"
@@ -40,6 +48,9 @@ export default function CarteraDocumentos({ viajeId, tokenSesion, onVolver, onCa
   const [aviso, setAviso] = useState("")
   const [abierto, setAbierto] = useState<Documento | null>(null)
   const [errorDescarga, setErrorDescarga] = useState("")
+  const [aEliminar, setAEliminar] = useState<Documento | null>(null)
+  const [eliminando, setEliminando] = useState(false)
+  const [errorEliminar, setErrorEliminar] = useState("")
   const selectorArchivo = useRef<HTMLInputElement>(null)
 
   // El viaje hace falta para saber quién subió cada documento y si aún se pueden subir
@@ -109,6 +120,34 @@ export default function CarteraDocumentos({ viajeId, tokenSesion, onVolver, onCa
       await descargarDocumento(viajeId, documento.id, tokenSesion)
     } catch (e) {
       setErrorDescarga(mensajeAlAbrir(e))
+    }
+  }
+
+  const handlePedirEliminar = (documento: Documento) => {
+    setErrorEliminar("")
+    setAEliminar(documento)
+  }
+
+  const handleEliminar = async () => {
+    if (!aEliminar) return
+    setEliminando(true)
+    setErrorEliminar("")
+    const quitarDeLaLista = (aviso: string) => {
+      setDocumentos((anteriores) => anteriores.filter((documento) => documento.id !== aEliminar.id))
+      setAEliminar(null)
+      setErrorDescarga("")
+      setErrorSubida("")
+      setAviso(aviso)
+    }
+    try {
+      await eliminarDocumento(viajeId, aEliminar.id, tokenSesion)
+      quitarDeLaLista("Documento eliminado")
+    } catch (e) {
+      // Si otro miembro lo eliminó antes, ya no está en la cartera: se quita igualmente de la lista
+      if (e instanceof ApiError && e.estado === 404) quitarDeLaLista("Este documento ya lo había eliminado otro miembro")
+      else setErrorEliminar(mensajeAlEliminar(e))
+    } finally {
+      setEliminando(false)
     }
   }
 
@@ -333,6 +372,28 @@ export default function CarteraDocumentos({ viajeId, tokenSesion, onVolver, onCa
                         >
                           <Icon name="download" size={18} color={C.navy} strokeWidth={1.8} />
                         </button>
+                        {/* Solo con el viaje activo: en uno archivado o finalizado la cartera es de solo lectura */}
+                        {activo && (
+                          <button
+                            type="button"
+                            aria-label={`Eliminar ${documento.nombre}`}
+                            onClick={() => handlePedirEliminar(documento)}
+                            style={{
+                              width: 44,
+                              height: 44,
+                              borderRadius: 13,
+                              border: `1.5px solid ${C.border}`,
+                              background: "white",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              cursor: "pointer",
+                              flexShrink: 0,
+                            }}
+                          >
+                            <Icon name="trash" size={18} color={C.red} strokeWidth={1.8} />
+                          </button>
+                        )}
                       </li>
                     )
                   })}
@@ -345,6 +406,24 @@ export default function CarteraDocumentos({ viajeId, tokenSesion, onVolver, onCa
 
       {abierto && (
         <VistaPreviaDocumento viajeId={viajeId} documento={abierto} tokenSesion={tokenSesion} onCerrar={cerrarVistaPrevia} />
+      )}
+
+      {aEliminar && (
+        <DialogoConfirmacion
+          titulo="¿Eliminar este documento?"
+          icono="trash"
+          color={C.red}
+          colorFondo={C.redBg}
+          textoConfirmar="Eliminar documento"
+          textoConfirmando="Eliminando..."
+          ocupado={eliminando}
+          error={errorEliminar}
+          onConfirmar={handleEliminar}
+          onCancelar={() => setAEliminar(null)}
+        >
+          Se eliminará <strong style={{ color: C.navy, overflowWrap: "anywhere" }}>{aEliminar.nombre}</strong> de la
+          cartera para todos los viajeros. Esta acción no se puede deshacer.
+        </DialogoConfirmacion>
       )}
 
       <BarraInferior activa="agenda" onCambiar={onCambiarSeccion} />

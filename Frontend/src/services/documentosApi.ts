@@ -53,3 +53,11 @@ export const urlDeDocumento = (viajeId: string, documentoId: string, tokenSesion
     `${rutaDocumentos(viajeId)}/${encodeURIComponent(documentoId)}/url${descargar ? "?descargar=true" : ""}`,
     { token: tokenSesion }
   )
+
+// Elimina el documento de la cartera y su archivo. Cualquier miembro puede, y solo con el viaje activo.
+// Responde 204 sin cuerpo
+export const eliminarDocumento = (viajeId: string, documentoId: string, tokenSesion: string) =>
+  peticion<null>(`${rutaDocumentos(viajeId)}/${encodeURIComponent(documentoId)}`, {
+    metodo: "DELETE",
+    token: tokenSesion,
+  })
