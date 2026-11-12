@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, configure, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, configure, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import FinDeViaje from '../src/screens/FinDeViaje'
 import { calcularTransferencias, listaDeNombres, textoDeDias, textoDeVotos } from '../src/utils/resumen'
@@ -43,14 +43,22 @@ const saldos = [
 const json = (estado: number, cuerpo: unknown) =>
   Promise.resolve(new Response(JSON.stringify(cuerpo), { status: estado, headers: { 'Content-Type': 'application/json' } }))
 
-const simularBackend = ({ resumen = RESUMEN as unknown, fotos = [foto] as unknown[], balance = saldos as unknown[], falla = false } = {}) =>
+const simularBackend = ({
+  resumen = RESUMEN as unknown,
+  fotos = [foto] as unknown[],
+  balance = saldos as unknown[],
+  falla = false,
+  datosViaje = {} as Record<string, unknown>,
+  archivar = () => json(200, { ...viaje, estado: 'archivado' }),
+} = {}) =>
   vi.stubGlobal(
     'fetch',
-    vi.fn((url: string) => {
+    vi.fn((url: string, opciones?: RequestInit) => {
+      if (opciones?.method === 'POST' && url.endsWith('/archivar')) return archivar()
       if (url.endsWith('/resumen')) return falla ? json(502, { error: { codigo: 'error_resumen', mensaje: 'No se ha podido calcular el resumen del viaje' } }) : json(200, resumen)
       if (url.endsWith('/fotos')) return json(200, { fotos })
       if (url.endsWith('/balance')) return json(200, { saldos: balance })
-      return json(200, viaje)
+      return json(200, { ...viaje, ...datosViaje })
     }),
   )
 
@@ -139,6 +147,68 @@ describe('FinDeViaje: diapositivas', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: 'Ir a Mis viajes' }))
 
     expect(alTerminar).toHaveBeenCalledTimes(1)
+  })
+
+  it('«Archivar viaje» solo aparece al creador con el viaje finalizado y en la última diapositiva', async () => {
+    simularBackend({ datosViaje: { estado: 'finalizado', rol: 'creador' } })
+    await abrir()
+    expect(screen.queryByRole('button', { name: 'Archivar viaje' })).toBeNull()
+    await siguiente(6)
+    expect(screen.getByRole('button', { name: 'Archivar viaje' })).toBeTruthy()
+    cleanup()
+
+    for (const datosViaje of [
+      { estado: 'finalizado', rol: 'miembro' },
+      { estado: 'archivado', rol: 'creador' },
+    ]) {
+      simularBackend({ datosViaje })
+      await abrir()
+      await siguiente(6)
+      expect(screen.getByRole('button', { name: 'Ir a Mis viajes' })).toBeTruthy()
+      expect(screen.queryByRole('button', { name: 'Archivar viaje' })).toBeNull()
+      cleanup()
+    }
+  })
+
+  it('pide confirmación, archiva el viaje y avisa con onArchivado', async () => {
+    simularBackend({ datosViaje: { estado: 'finalizado', rol: 'creador' } })
+    const alArchivar = vi.fn()
+    await abrir({ onArchivado: alArchivar })
+    await siguiente(6)
+    const usuario = userEvent.setup()
+
+    await usuario.click(screen.getByRole('button', { name: 'Archivar viaje' }))
+    const ventana = screen.getByRole('dialog')
+    expect(ventana.textContent).toContain('¿Archivar este viaje?')
+    expect(ventana.textContent).toContain('Roma 2027 pasará a «Viajes archivados»')
+    await usuario.click(within(ventana).getByRole('button', { name: 'Cancelar' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(alArchivar).not.toHaveBeenCalled()
+
+    await usuario.click(screen.getByRole('button', { name: 'Archivar viaje' }))
+    await usuario.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Archivar viaje' }))
+
+    await waitFor(() => expect(alArchivar).toHaveBeenCalledTimes(1))
+    const llamadas = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls as [string, RequestInit | undefined][]
+    expect(llamadas.some(([url, opciones]) => url.endsWith(`/viajes/${VIAJE_ID}/archivar`) && opciones?.method === 'POST')).toBe(true)
+  })
+
+  it('si no se puede archivar muestra el error en el diálogo y no avisa', async () => {
+    simularBackend({
+      datosViaje: { estado: 'finalizado', rol: 'creador' },
+      archivar: () => json(403, { error: { codigo: 'no_creador', mensaje: 'Solo el creador del viaje puede hacerlo' } }),
+    })
+    const alArchivar = vi.fn()
+    await abrir({ onArchivado: alArchivar })
+    await siguiente(6)
+    const usuario = userEvent.setup()
+
+    await usuario.click(screen.getByRole('button', { name: 'Archivar viaje' }))
+    await usuario.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Archivar viaje' }))
+
+    const alerta = await within(screen.getByRole('dialog')).findByRole('alert')
+    expect(alerta.textContent).toBe('Solo el creador del viaje puede hacerlo')
+    expect(alArchivar).not.toHaveBeenCalled()
   })
 
   it('las flechas del teclado navegan y no hay botones de Anterior ni Siguiente', async () => {

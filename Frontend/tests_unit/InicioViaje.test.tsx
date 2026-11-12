@@ -33,10 +33,10 @@ const viaje = (datos: Record<string, unknown> = {}) => ({
   ...datos,
 })
 
-// GET devuelve el viaje y POST /archivar lo devuelve archivado (o la respuesta indicada)
-const simularBackend = (datos: Record<string, unknown> = {}, archivar = () => respuesta(200, viaje({ ...datos, estado: 'archivado' }))) => {
+// GET devuelve el viaje y POST /finalizar lo devuelve finalizado (o la respuesta indicada)
+const simularBackend = (datos: Record<string, unknown> = {}, finalizar = () => respuesta(200, viaje({ ...datos, estado: 'finalizado' }))) => {
   const fetchMock = vi.fn((url: string, opciones?: RequestInit) =>
-    opciones?.method === 'POST' && url.endsWith('/archivar') ? archivar() : respuesta(200, viaje(datos)),
+    opciones?.method === 'POST' && url.endsWith('/finalizar') ? finalizar() : respuesta(200, viaje(datos)),
   )
   vi.stubGlobal('fetch', fetchMock)
   return fetchMock
@@ -171,6 +171,7 @@ describe('InicioViaje · finalizar viaje con confirmación', () => {
     await user.click(await screen.findByRole('button', { name: 'Finalizar viaje' }))
     const ventana = dialogo()!
     expect(within(ventana).getByText('¿Finalizar este viaje?')).toBeTruthy()
+    expect(within(ventana).getByText(/pasará a «Viajes anteriores»/)).toBeTruthy()
     expect(within(ventana).getByText('Esta acción no se puede deshacer.')).toBeTruthy()
 
     await user.click(within(ventana).getByRole('button', { name: 'Cancelar' }))
@@ -179,35 +180,35 @@ describe('InicioViaje · finalizar viaje con confirmación', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
-  it('al confirmar archiva el viaje y avisa con el viaje archivado', async () => {
+  it('al confirmar finaliza el viaje y avisa con el viaje finalizado', async () => {
     const user = userEvent.setup()
     const fetchMock = simularBackend()
-    const onArchivado = vi.fn()
-    renderizar({ onArchivado })
+    const onFinalizado = vi.fn()
+    renderizar({ onFinalizado })
 
     await user.click(await screen.findByRole('button', { name: 'Finalizar viaje' }))
     await user.click(within(dialogo()!).getByRole('button', { name: 'Finalizar viaje' }))
 
-    await vi.waitFor(() => expect(onArchivado).toHaveBeenCalledTimes(1))
-    expect(onArchivado.mock.calls[0][0].estado).toBe('archivado')
+    await vi.waitFor(() => expect(onFinalizado).toHaveBeenCalledTimes(1))
+    expect(onFinalizado.mock.calls[0][0].estado).toBe('finalizado')
     const [url, opciones] = fetchMock.mock.calls[1] as unknown as [string, RequestInit]
-    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/archivar$`))
+    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/finalizar$`))
     expect(opciones.method).toBe('POST')
     expect(dialogo()).toBeNull()
   })
 
-  it('si el backend no lo archiva muestra el error en el diálogo', async () => {
+  it('si el backend no lo finaliza muestra el error en el diálogo', async () => {
     const user = userEvent.setup()
     simularBackend({}, () =>
       respuesta(403, { error: { codigo: 'no_creador', mensaje: 'Solo el creador del viaje puede hacerlo' } }),
     )
-    const onArchivado = vi.fn()
-    renderizar({ onArchivado })
+    const onFinalizado = vi.fn()
+    renderizar({ onFinalizado })
 
     await user.click(await screen.findByRole('button', { name: 'Finalizar viaje' }))
     await user.click(within(dialogo()!).getByRole('button', { name: 'Finalizar viaje' }))
 
     expect((await within(dialogo()!).findByRole('alert')).textContent).toBe('Solo el creador del viaje puede hacerlo')
-    expect(onArchivado).not.toHaveBeenCalled()
+    expect(onFinalizado).not.toHaveBeenCalled()
   })
 })

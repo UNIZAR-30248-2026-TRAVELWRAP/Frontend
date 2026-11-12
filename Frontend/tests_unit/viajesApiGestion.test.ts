@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../src/services/authApi'
-import { archivarViaje, editarViaje, eliminarViaje } from '../src/services/viajesApi'
+import { archivarViaje, editarViaje, eliminarViaje, finalizarViaje } from '../src/services/viajesApi'
 
 const VIAJE_ID = '123e4567-e89b-12d3-a456-426614174000'
 
@@ -31,6 +31,19 @@ describe('viajesApi · editar, archivar y eliminar', () => {
     expect(opciones.method).toBe('PATCH')
     expect(opciones.headers.Authorization).toBe('Bearer token-acceso')
     expect(JSON.parse(opciones.body as string)).toEqual({ nombre: 'Roma 2028', fecha_fin: null })
+  })
+
+  it('finaliza el viaje con POST a /finalizar', async () => {
+    const fetchMock = vi.fn(() => respuesta(200, { id: VIAJE_ID, estado: 'finalizado' }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const viaje = await finalizarViaje(VIAJE_ID, 'token-acceso')
+
+    expect(viaje.estado).toBe('finalizado')
+    const [url, opciones] = llamada(fetchMock)
+    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/finalizar$`))
+    expect(opciones.method).toBe('POST')
+    expect(opciones.body).toBeUndefined()
   })
 
   it('archiva el viaje con POST a /archivar', async () => {

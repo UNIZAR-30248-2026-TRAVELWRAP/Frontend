@@ -10,6 +10,7 @@ type Viaje = Record<string, unknown> & { id: string; nombre: string; estado: str
 
 // Backend de viajes simulado en memoria para cada escenario
 let viajes: Viaje[] = [];
+let finalizados = 0;
 let archivados = 0;
 let eliminados: string[] = [];
 let fallaEliminar = false;
@@ -17,6 +18,7 @@ let rutaRegistrada = false;
 
 Before(() => {
   viajes = [];
+  finalizados = 0;
   archivados = 0;
   eliminados = [];
   fallaEliminar = false;
@@ -46,6 +48,19 @@ const responder = (cuerpo: unknown, status = 200) => ({
   body: cuerpo === undefined ? '' : JSON.stringify(cuerpo),
 });
 
+// Lo que pide el resumen de fin de viaje (sin gastos, sin fotos y sin pagos pendientes)
+const DATOS_DEL_RESUMEN: Record<string, unknown> = {
+  resumen: { dias: 4, gasto_total: 0, gasto_mayor: null, actividad_mas_votada: null, alma_del_grupo: null },
+  fotos: { fotos: [] },
+  balance: { saldos: [] },
+};
+
+const avanzarDiapositivas = async (veces: number): Promise<void> => {
+  if (veces === 0) return;
+  await paginaActual().keyboard.press('ArrowRight');
+  await avanzarDiapositivas(veces - 1);
+};
+
 const simularBackend = async () => {
   if (rutaRegistrada) return;
   rutaRegistrada = true;
@@ -66,6 +81,12 @@ const simularBackend = async () => {
       return route.fulfill(
         responder({ error: { codigo: 'viaje_no_encontrado', mensaje: 'El viaje no existe o no perteneces a él' } }, 404),
       );
+    }
+    if (accion && accion in DATOS_DEL_RESUMEN) return route.fulfill(responder(DATOS_DEL_RESUMEN[accion]));
+    if (accion === 'finalizar' && metodo === 'POST') {
+      finalizados += 1;
+      viaje.estado = 'finalizado';
+      return route.fulfill(responder(viaje));
     }
     if (accion === 'archivar' && metodo === 'POST') {
       archivados += 1;
@@ -99,6 +120,11 @@ Given('que tengo el viaje activo {string} con destino {string} y presupuesto {in
   await simularBackend();
 });
 
+Given('que tengo el viaje finalizado {string}', async (nombre: string) => {
+  viajes.push(nuevoViaje(nombre, { estado: 'finalizado' }));
+  await simularBackend();
+});
+
 Given('que tengo el viaje archivado {string}', async (nombre: string) => {
   viajes.push(nuevoViaje(nombre, { estado: 'archivado' }));
   await simularBackend();
@@ -128,9 +154,15 @@ When('abro el viaje {string} desde mis viajes', async (nombre: string) => {
   await expect(paginaActual()).toHaveURL(/\/viajes\/[^/]+$/);
 });
 
-When('abro el inicio del viaje archivado', async () => {
-  await expect(paginaActual()).toHaveURL(/\/viajes\/[^/]+\/resumen$/);
-  await irA(new URL(paginaActual().url()).pathname.replace(/\/resumen$/, ''));
+When('abro el inicio del viaje {string}', async (nombre: string) => {
+  await irA(`/viajes/${idDelViaje(nombre)}`);
+});
+
+When('llego al balance final del resumen del viaje {string}', async (nombre: string) => {
+  await irA(`/viajes/${idDelViaje(nombre)}/resumen`);
+  await expect(paginaActual().getByText('TravelWrap · Resumen')).toBeVisible();
+  await avanzarDiapositivas(6);
+  await expect(paginaActual().getByText('Balance final', { exact: true })).toBeVisible();
 });
 
 When('cambio el nombre a {string} y el presupuesto a {string}', async (nombre: string, presupuesto: string) => {
@@ -145,10 +177,6 @@ When('pongo como fecha de fin {string}', async (fecha: string) => {
 Then('estoy en el inicio del viaje', async () => {
   await expect(paginaActual()).toHaveURL(/\/viajes\/viaje-\d+$/);
   await expect(paginaActual().getByRole('navigation', { name: 'Secciones del viaje' })).toBeVisible();
-});
-
-Then('estoy en el resumen del viaje finalizado', async () => {
-  await expect(paginaActual()).toHaveURL(/\/viajes\/[^/]+\/resumen$/);
 });
 
 Then('estoy en la pantalla de viajes archivados', async () => {
@@ -169,6 +197,15 @@ Then('veo el viaje archivado {string}', async (nombre: string) => {
 
 Then('ya no veo el viaje archivado {string}', async (nombre: string) => {
   await expect(paginaActual().getByRole('button', { name: new RegExp(`^${nombre}`) })).toHaveCount(0);
+});
+
+Then('veo el viaje anterior {string}', async (nombre: string) => {
+  await expect(paginaActual().getByText('Viajes anteriores')).toBeVisible();
+  await expect(paginaActual().getByRole('button', { name: new RegExp(nombre) })).toBeVisible();
+});
+
+Then('el servidor ha finalizado {int} viaje', (cantidad: number) => {
+  expect(finalizados).toBe(cantidad);
 });
 
 Then('el servidor ha archivado {int} viaje', (cantidad: number) => {

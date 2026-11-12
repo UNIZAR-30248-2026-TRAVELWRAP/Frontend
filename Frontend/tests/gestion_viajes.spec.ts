@@ -77,6 +77,10 @@ const simularBackendViajes = async (page: Page, iniciales: ViajeSimulado[]) => {
     const actual = viajes.find((v) => v.id === id);
     if (!actual) return json(route, 404, { error: { codigo: 'viaje_no_encontrado', mensaje: 'El viaje no existe o no perteneces a él' } });
 
+    if (accion === 'finalizar' && metodo === 'POST') {
+      actual.estado = 'finalizado';
+      return json(route, 200, actual);
+    }
     if (accion === 'archivar' && metodo === 'POST') {
       actual.estado = 'archivado';
       return json(route, 200, actual);
@@ -136,7 +140,7 @@ test.describe('Inicio del viaje y su gestión', () => {
     });
   });
 
-  test('finalizar el viaje lo archiva: sale de Mis viajes y queda de solo lectura', async ({ page }) => {
+  test('finalizar el viaje lo deja en Viajes anteriores y de solo lectura', async ({ page }) => {
     await entrarConSesion(page);
     await simularBackendViajes(page, [viaje('roma', { nombre: 'Roma 2027' })]);
 
@@ -146,16 +150,37 @@ test.describe('Inicio del viaje y su gestión', () => {
     await expect(dialogo).toContainText('¿Finalizar este viaje?');
     await dialogo.getByRole('button', { name: 'Finalizar viaje' }).click();
 
-    await expect(page).toHaveURL(/\/viajes\/roma\/resumen$/);
-    await page.goto('/viajes/roma');
-    await expect(page.getByText(/Este viaje está archivado/)).toBeVisible();
-    await expect(page.getByRole('button', { name: /Editar viaje/ })).toHaveCount(0);
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByText('Viajes anteriores')).toBeVisible();
+    await expect(page.getByRole('button', { name: /Roma 2027/ })).toBeVisible();
 
-    await page.goto('/');
-    await expect(page.getByText('Aún no tienes viajes')).toBeVisible();
+    await page.goto('/viajes/roma');
+    await expect(page.getByText(/Este viaje está finalizado/)).toBeVisible();
+    await expect(page.getByRole('button', { name: /Editar viaje/ })).toHaveCount(0);
   });
 
-  test('cancelar el cierre no archiva el viaje', async ({ page }) => {
+  test('el creador archiva un viaje finalizado desde el final del wrap y va a Viajes archivados', async ({ page }) => {
+    await entrarConSesion(page);
+    const { peticiones } = await simularBackendViajes(page, [viaje('roma', { nombre: 'Roma 2027', estado: 'finalizado' })]);
+    await page.route('**/api/viajes/roma/resumen', (route) =>
+      json(route, 200, { dias: 4, gasto_total: 0, gasto_mayor: null, actividad_mas_votada: null, alma_del_grupo: null }),
+    );
+    await page.route('**/api/viajes/roma/fotos', (route) => json(route, 200, { fotos: [] }));
+    await page.route('**/api/viajes/roma/balance', (route) => json(route, 200, { saldos: [] }));
+
+    await page.goto('/viajes/roma/resumen');
+    for (let i = 0; i < 6; i++) await page.keyboard.press('ArrowRight');
+    await page.getByRole('button', { name: 'Archivar viaje' }).click();
+    const dialogo = page.getByRole('dialog');
+    await expect(dialogo).toContainText('¿Archivar este viaje?');
+    await dialogo.getByRole('button', { name: 'Archivar viaje' }).click();
+
+    await expect(page).toHaveURL(/\/viajes\/archivados$/);
+    await expect(page.getByRole('button', { name: 'Eliminar Roma 2027' })).toBeVisible();
+    expect(peticiones.some((p) => p.metodo === 'POST' && p.ruta === '/viajes/roma/archivar')).toBe(true);
+  });
+
+  test('cancelar el cierre no finaliza el viaje', async ({ page }) => {
     await entrarConSesion(page);
     const { peticiones } = await simularBackendViajes(page, [viaje('roma', { nombre: 'Roma 2027' })]);
 
@@ -165,7 +190,7 @@ test.describe('Inicio del viaje y su gestión', () => {
 
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page).toHaveURL(/\/viajes\/roma$/);
-    expect(peticiones.some((p) => p.ruta.endsWith('/archivar'))).toBe(false);
+    expect(peticiones.some((p) => p.ruta.endsWith('/finalizar'))).toBe(false);
   });
 
   test('desde el perfil se llega a los archivados y se elimina un viaje', async ({ page }) => {
