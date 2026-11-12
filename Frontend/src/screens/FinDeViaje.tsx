@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react"
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react"
 import Avatar from "../components/Avatar"
 import AvatarStack from "../components/AvatarStack"
 import BotonVolver from "../components/BotonVolver"
@@ -17,6 +17,14 @@ import { calcularTransferencias, listaDeNombres, textoDeDias, textoDeVotos } fro
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
 
 const MAX_FOTOS_VISIBLES = 6
+const DURACION_DIAPOSITIVA_MS = 5000
+const PULSACION_LARGA_MS = 300
+const FRANJA_ANTERIOR = 0.3
+const UMBRAL_ARRASTRE_PX = 8
+const FRACCION_PARA_CAMBIAR = 0.25
+const DURACION_AJUSTE_MS = 220
+
+const animacionReducida = () => typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
 
 type FinDeViajeProps = {
   viajeId: string
@@ -88,6 +96,17 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar 
   const [saldos, setSaldos] = useState<SaldoMiembro[]>([])
   const [error, setError] = useState("")
   const [pagina, setPagina] = useState(0)
+  const [pausado, setPausado] = useState(false)
+  const [pestanaOculta, setPestanaOculta] = useState(() => document.hidden)
+  const [angulo, setAngulo] = useState(0)
+  const [enMovimiento, setEnMovimiento] = useState(false)
+  const [soltado, setSoltado] = useState(false)
+  const [medidas, setMedidas] = useState({ ancho: 0, alto: 0 })
+  const ocupado = useRef(false)
+  const pulsacion = useRef<{ x: number; inicio: number; arrastrando: boolean; delta: number } | null>(null)
+  const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [reducido] = useState(() => animacionReducida())
+  const automatico = !reducido
 
   useEffect(() => {
     let vigente = true
@@ -341,7 +360,93 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar 
     return () => window.removeEventListener("keydown", alPulsar)
   }, [total])
 
-  const fondo = total > 0 ? FONDOS[pagina % FONDOS.length] : FONDOS[0]
+  useEffect(() => {
+    const alCambiar = () => setPestanaOculta(document.hidden)
+    document.addEventListener("visibilitychange", alCambiar)
+    return () => document.removeEventListener("visibilitychange", alCambiar)
+  }, [])
+
+  useEffect(() => () => {
+    if (temporizador.current) clearTimeout(temporizador.current)
+  }, [])
+
+  const conResistencia = (desplazado: number) => ((desplazado > 0 && !hayAnterior) || (desplazado < 0 && !haySiguiente) ? desplazado / 3 : desplazado)
+
+  const asentar = (destino: number, paso: number) => {
+    ocupado.current = true
+    setSoltado(true)
+    setAngulo(destino)
+    temporizador.current = setTimeout(() => {
+      setSoltado(false)
+      if (paso !== 0) setPagina((p) => p + paso)
+      setAngulo(0)
+      setEnMovimiento(false)
+      ocupado.current = false
+    }, DURACION_AJUSTE_MS)
+  }
+
+  const alPulsar = (evento: PointerEvent<HTMLDivElement>) => {
+    if (evento.button > 0 || ocupado.current) return
+    const caja = evento.currentTarget.getBoundingClientRect()
+    setMedidas({ ancho: caja.width, alto: caja.height })
+    pulsacion.current = { x: evento.clientX, inicio: Date.now(), arrastrando: false, delta: 0 }
+    setSoltado(false)
+    setPausado(true)
+    evento.currentTarget.setPointerCapture?.(evento.pointerId)
+  }
+
+  const alMover = (evento: PointerEvent<HTMLDivElement>) => {
+    const actual = pulsacion.current
+    if (!actual) return
+    const desplazado = evento.clientX - actual.x
+    if (!actual.arrastrando && Math.abs(desplazado) > UMBRAL_ARRASTRE_PX) {
+      actual.arrastrando = true
+      if (!reducido) setEnMovimiento(true)
+    }
+    if (!actual.arrastrando) return
+    actual.delta = conResistencia(desplazado)
+    if (!reducido && medidas.ancho > 0) {
+      const limitado = Math.min(Math.max(actual.delta, -medidas.ancho), medidas.ancho)
+      setAngulo((limitado / medidas.ancho) * 90)
+    }
+  }
+
+  const alSoltar = (evento: PointerEvent<HTMLDivElement>) => {
+    const actual = pulsacion.current
+    pulsacion.current = null
+    setPausado(false)
+    if (!actual) return
+    const caja = evento.currentTarget.getBoundingClientRect()
+    if (actual.arrastrando) {
+      const umbral = caja.width * FRACCION_PARA_CAMBIAR
+      let paso = 0
+      if (actual.delta <= -umbral && haySiguiente) paso = 1
+      else if (actual.delta >= umbral && hayAnterior) paso = -1
+      if (reducido) {
+        if (paso !== 0) setPagina(pagina + paso)
+      } else asentar(-paso * 90, paso)
+      return
+    }
+    if (Date.now() - actual.inicio > PULSACION_LARGA_MS) return
+    const aLaIzquierda = evento.clientX - caja.left < caja.width * FRANJA_ANTERIOR
+    setPagina((p) => Math.min(Math.max(p + (aLaIzquierda ? -1 : 1), 0), total - 1))
+  }
+
+  const alCancelar = () => {
+    const actual = pulsacion.current
+    pulsacion.current = null
+    setPausado(false)
+    if (actual?.arrastrando && !reducido) asentar(0, 0)
+  }
+
+  const avanzarSola = () => setPagina((p) => Math.min(p + 1, total - 1))
+
+  const ultimaFoto = fotos.reduce<Foto | null>((ultima, foto) => (!ultima || foto.creado_en > ultima.creado_en ? foto : ultima), null)
+  const fondoDe = (indice: number) =>
+    indice === 0 && ultimaFoto?.url
+      ? `linear-gradient(180deg, rgba(10,20,40,0.55) 0%, rgba(10,20,40,0.82) 100%), url("${ultimaFoto.url.replaceAll('"', "%22")}") center / cover no-repeat, ${C.navy}`
+      : FONDOS[indice % FONDOS.length]
+  const fondo = fondoDe(total > 0 ? pagina : 0)
 
   return (
     <div style={{ background: fondo, minHeight: "100dvh", display: "flex", justifyContent: "center" }}>
@@ -353,19 +458,33 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar 
           boxSizing: "border-box",
           display: "flex",
           flexDirection: "column",
-          padding: "16px 0 20px",
+          padding: "16px 0 0",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "0 20px 12px" }}>
           <BotonVolver onClick={onVolver} />
           {total > 0 && (
             <div aria-hidden="true" style={{ flex: 1, display: "flex", gap: 6 }}>
-              {diapositivas.map((_, i) => (
-                <div
-                  key={i}
-                  style={{ flex: 1, height: 4, borderRadius: 2, background: i <= pagina ? "white" : "rgba(255,255,255,0.3)" }}
-                />
-              ))}
+              <style>{`@keyframes wrap-progreso { from { width: 0 } to { width: 100% } }`}</style>
+              {diapositivas.map((_, i) => {
+                const rellenando = automatico && i === pagina
+                return (
+                  <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.3)", overflow: "hidden" }}>
+                    <div
+                      key={rellenando ? `activa-${pagina}` : "fija"}
+                      data-testid={rellenando ? "progreso-activo" : undefined}
+                      onAnimationEnd={rellenando ? avanzarSola : undefined}
+                      style={{
+                        height: "100%",
+                        background: "white",
+                        width: i < pagina || (i === pagina && !automatico) ? "100%" : 0,
+                        animation: rellenando ? `wrap-progreso ${DURACION_DIAPOSITIVA_MS}ms linear forwards` : undefined,
+                        animationPlayState: pausado || pestanaOculta ? "paused" : "running",
+                      }}
+                    />
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>
@@ -374,7 +493,23 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar 
           role="region"
           aria-label={total > 0 ? `Resumen del viaje, ${pagina + 1} de ${total}: ${diapositivas[pagina].titulo}` : "Resumen del viaje"}
           aria-live="polite"
-          style={{ flex: 1, display: "flex", flexDirection: "column" }}
+          onPointerDown={total > 0 ? alPulsar : undefined}
+          onPointerMove={total > 0 ? alMover : undefined}
+          onPointerUp={total > 0 ? alSoltar : undefined}
+          onPointerCancel={total > 0 ? alCancelar : undefined}
+          style={{
+            flex: enMovimiento ? "none" : 1,
+            height: enMovimiento ? medidas.alto : undefined,
+            perspective: enMovimiento ? medidas.ancho * 2 : undefined,
+            display: "flex",
+            flexDirection: "column",
+            position: "relative",
+            overflow: "hidden",
+            touchAction: "pan-y",
+            userSelect: "none",
+            WebkitTouchCallout: "none",
+            cursor: total > 0 ? "pointer" : undefined,
+          }}
         >
           {error && (
             <div style={{ padding: "0 20px" }}>
@@ -388,24 +523,53 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar 
               <p style={{ fontSize: 16, fontWeight: 700 }}>Preparando el resumen del viaje...</p>
             </div>
           )}
-          {total > 0 && <div style={{ ...estiloDiapositiva, flex: 1 }}>{diapositivas[pagina].contenido}</div>}
+          {total > 0 && !enMovimiento && <div style={{ ...estiloDiapositiva, flex: 1 }}>{diapositivas[pagina].contenido}</div>}
+          {total > 0 && enMovimiento && (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                transformStyle: "preserve-3d",
+                transform: `translateZ(${-medidas.ancho / 2}px) rotateY(${angulo}deg)`,
+                transition: soltado ? `transform ${DURACION_AJUSTE_MS}ms ease-out` : "none",
+              }}
+            >
+              {[-1, 0, 1].map((posicion) => {
+                const i = pagina + posicion
+                if (i < 0 || i >= total) return null
+                const sombra = Math.min(Math.abs(posicion * 90 + angulo) / 90, 1) * 0.5
+                return (
+                  <div
+                    key={i}
+                    aria-hidden={posicion === 0 ? undefined : "true"}
+                    style={{
+                      ...estiloDiapositiva,
+                      position: "absolute",
+                      inset: 0,
+                      boxSizing: "border-box",
+                      background: fondoDe(i),
+                      backfaceVisibility: "hidden",
+                      transform: `rotateY(${posicion * 90}deg) translateZ(${medidas.ancho / 2}px)`,
+                    }}
+                  >
+                    {diapositivas[i].contenido}
+                    <div
+                      aria-hidden="true"
+                      style={{ position: "absolute", inset: 0, background: "black", opacity: sombra, pointerEvents: "none", transition: soltado ? `opacity ${DURACION_AJUSTE_MS}ms ease-out` : "none" }}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
-        {total > 0 && (
-          <div style={{ display: "flex", gap: 10, padding: "12px 20px 0" }}>
-            <button type="button" onClick={() => setPagina(pagina - 1)} disabled={!hayAnterior} style={estiloBotonControl(hayAnterior)}>
-              Anterior
+        {total > 0 && !haySiguiente && (
+          <div style={{ display: "flex", padding: "12px 20px 20px" }}>
+            <button type="button" onClick={onTerminar} style={estiloBotonControl(true)}>
+              <Icon name="finish" size={18} color="white" strokeWidth={2} />
+              Ir a Mis viajes
             </button>
-            {haySiguiente ? (
-              <button type="button" onClick={() => setPagina(pagina + 1)} style={estiloBotonControl(true)}>
-                Siguiente
-              </button>
-            ) : (
-              <button type="button" onClick={onTerminar} style={estiloBotonControl(true)}>
-                <Icon name="finish" size={18} color="white" strokeWidth={2} />
-                Ir a Mis viajes
-              </button>
-            )}
           </div>
         )}
       </div>

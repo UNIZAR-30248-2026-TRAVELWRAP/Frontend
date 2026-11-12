@@ -96,6 +96,8 @@ const sinDesbordamiento = (page: Page) =>
   page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
 
 test.describe('Resumen de fin de viaje (Wrap)', () => {
+  test.use({ reducedMotion: 'reduce' });
+
   test('recorre las siete diapositivas y termina en Mis viajes', async ({ page }) => {
     await entrarConSesion(page);
     await simularBackend(page);
@@ -105,22 +107,22 @@ test.describe('Resumen de fin de viaje (Wrap)', () => {
     await expect(page.getByRole('heading', { name: 'Roma' })).toBeVisible();
     await expect(page.getByRole('region')).toHaveAccessibleName(/1 de 7: Portada/);
 
-    await page.getByRole('button', { name: 'Siguiente' }).click();
+    await page.keyboard.press('ArrowRight');
     await expect(page.getByText('días de aventura')).toBeVisible();
 
     await page.keyboard.press('ArrowRight');
     await expect(page.getByText(/Cena Trastevere/)).toBeVisible();
 
-    await page.getByRole('button', { name: 'Siguiente' }).click();
+    await page.keyboard.press('ArrowRight');
     await expect(page.getByText('3 votos')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Siguiente' }).click();
+    await page.keyboard.press('ArrowRight');
     await expect(page.getByRole('list', { name: 'Estadísticas de Berta' })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Siguiente' }).click();
+    await page.keyboard.press('ArrowRight');
     await expect(page.getByAltText('coliseo.jpg')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Siguiente' }).click();
+    await page.keyboard.press('ArrowRight');
     await expect(page.getByText('Adriana paga a Berta')).toBeVisible();
 
     await page.getByRole('button', { name: 'Ir a Mis viajes' }).click();
@@ -137,8 +139,7 @@ test.describe('Resumen de fin de viaje (Wrap)', () => {
 
     for (let i = 0; i < 6; i++) {
       expect(await sinDesbordamiento(page)).toBe(true);
-      await expect(page.getByRole('button', { name: 'Siguiente' })).toBeInViewport();
-      await page.getByRole('button', { name: 'Siguiente' }).click();
+      await page.keyboard.press('ArrowRight');
     }
     await expect(page.getByRole('button', { name: 'Ir a Mis viajes' })).toBeInViewport();
   });
@@ -150,6 +151,58 @@ test.describe('Resumen de fin de viaje (Wrap)', () => {
     await page.goto(`/viajes/${VIAJE_ID}/resumen`);
 
     await expect(page.getByRole('alert')).toContainText('No se ha podido preparar el resumen');
-    await expect(page.getByRole('button', { name: 'Siguiente' })).toHaveCount(0);
+    await expect(page.getByRole('region')).toBeVisible();
+  });
+
+  test.describe('como las historias', () => {
+    test.use({ reducedMotion: 'no-preference' });
+
+    const punto = async (page: Page, fraccion: number) => {
+      const caja = await page.getByRole('region').boundingBox();
+      return { x: (caja?.x ?? 0) + (caja?.width ?? 0) * fraccion, y: (caja?.y ?? 0) + (caja?.height ?? 0) / 2 };
+    };
+
+    test('se toca a los lados para pasar y la barra avanza sola a los 5 segundos', async ({ page }) => {
+      await entrarConSesion(page);
+      await simularBackend(page);
+
+      await page.goto(`/viajes/${VIAJE_ID}/resumen`);
+      await expect(page.getByRole('heading', { name: 'Roma' })).toBeVisible();
+
+      const derecha = await punto(page, 0.85);
+      await page.mouse.click(derecha.x, derecha.y);
+      await expect(page.getByRole('region')).toHaveAccessibleName(/2 de 7/);
+
+      const izquierda = await punto(page, 0.1);
+      await page.mouse.click(izquierda.x, izquierda.y);
+      await expect(page.getByRole('region')).toHaveAccessibleName(/1 de 7/);
+
+      await expect(page.getByRole('region')).toHaveAccessibleName(/2 de 7/, { timeout: 12000 });
+    });
+
+    test('al mantener pulsado y arrastrar se ve la historia vecina; al soltar se cambia, y si se devuelve a su sitio no', async ({ page }) => {
+      await entrarConSesion(page);
+      await simularBackend(page);
+
+      await page.goto(`/viajes/${VIAJE_ID}/resumen`);
+      await expect(page.getByRole('heading', { name: 'Roma' })).toBeVisible();
+      const inicio = await punto(page, 0.8);
+      const fin = await punto(page, 0.15);
+
+      await page.mouse.move(inicio.x, inicio.y);
+      await page.mouse.down();
+      await page.mouse.move(fin.x, fin.y, { steps: 8 });
+      await expect(page.getByText('días de aventura')).toBeVisible();
+      await page.mouse.move(inicio.x, inicio.y, { steps: 8 });
+      await page.mouse.up();
+      await expect(page.getByRole('region')).toHaveAccessibleName(/1 de 7/);
+
+      await page.mouse.move(inicio.x, inicio.y);
+      await page.mouse.down();
+      await page.mouse.move(fin.x, fin.y, { steps: 8 });
+      await page.mouse.up();
+      await expect(page.getByRole('region')).toHaveAccessibleName(/2 de 7/);
+      await expect(page.getByText('días de aventura')).toBeVisible();
+    });
   });
 });

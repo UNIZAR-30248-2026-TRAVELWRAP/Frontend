@@ -13,3 +13,13 @@ export const motivoParaNoSubirFoto = (archivo: File): string | null => {
 
 export const textoDeFotos = (fotos: number, miembros: number) =>
   `${fotos} ${fotos === 1 ? "foto" : "fotos"} · ${miembros} ${miembros === 1 ? "miembro" : "miembros"}`
+
+export const descripcionDeFoto = (subidoPor: string | null, creadoEn: string, miembros: { usuario_id: string; nombre: string | null }[]) => {
+  const fecha = new Date(creadoEn)
+  const dia = Number.isNaN(fecha.getTime()) ? "" : fecha.toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" }).replace(/\./g, "")
+  const nombre = miembros.find((m) => m.usuario_id === subidoPor)?.nombre ?? null
+  if (nombre && dia) return `Subida por ${nombre} · ${dia}`
+  if (nombre) return `Subida por ${nombre}`
+  if (dia) return `Subida el ${dia}`
+  return ""
+}

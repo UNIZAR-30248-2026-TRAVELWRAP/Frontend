@@ -196,6 +196,66 @@ describe('ChatGaleria: subida', () => {
     expect(await screen.findByRole('button', { name: 'Subir' })).toHaveProperty('disabled', false)
   })
 
+  it('el selector permite elegir varias fotos y se suben todas, la última elegida más arriba', async () => {
+    let numero = 0
+    const fetchMock = simularBackend({
+      subida: () => {
+        numero += 1
+        return json(201, foto({ id: `n${numero}`, nombre: `subida${numero}.jpg`, url: `https://storage.test/subida${numero}.jpg` }))
+      },
+    })
+    await abrir()
+    expect(selector().hasAttribute('multiple')).toBe(true)
+
+    await usuario().upload(selector(), [imagen('a.jpg', 'image/jpeg'), imagen('b.png', 'image/png'), imagen('c.webp')])
+
+    await waitFor(() => expect(miniaturas()).toHaveLength(5))
+    expect(subidas(fetchMock)).toHaveLength(3)
+    expect(within(miniaturas()[0]).getByRole('button', { name: 'Ampliar subida3.jpg' })).toBeTruthy()
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('con varias fotos indica el progreso mientras sube', async () => {
+    const resolvers: ((r: Response) => void)[] = []
+    simularBackend({ subida: () => new Promise<Response>((resolver) => resolvers.push(resolver)) })
+    await abrir()
+
+    await usuario().upload(selector(), [imagen('a.jpg', 'image/jpeg'), imagen('b.png', 'image/png')])
+
+    expect(await screen.findByRole('button', { name: 'Subiendo 1 de 2...' })).toHaveProperty('disabled', true)
+    resolvers[0](new Response(JSON.stringify(foto({ id: 'n1', nombre: 'a.jpg' })), { status: 201, headers: { 'Content-Type': 'application/json' } }))
+    expect(await screen.findByRole('button', { name: 'Subiendo 2 de 2...' })).toBeTruthy()
+    resolvers[1](new Response(JSON.stringify(foto({ id: 'n2', nombre: 'b.png' })), { status: 201, headers: { 'Content-Type': 'application/json' } }))
+    expect(await screen.findByRole('button', { name: 'Subir' })).toBeTruthy()
+  })
+
+  it('si alguna falla, sube las demás y avisa de cuáles no se han subido', async () => {
+    let llamadas = 0
+    const fetchMock = simularBackend({
+      subida: () => {
+        llamadas += 1
+        return llamadas === 1
+          ? json(201, foto({ id: 'n1', nombre: 'buena.jpg', url: 'https://storage.test/buena.jpg' }))
+          : json(502, { error: { codigo: 'error_foto', mensaje: 'No se ha podido guardar la foto' } })
+      },
+    })
+    await abrir()
+
+    await usuario().upload(selector(), [
+      imagen('buena.jpg', 'image/jpeg'),
+      imagen('billete.pdf', 'application/pdf'),
+      imagen('rota.png', 'image/png'),
+    ])
+
+    const alerta = await screen.findByRole('alert')
+    expect(alerta.textContent).toBe(
+      'No se han podido subir 2 de 3 fotos: billete.pdf (Solo se pueden subir fotos JPEG, PNG o WebP); rota.png (No se ha podido guardar la foto)',
+    )
+    expect(subidas(fetchMock)).toHaveLength(2)
+    expect(miniaturas()).toHaveLength(3)
+    expect(within(miniaturas()[0]).getByRole('button', { name: 'Ampliar buena.jpg' })).toBeTruthy()
+  })
+
   it('rechaza en el cliente un tipo no permitido, sin llamar al servidor', async () => {
     const fetchMock = simularBackend()
     await abrir()

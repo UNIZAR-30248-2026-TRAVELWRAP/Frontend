@@ -167,6 +167,24 @@ test.describe('Galería de fotos', () => {
     expect(recibidas[0].cuerpo).toContain('name="archivo"; filename="nueva.jpg"');
   });
 
+  test('se pueden elegir varias fotos a la vez y se suben todas', async ({ page }) => {
+    await entrarConSesion(page);
+    const { recibidas } = await simularBackend(page);
+
+    await page.goto(rutaGaleria);
+    await expect(miniaturas(page)).toHaveCount(3);
+    await expect(selector(page)).toHaveAttribute('multiple', '');
+    await selector(page).setInputFiles([
+      { ...JPEG, name: 'uno.jpg' },
+      { ...JPEG, name: 'dos.jpg' },
+      { ...JPEG, name: 'tres.jpg' },
+    ]);
+
+    await expect(miniaturas(page)).toHaveCount(6);
+    await expect(page.getByText('6 fotos · 2 miembros')).toBeVisible();
+    expect(recibidas.map((r) => /filename="([^"]+)"/.exec(r.cuerpo)?.[1])).toEqual(['uno.jpg', 'dos.jpg', 'tres.jpg']);
+  });
+
   test('un archivo que no es una foto se rechaza sin llamar al servidor', async ({ page }) => {
     await entrarConSesion(page);
     const { recibidas } = await simularBackend(page);
@@ -265,6 +283,7 @@ test.describe('Galería de fotos · ampliar una foto', () => {
     const visor = page.getByRole('dialog');
     await expect(visor).toHaveAccessibleName('Foto 2 de 3: trevi.jpg');
     await expect(visor.getByRole('img', { name: 'trevi.jpg' })).toBeVisible();
+    await expect(visor).toContainText('Subida por Berta · 12 may 2027');
 
     await page.keyboard.press('ArrowRight');
     await expect(visor).toHaveAccessibleName('Foto 3 de 3: coliseo.jpg');
@@ -278,6 +297,39 @@ test.describe('Galería de fotos · ampliar una foto', () => {
     await page.keyboard.press('Escape');
     await expect(visor).toHaveCount(0);
     await expect(miniaturas(page).first().getByRole('button')).toBeFocused();
+  });
+
+  test('en el visor se desliza con el dedo para pasar de foto, y si se devuelve no cambia', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularBackend(page);
+    await page.goto(rutaGaleria);
+    await page.getByRole('button', { name: 'Ampliar trevi.jpg' }).click();
+    const visor = page.getByRole('dialog');
+    await expect(visor).toHaveAccessibleName('Foto 2 de 3: trevi.jpg');
+
+    const caja = await page.getByTestId('zona-foto').boundingBox();
+    const y = (caja?.y ?? 0) + (caja?.height ?? 0) / 2;
+    const derecha = (caja?.x ?? 0) + (caja?.width ?? 0) * 0.8;
+    const izquierda = (caja?.x ?? 0) + (caja?.width ?? 0) * 0.1;
+
+    await page.mouse.move(derecha, y);
+    await page.mouse.down();
+    await page.mouse.move(izquierda, y, { steps: 6 });
+    await page.mouse.move(derecha, y, { steps: 6 });
+    await page.mouse.up();
+    await expect(visor).toHaveAccessibleName('Foto 2 de 3: trevi.jpg');
+
+    await page.mouse.move(derecha, y);
+    await page.mouse.down();
+    await page.mouse.move(izquierda, y, { steps: 6 });
+    await page.mouse.up();
+    await expect(visor).toHaveAccessibleName('Foto 3 de 3: coliseo.jpg');
+
+    await page.mouse.move(izquierda, y);
+    await page.mouse.down();
+    await page.mouse.move(derecha, y, { steps: 6 });
+    await page.mouse.up();
+    await expect(visor).toHaveAccessibleName('Foto 2 de 3: trevi.jpg');
   });
 
   test('con el botón se cierra y la página de fondo no hace scroll mientras está abierto', async ({ page }) => {

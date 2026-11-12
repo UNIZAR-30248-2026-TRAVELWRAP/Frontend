@@ -1,8 +1,8 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState, type PointerEvent } from "react"
 import Icon from "./Icon"
 import { NUNITO } from "../styles/tokens"
 
-export type FotoVisor = { id: string; url: string; nombre: string }
+export type FotoVisor = { id: string; url: string; nombre: string; descripcion?: string }
 
 type VisorFotosProps = {
   fotos: FotoVisor[]
@@ -10,6 +10,10 @@ type VisorFotosProps = {
   onCambiar: (indice: number) => void
   onCerrar: () => void
 }
+
+const FRACCION_PARA_CAMBIAR = 0.2
+const UMBRAL_ARRASTRE_PX = 8
+const DURACION_AJUSTE_MS = 180
 
 const estiloBoton = {
   width: 44,
@@ -29,6 +33,46 @@ export default function VisorFotos({ fotos, indice, onCambiar, onCerrar }: Visor
   const foto = fotos[indice]
   const hayAnterior = indice > 0
   const haySiguiente = indice < fotos.length - 1
+  const [desplazamiento, setDesplazamiento] = useState(0)
+  const [soltado, setSoltado] = useState(false)
+  const pulsacion = useRef<{ x: number; arrastrando: boolean; delta: number } | null>(null)
+  const sinMovimiento = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+
+  const conResistencia = (desplazado: number) => ((desplazado > 0 && !hayAnterior) || (desplazado < 0 && !haySiguiente) ? desplazado / 3 : desplazado)
+
+  const alPulsar = (evento: PointerEvent<HTMLDivElement>) => {
+    if (evento.button > 0) return
+    pulsacion.current = { x: evento.clientX, arrastrando: false, delta: 0 }
+    setSoltado(false)
+    evento.currentTarget.setPointerCapture?.(evento.pointerId)
+  }
+
+  const alMover = (evento: PointerEvent<HTMLDivElement>) => {
+    const actual = pulsacion.current
+    if (!actual) return
+    const desplazado = evento.clientX - actual.x
+    if (!actual.arrastrando && Math.abs(desplazado) > UMBRAL_ARRASTRE_PX) actual.arrastrando = true
+    if (!actual.arrastrando) return
+    actual.delta = conResistencia(desplazado)
+    setDesplazamiento(actual.delta)
+  }
+
+  const alSoltar = (evento: PointerEvent<HTMLDivElement>) => {
+    const actual = pulsacion.current
+    pulsacion.current = null
+    if (!actual?.arrastrando) return
+    const umbral = evento.currentTarget.getBoundingClientRect().width * FRACCION_PARA_CAMBIAR
+    setSoltado(true)
+    setDesplazamiento(0)
+    if (actual.delta <= -umbral && haySiguiente) onCambiar(indice + 1)
+    else if (actual.delta >= umbral && hayAnterior) onCambiar(indice - 1)
+  }
+
+  const alCancelar = () => {
+    pulsacion.current = null
+    setSoltado(true)
+    setDesplazamiento(0)
+  }
 
   useEffect(() => {
     botonCerrar.current?.focus()
@@ -85,7 +129,7 @@ export default function VisorFotos({ fotos, indice, onCambiar, onCerrar }: Visor
         </button>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "center", gap: 8, padding: "0 8px 16px" }}>
+      <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "center", gap: 8, padding: "0 8px 8px" }}>
         <button
           type="button"
           onClick={() => onCambiar(indice - 1)}
@@ -95,11 +139,37 @@ export default function VisorFotos({ fotos, indice, onCambiar, onCerrar }: Visor
         >
           <Icon name="arrow_left" size={20} color="white" strokeWidth={2.2} />
         </button>
-        <div style={{ flex: 1, minWidth: 0, height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div
+          data-testid="zona-foto"
+          onPointerDown={alPulsar}
+          onPointerMove={alMover}
+          onPointerUp={alSoltar}
+          onPointerCancel={alCancelar}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            height: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            touchAction: "pan-y",
+            userSelect: "none",
+            overflow: "hidden",
+          }}
+        >
           <img
             src={foto.url}
             alt={foto.nombre}
-            style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", display: "block", borderRadius: 8 }}
+            draggable={false}
+            style={{
+              maxWidth: "100%",
+              maxHeight: "100%",
+              objectFit: "contain",
+              display: "block",
+              borderRadius: 8,
+              transform: `translateX(${desplazamiento}px)`,
+              transition: soltado && !sinMovimiento ? `transform ${DURACION_AJUSTE_MS}ms ease-out` : "none",
+            }}
           />
         </div>
         <button
@@ -112,6 +182,21 @@ export default function VisorFotos({ fotos, indice, onCambiar, onCerrar }: Visor
           <Icon name="arrow_right" size={20} color="white" strokeWidth={2.2} />
         </button>
       </div>
+      <p
+        style={{
+          fontFamily: NUNITO,
+          color: "rgba(255,255,255,0.85)",
+          fontSize: 13,
+          fontWeight: 700,
+          textAlign: "center",
+          margin: 0,
+          padding: "0 16px 20px",
+          minHeight: 18,
+          overflowWrap: "anywhere",
+        }}
+      >
+        {foto.descripcion}
+      </p>
     </div>
   )
 }

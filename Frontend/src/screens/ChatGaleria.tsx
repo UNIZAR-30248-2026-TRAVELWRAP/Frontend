@@ -12,7 +12,7 @@ import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { estiloAlerta } from "../styles/formulario"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
-import { motivoParaNoSubirFoto, textoDeFotos, TIPOS_FOTO } from "../utils/galeria"
+import { descripcionDeFoto, motivoParaNoSubirFoto, textoDeFotos, TIPOS_FOTO } from "../utils/galeria"
 
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
 
@@ -43,6 +43,7 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
   const [errorSubida, setErrorSubida] = useState("")
   const selectorFoto = useRef<HTMLInputElement>(null)
   const [subiendo, setSubiendo] = useState(false)
+  const [progreso, setProgreso] = useState({ hechas: 0, total: 0 })
   const [fotoAbierta, setFotoAbierta] = useState<number | null>(null)
   const miniaturas = useRef<(HTMLButtonElement | null)[]>([])
 
@@ -67,6 +68,12 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
 
   const miembros = (viaje?.miembros ?? []).map((m, indice) => aMiembro(m.nombre, indice, m.avatar_url))
   const activo = viaje?.estado === "activo"
+  const fotosDelVisor = fotos.map((foto) => ({
+    id: foto.id,
+    url: foto.url,
+    nombre: foto.nombre,
+    descripcion: descripcionDeFoto(foto.subido_por, foto.creado_en, viaje?.miembros ?? []),
+  }))
 
   const cerrarVisor = () => {
     const cerrada = fotoAbierta
@@ -75,24 +82,38 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
   }
 
   const handleFotoElegida = async (evento: ChangeEvent<HTMLInputElement>) => {
-    const archivo = evento.target.files?.[0]
+    const archivos = Array.from(evento.target.files ?? [])
     evento.target.value = ""
-    if (!archivo) return
-    const motivo = motivoParaNoSubirFoto(archivo)
-    if (motivo) {
-      setErrorSubida(motivo)
-      return
-    }
+    if (archivos.length === 0) return
     setErrorSubida("")
     setSubiendo(true)
+    const fallos: { nombre: string; motivo: string }[] = []
     try {
-      const foto = await subirFoto(viajeId, archivo, tokenSesion)
-      if (conUrl(foto)) setFotos((anteriores) => [foto, ...anteriores])
-    } catch (e) {
-      setErrorSubida(`No se ha podido subir la foto: ${mensajeDeError(e)}`)
+      for (const [indice, archivo] of archivos.entries()) {
+        setProgreso({ hechas: indice, total: archivos.length })
+        const motivo = motivoParaNoSubirFoto(archivo)
+        if (motivo) {
+          fallos.push({ nombre: archivo.name, motivo })
+          continue
+        }
+        try {
+          const foto = await subirFoto(viajeId, archivo, tokenSesion)
+          if (conUrl(foto)) setFotos((anteriores) => [foto, ...anteriores])
+        } catch (e) {
+          fallos.push({ nombre: archivo.name, motivo: mensajeDeError(e) })
+        }
+      }
     } finally {
       setSubiendo(false)
     }
+    if (fallos.length === 0) return
+    if (archivos.length === 1) {
+      const [{ motivo }] = fallos
+      setErrorSubida(motivoParaNoSubirFoto(archivos[0]) ? motivo : `No se ha podido subir la foto: ${motivo}`)
+      return
+    }
+    const detalle = fallos.map((fallo) => `${fallo.nombre} (${fallo.motivo})`).join("; ")
+    setErrorSubida(`No se han podido subir ${fallos.length} de ${archivos.length} fotos: ${detalle}`)
   }
 
   return (
@@ -195,6 +216,7 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
                       type="file"
                       accept={TIPOS_FOTO.join(",")}
                       aria-label="Elegir la foto que se va a subir"
+                      multiple
                       onChange={handleFotoElegida}
                       hidden
                     />
@@ -221,7 +243,7 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
                       }}
                     >
                       <Icon name="plus" size={14} color="white" strokeWidth={2.5} />
-                      {subiendo ? "Subiendo..." : "Subir"}
+                      {subiendo ? (progreso.total > 1 ? `Subiendo ${progreso.hechas + 1} de ${progreso.total}...` : "Subiendo...") : "Subir"}
                     </button>
                   </>
                 )}
@@ -291,7 +313,7 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
       </div>
 
       {fotoAbierta !== null && (
-        <VisorFotos fotos={fotos} indice={fotoAbierta} onCambiar={setFotoAbierta} onCerrar={cerrarVisor} />
+        <VisorFotos fotos={fotosDelVisor} indice={fotoAbierta} onCambiar={setFotoAbierta} onCerrar={cerrarVisor} />
       )}
 
       <BarraInferior activa="mas" onCambiar={onCambiarSeccion} />
