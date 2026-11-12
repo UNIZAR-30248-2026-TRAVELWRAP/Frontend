@@ -1,6 +1,7 @@
 import { peticion } from "./authApi"
 
-export type EstadoViaje = "activo" | "finalizado" | "archivado"
+// Solo lo cambia el creador al finalizar: un viaje finalizado no vuelve a activo. Archivar es personal (ver archivado)
+export type EstadoViaje = "activo" | "finalizado"
 
 export type MiembroDelViaje = {
   usuario_id: string
@@ -27,6 +28,8 @@ export type Viaje = {
 
 export type ViajeDelUsuario = Viaje & {
   rol: "creador" | "miembro"
+  // true si el usuario lo ha archivado: es personal, los demás miembros lo ven por separado
+  archivado: boolean
   miembros: MiembroDelViaje[]
 }
 
@@ -39,10 +42,18 @@ export type NuevoViaje = {
   fecha_fin: string | null
 }
 
-export const listarViajes = (tokenSesion: string, estado?: EstadoViaje) =>
-  peticion<{ viajes: ViajeDelUsuario[] }>(`/viajes${estado ? `?estado=${estado}` : ""}`, {
+// Por defecto, los viajes que el usuario no ha archivado; con archivados: true, solo los que ha archivado
+export type OpcionesListarViajes = { estado?: EstadoViaje; archivados?: boolean }
+
+export const listarViajes = (tokenSesion: string, opciones: OpcionesListarViajes = {}) => {
+  const parametros = new URLSearchParams()
+  if (opciones.estado) parametros.set("estado", opciones.estado)
+  if (opciones.archivados !== undefined) parametros.set("archivados", String(opciones.archivados))
+  const consulta = parametros.toString()
+  return peticion<{ viajes: ViajeDelUsuario[] }>(`/viajes${consulta ? `?${consulta}` : ""}`, {
     token: tokenSesion,
   })
+}
 
 export const obtenerViaje = (viajeId: string, tokenSesion: string) =>
   peticion<ViajeDelUsuario>(`/viajes/${encodeURIComponent(viajeId)}`, { token: tokenSesion })
@@ -74,20 +85,21 @@ export const finalizarViaje = (viajeId: string, tokenSesion: string) =>
     token: tokenSesion,
   })
 
-// Archiva el viaje: pasa a «Viajes archivados», también de solo lectura (solo el creador)
+// Archiva el viaje solo para el usuario: pasa a su «Viajes archivados» (cualquier miembro, con el viaje finalizado)
 export const archivarViaje = (viajeId: string, tokenSesion: string) =>
   peticion<ViajeDelUsuario>(`/viajes/${encodeURIComponent(viajeId)}/archivar`, {
     metodo: "POST",
     token: tokenSesion,
   })
 
-// Devuelve un viaje archivado a activo (solo el creador)
+// Desarchiva el viaje solo para el usuario: vuelve a sus «Viajes anteriores» (sigue finalizado)
 export const desarchivarViaje = (viajeId: string, tokenSesion: string) =>
   peticion<ViajeDelUsuario>(`/viajes/${encodeURIComponent(viajeId)}/desarchivar`, {
     metodo: "POST",
     token: tokenSesion,
   })
 
-// Solo el creador, y solo viajes archivados. Responde 204 sin cuerpo
+// Elimina el viaje solo para el usuario, que debe tenerlo archivado (el último miembro lo borra de verdad).
+// Responde 204 sin cuerpo
 export const eliminarViaje = (viajeId: string, tokenSesion: string) =>
   peticion<null>(`/viajes/${encodeURIComponent(viajeId)}`, { metodo: "DELETE", token: tokenSesion })

@@ -26,7 +26,7 @@ export type ItinerarioGuardado = {
 }
 
 const ROLES = ["creador", "miembro"] as const
-const ESTADOS = ["activo", "finalizado", "archivado"] as const
+const ESTADOS = ["activo", "finalizado"] as const
 const VALORES_CATEGORIA = CATEGORIAS.map((c) => c.valor)
 
 const miembroValido = (valor: unknown): MiembroDelViaje => {
@@ -54,6 +54,8 @@ const viajeValido = (valor: unknown): ViajeDelUsuario => {
     creado_en: fechaHora(viaje.creado_en),
     pendiente_destino: booleano(viaje.pendiente_destino),
     rol: unoDe(ROLES)(viaje.rol),
+    // Las copias guardadas antes de MEJ-12 no lo tienen: se dan por no archivadas
+    archivado: viaje.archivado === undefined ? false : booleano(viaje.archivado),
     miembros: lista(miembroValido)(viaje.miembros),
   }
 }
@@ -114,6 +116,17 @@ export const leerItinerario = (viajeId: string): ItinerarioGuardado | null => {
     return valor ? itinerarioValido(JSON.parse(valor)) : null
   } catch {
     return null
+  }
+}
+
+// Quita solo la copia de un viaje (p. ej. al eliminarlo)
+export const borrarItinerario = (viajeId: string) => {
+  const clave = claveDe(viajeId)
+  if (!clave) return
+  try {
+    localStorage.removeItem(clave)
+  } catch {
+    return
   }
 }
 
