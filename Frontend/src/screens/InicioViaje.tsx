@@ -6,7 +6,7 @@ import DialogoConfirmacion from "../components/DialogoConfirmacion"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import { ApiError } from "../services/authApi"
-import { archivarViaje, obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
+import { finalizarViaje, obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro, formatearFechasActivo, formatearImporte } from "../utils/formatoViaje"
 
@@ -60,8 +60,8 @@ type InicioViajeProps = {
   onResumen?: () => void
   // Un viaje sin destino solo muestra la votación del destino
   onPendienteDestino?: () => void
-  // Tras finalizar el viaje (queda archivado)
-  onArchivado?: (viaje: ViajeDelUsuario) => void
+  // Tras finalizar el viaje (queda finalizado, en «Viajes anteriores»)
+  onFinalizado?: (viaje: ViajeDelUsuario) => void
   onCambiarSeccion?: (seccion: SeccionViaje) => void
 }
 
@@ -74,7 +74,7 @@ export default function InicioViaje({
   onVotaciones,
   onResumen,
   onPendienteDestino,
-  onArchivado,
+  onFinalizado,
   onCambiarSeccion,
 }: InicioViajeProps) {
   const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
@@ -107,10 +107,10 @@ export default function InicioViaje({
     setCerrando(true)
     setErrorFinalizar("")
     try {
-      const archivado = await archivarViaje(viajeId, tokenSesion)
-      setViaje(archivado)
+      const finalizado = await finalizarViaje(viajeId, tokenSesion)
+      setViaje(finalizado)
       setConfirmandoFinalizar(false)
-      onArchivado?.(archivado)
+      onFinalizado?.(finalizado)
     } catch (e) {
       setErrorFinalizar(mensajeDeError(e))
     } finally {
@@ -421,7 +421,7 @@ export default function InicioViaje({
           onConfirmar={handleFinalizarViaje}
           onCancelar={() => setConfirmandoFinalizar(false)}
         >
-          El viaje pasará a «Viajes archivados» y quedará de solo lectura: ya no se podrán editar sus datos ni añadir
+          El viaje pasará a «Viajes anteriores» en Mis viajes y quedará de solo lectura: ya no se podrán editar sus datos ni añadir
           actividades o gastos.
           <strong style={{ display: "block", color: C.red, marginTop: 6 }}>Esta acción no se puede deshacer.</strong>
         </DialogoConfirmacion>

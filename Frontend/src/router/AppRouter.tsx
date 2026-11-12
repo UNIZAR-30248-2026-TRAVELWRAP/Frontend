@@ -89,7 +89,7 @@ const RUTAS_DE_SECCION: Partial<Record<SeccionViaje, string>> = {
 const rutaDeSeccion = (viajeId: string, seccion: SeccionViaje) =>
   RUTAS_DE_SECCION[seccion] ? `/viajes/${viajeId}/${RUTAS_DE_SECCION[seccion]}` : `/viajes/${viajeId}`;
 
-// Inicio del viaje de la URL. Al finalizarlo queda archivado y se va a «Viajes archivados»
+// Inicio del viaje de la URL. Al finalizarlo queda en «Viajes anteriores» y se vuelve a «Mis viajes»
 function RutaInicioViaje({ sesion }: { sesion: Sesion }) {
   const { viajeId = "" } = useParams();
   const navigate = useNavigate();
@@ -105,7 +105,7 @@ function RutaInicioViaje({ sesion }: { sesion: Sesion }) {
       onResumen={() => navigate(`/viajes/${viajeId}/resumen`)}
       onCambiarSeccion={(seccion) => navigate(rutaDeSeccion(viajeId, seccion))}
       onPendienteDestino={() => navigate(`/viajes/${viajeId}/destino`, { replace: true })}
-      onArchivado={() => navigate(`/viajes/${viajeId}/resumen`)}
+      onFinalizado={() => navigate("/", { replace: true })}
     />
   );
 }
