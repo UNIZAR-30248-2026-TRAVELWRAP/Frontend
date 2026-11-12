@@ -6,9 +6,10 @@ import { paginaActual } from './login.steps';
 
 const USUARIO_ID = 'df77cba6-4be5-4cbc-814b-1e228dd73dcc';
 
-type Viaje = Record<string, unknown> & { id: string; nombre: string; estado: string };
+type Viaje = Record<string, unknown> & { id: string; nombre: string; estado: string; archivado: boolean };
 
-// Backend de viajes simulado en memoria para cada escenario
+// Backend de viajes simulado en memoria para cada escenario. Archivar y eliminar son personales:
+// `archivado` y `eliminado` son del usuario de la sesión y no cambian el estado del viaje
 let viajes: Viaje[] = [];
 let finalizados = 0;
 let archivados = 0;
@@ -42,6 +43,7 @@ const nuevoViaje = (nombre: string, datos: Record<string, unknown> = {}): Viaje 
   creado_en: '2026-10-12T10:00:00Z',
   pendiente_destino: false,
   rol: 'creador',
+  archivado: false,
   miembros: [{ usuario_id: USUARIO_ID, nombre: 'Adriana', avatar_url: null, rol: 'creador' }],
   ...datos,
 });
@@ -76,7 +78,10 @@ const simularBackend = async () => {
 
     if (ruta === '/viajes' && metodo === 'GET') {
       const estado = url.searchParams.get('estado');
-      return route.fulfill(responder({ viajes: viajes.filter((v) => !estado || v.estado === estado) }));
+      const archivados = url.searchParams.get('archivados') === 'true';
+      return route.fulfill(
+        responder({ viajes: viajes.filter((v) => (!estado || v.estado === estado) && v.archivado === archivados) }),
+      );
     }
 
     const [, , id, accion] = ruta.split('/');
@@ -94,7 +99,7 @@ const simularBackend = async () => {
     }
     if (accion === 'archivar' && metodo === 'POST') {
       archivados += 1;
-      viaje.estado = 'archivado';
+      viaje.archivado = true;
       return route.fulfill(responder(viaje));
     }
     if (accion === 'desarchivar' && metodo === 'POST') {
@@ -104,7 +109,7 @@ const simularBackend = async () => {
         );
       }
       desarchivados += 1;
-      viaje.estado = 'activo';
+      viaje.archivado = false;
       return route.fulfill(responder(viaje));
     }
     if (!accion && metodo === 'PATCH') {
@@ -139,8 +144,9 @@ Given('que tengo el viaje finalizado {string}', async (nombre: string) => {
   await simularBackend();
 });
 
+// Un viaje que el usuario ha archivado sigue finalizado: archivar solo lo saca de sus «Viajes anteriores»
 Given('que tengo el viaje archivado {string}', async (nombre: string) => {
-  viajes.push(nuevoViaje(nombre, { estado: 'archivado' }));
+  viajes.push(nuevoViaje(nombre, { estado: 'finalizado', archivado: true }));
   await simularBackend();
 });
 
@@ -157,10 +163,25 @@ Given('que soy miembro, pero no creador, del viaje activo {string}', async (nomb
   await simularBackend();
 });
 
+Given('que soy miembro, pero no creador, del viaje finalizado {string}', async (nombre: string) => {
+  viajes.push(
+    nuevoViaje(nombre, {
+      estado: 'finalizado',
+      rol: 'miembro',
+      miembros: [
+        { usuario_id: 'otro', nombre: 'Berta', avatar_url: null, rol: 'creador' },
+        { usuario_id: USUARIO_ID, nombre: 'Adriana', avatar_url: null, rol: 'miembro' },
+      ],
+    }),
+  );
+  await simularBackend();
+});
+
 Given('que soy miembro, pero no creador, del viaje archivado {string}', async (nombre: string) => {
   viajes.push(
     nuevoViaje(nombre, {
-      estado: 'archivado',
+      estado: 'finalizado',
+      archivado: true,
       rol: 'miembro',
       miembros: [
         { usuario_id: 'otro', nombre: 'Berta', avatar_url: null, rol: 'creador' },
@@ -231,9 +252,11 @@ Then('ya no veo el viaje archivado {string}', async (nombre: string) => {
   await expect(paginaActual().getByRole('button', { name: new RegExp(`^${nombre}`) })).toHaveCount(0);
 });
 
-Then('veo el viaje activo {string} en mis viajes', async (nombre: string) => {
-  await expect(paginaActual().getByRole('button', { name: new RegExp(nombre) })).toBeVisible();
-  await expect(paginaActual().getByText('Viajes anteriores')).toHaveCount(0);
+Then('veo el viaje anterior {string} en mis viajes, no en curso', async (nombre: string) => {
+  await expect(paginaActual().getByText('Viajes anteriores')).toBeVisible();
+  const tarjeta = paginaActual().getByRole('button', { name: new RegExp(nombre) });
+  await expect(tarjeta).toBeVisible();
+  await expect(tarjeta).not.toContainText('En curso');
 });
 
 Then('veo el viaje anterior {string}', async (nombre: string) => {

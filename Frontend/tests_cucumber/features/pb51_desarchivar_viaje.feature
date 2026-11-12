@@ -1,8 +1,8 @@
 # language: es
-Característica: Desarchivar un viaje (PB-51)
-  Como creador de un viaje archivado
+Característica: Desarchivar un viaje (PB-51 y MEJ-12)
+  Como viajero, sea o no el creador, que ha archivado un viaje
   Quiero desarchivarlo, confirmándolo antes
-  Para recuperarlo como viaje activo y poder editarlo de nuevo
+  Para volver a verlo en mis viajes anteriores, sin que cambie lo que ven los demás
 
   Antecedentes:
     Dado que existe un usuario registrado con email "adriana@travelwrap.app" y contraseña "secreta123"
@@ -21,7 +21,7 @@ Característica: Desarchivar un viaje (PB-51)
     Y veo el viaje archivado "Lisboa 2023"
     Y el servidor ha desarchivado 1 viaje
 
-  Escenario: El viaje desarchivado vuelve a Mis viajes y se puede editar
+  Escenario: El viaje desarchivado vuelve a Viajes anteriores y sigue de solo lectura
     Dado que tengo el viaje archivado "París 2024"
     Y que he iniciado sesión con el email "adriana@travelwrap.app" y la contraseña "secreta123"
     Cuando abro mi perfil
@@ -29,9 +29,10 @@ Característica: Desarchivar un viaje (PB-51)
     Y pulso el botón "Desarchivar París 2024"
     Y confirmo en el diálogo "Desarchivar viaje"
     Y abro mis viajes
-    Entonces veo el viaje activo "París 2024" en mis viajes
+    Entonces veo el viaje anterior "París 2024" en mis viajes, no en curso
     Cuando abro el inicio del viaje "París 2024"
-    Entonces veo el botón "Editar viaje"
+    Entonces veo el texto "Este viaje está finalizado"
+    Y no veo el botón "Editar viaje"
 
   Escenario: Cancelar el desarchivado
     Dado que tengo el viaje archivado "París 2024"
@@ -44,13 +45,16 @@ Característica: Desarchivar un viaje (PB-51)
     Y veo el viaje archivado "París 2024"
     Y el servidor ha desarchivado 0 viaje
 
-  Escenario: Un miembro que no es el creador no ve el botón
+  Escenario: Un miembro que no es el creador también puede desarchivarlo
     Dado que soy miembro, pero no creador, del viaje archivado "Lisboa 2023"
     Y que he iniciado sesión con el email "adriana@travelwrap.app" y la contraseña "secreta123"
     Cuando abro mi perfil
     Y pulso el botón "Viajes archivados"
     Entonces veo el viaje archivado "Lisboa 2023"
-    Y no veo el botón "Desarchivar Lisboa 2023"
+    Cuando pulso el botón "Desarchivar Lisboa 2023"
+    Y confirmo en el diálogo "Desarchivar viaje"
+    Entonces ya no veo el viaje archivado "Lisboa 2023"
+    Y el servidor ha desarchivado 1 viaje
 
   Escenario: El servidor no puede desarchivar el viaje
     Dado que tengo el viaje archivado "París 2024"

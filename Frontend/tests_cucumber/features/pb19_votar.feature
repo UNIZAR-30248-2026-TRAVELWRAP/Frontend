@@ -43,8 +43,8 @@ Característica: Votar y ver resultados en tiempo real (PB-19)
     Y la opción "12 – 15 mayo" de "¿Qué fin de semana salimos?" tiene 0 votos (0 %)
     Y en "¿Qué fin de semana salimos?" han votado 0 de 2 miembros
 
-  Escenario: En un viaje archivado se ven las votaciones pero no se puede votar
-    Dado que el viaje está archivado
+  Escenario: En un viaje finalizado se ven las votaciones pero no se puede votar
+    Dado que el viaje está finalizado
     Cuando entro en las votaciones del viaje
     Entonces veo la votación "¿Qué fin de semana salimos?"
     Y no veo el botón "Emitir voto"

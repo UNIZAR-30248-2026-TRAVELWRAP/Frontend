@@ -25,7 +25,7 @@ type Viaje = {
   id: string;
   nombre: string;
   destino: string | null;
-  estado: 'activo' | 'archivado';
+  estado: 'activo' | 'finalizado';
   rol: 'creador' | 'miembro';
   miembros: Miembro[];
 };
@@ -252,8 +252,8 @@ Given('que en realidad la creadora del viaje es Berta y yo solo soy miembro', ()
   for (const m of v.miembros) m.rol = m.usuario_id === BERTA ? 'creador' : 'miembro';
 });
 
-Given('que el viaje está archivado', () => {
-  elViaje().estado = 'archivado';
+Given('que el viaje está finalizado', () => {
+  elViaje().estado = 'finalizado';
 });
 
 Given('que el servidor rechaza los votos porque la votación se acaba de cerrar', () => {
