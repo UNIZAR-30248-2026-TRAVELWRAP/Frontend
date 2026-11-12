@@ -97,6 +97,7 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar 
   const [error, setError] = useState("")
   const [pagina, setPagina] = useState(0)
   const [pausado, setPausado] = useState(false)
+  const [pestanaOculta, setPestanaOculta] = useState(() => document.hidden)
   const [angulo, setAngulo] = useState(0)
   const [enMovimiento, setEnMovimiento] = useState(false)
   const [soltado, setSoltado] = useState(false)
@@ -359,6 +360,12 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar 
     return () => window.removeEventListener("keydown", alPulsar)
   }, [total])
 
+  useEffect(() => {
+    const alCambiar = () => setPestanaOculta(document.hidden)
+    document.addEventListener("visibilitychange", alCambiar)
+    return () => document.removeEventListener("visibilitychange", alCambiar)
+  }, [])
+
   useEffect(() => () => {
     if (temporizador.current) clearTimeout(temporizador.current)
   }, [])
@@ -472,7 +479,7 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar 
                         background: "white",
                         width: i < pagina || (i === pagina && !automatico) ? "100%" : 0,
                         animation: rellenando ? `wrap-progreso ${DURACION_DIAPOSITIVA_MS}ms linear forwards` : undefined,
-                        animationPlayState: pausado ? "paused" : "running",
+                        animationPlayState: pausado || pestanaOculta ? "paused" : "running",
                       }}
                     />
                   </div>

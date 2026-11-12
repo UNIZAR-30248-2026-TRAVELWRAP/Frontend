@@ -328,6 +328,22 @@ describe('FinDeViaje: como las historias', () => {
     expect(diapositivaActual()).toContain('7 de 7')
   })
 
+  it('la barra se pausa mientras la pestaña está oculta y sigue al volver', async () => {
+    simularBackend()
+    await abrir()
+    const ocultar = (oculta: boolean) => {
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => oculta })
+      fireEvent(document, new Event('visibilitychange'))
+    }
+
+    ocultar(true)
+    await waitFor(() => expect(screen.getByTestId('progreso-activo').style.animationPlayState).toBe('paused'))
+    ocultar(false)
+    await waitFor(() => expect(screen.getByTestId('progreso-activo').style.animationPlayState).toBe('running'))
+    expect(diapositivaActual()).toContain('1 de 7')
+    delete (document as unknown as Record<string, unknown>).hidden
+  })
+
   it('al acabar la barra pasa sola a la siguiente y en la última se queda', async () => {
     simularBackend()
     const alTerminar = vi.fn()
