@@ -25,13 +25,24 @@ describe('viajesApi', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     expect(await listarViajes('token-acceso')).toEqual({ viajes: [] })
-    await listarViajes('token-acceso', 'finalizado')
+    await listarViajes('token-acceso', { estado: 'finalizado' })
 
     const [url, opciones] = llamada(fetchMock)
     expect(url).toMatch(/\/viajes$/)
     expect(opciones.method).toBe('GET')
     expect(opciones.headers.Authorization).toBe('Bearer token-acceso')
     expect(fetchMock.mock.calls[1][0]).toMatch(/\/viajes\?estado=finalizado$/)
+  })
+
+  it('pide los viajes archivados del usuario con archivados=true y combina el filtro con el estado', async () => {
+    const fetchMock = vi.fn(() => respuesta(200, { viajes: [] }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await listarViajes('token-acceso', { archivados: true })
+    await listarViajes('token-acceso', { estado: 'finalizado', archivados: false })
+
+    expect(fetchMock.mock.calls[0][0]).toMatch(/\/viajes\?archivados=true$/)
+    expect(fetchMock.mock.calls[1][0]).toMatch(/\/viajes\?estado=finalizado&archivados=false$/)
   })
 
   it('obtiene el detalle de un viaje', async () => {

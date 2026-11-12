@@ -326,7 +326,7 @@ describe('ChatGaleria: subida', () => {
 
 describe('ChatGaleria: viaje finalizado', () => {
   it('se ven las fotos pero no se puede subir ninguna', async () => {
-    simularBackend({ viaje: () => json(200, { id: VIAJE_ID, nombre: 'Roma 2026', estado: 'archivado', miembros }) })
+    simularBackend({ viaje: () => json(200, { id: VIAJE_ID, nombre: 'Roma 2026', estado: 'finalizado', miembros }) })
     await abrir()
 
     expect(miniaturas()).toHaveLength(2)

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../src/services/authApi'
-import { archivarViaje, editarViaje, eliminarViaje, finalizarViaje } from '../src/services/viajesApi'
+import { archivarViaje, desarchivarViaje, editarViaje, eliminarViaje, finalizarViaje } from '../src/services/viajesApi'
 
 const VIAJE_ID = '123e4567-e89b-12d3-a456-426614174000'
 
@@ -47,15 +47,31 @@ describe('viajesApi · editar, archivar y eliminar', () => {
   })
 
   it('archiva el viaje con POST a /archivar', async () => {
-    const fetchMock = vi.fn(() => respuesta(200, { id: VIAJE_ID, estado: 'archivado' }))
+    const fetchMock = vi.fn(() => respuesta(200, { id: VIAJE_ID, estado: 'finalizado', archivado: true }))
     vi.stubGlobal('fetch', fetchMock)
 
     const viaje = await archivarViaje(VIAJE_ID, 'token-acceso')
 
-    expect(viaje.estado).toBe('archivado')
+    expect(viaje.estado).toBe('finalizado')
+    expect(viaje.archivado).toBe(true)
     const [url, opciones] = llamada(fetchMock)
     expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/archivar$`))
     expect(opciones.method).toBe('POST')
+    expect(opciones.body).toBeUndefined()
+  })
+
+  it('desarchiva el viaje con POST a /desarchivar y sigue finalizado', async () => {
+    const fetchMock = vi.fn(() => respuesta(200, { id: VIAJE_ID, estado: 'finalizado', archivado: false }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const viaje = await desarchivarViaje(VIAJE_ID, 'token-acceso')
+
+    expect(viaje.estado).toBe('finalizado')
+    expect(viaje.archivado).toBe(false)
+    const [url, opciones] = llamada(fetchMock)
+    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/desarchivar$`))
+    expect(opciones.method).toBe('POST')
+    expect(opciones.headers.Authorization).toBe('Bearer token-acceso')
     expect(opciones.body).toBeUndefined()
   })
 

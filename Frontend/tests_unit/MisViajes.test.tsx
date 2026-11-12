@@ -24,6 +24,7 @@ const viaje = (id: string, datos: Record<string, unknown> = {}) => ({
   creado_en: '2026-10-12T10:00:00Z',
   pendiente_destino: false,
   rol: 'creador',
+  archivado: false,
   miembros: [
     { usuario_id: 'u1', nombre: 'Daniel', avatar_url: null, rol: 'creador' },
     { usuario_id: 'u2', nombre: 'Berta', avatar_url: null, rol: 'miembro' },
@@ -57,7 +58,6 @@ describe('MisViajes', () => {
       viaje('azul', { nombre: 'Lisboa 2027' }),
       viaje('verde', { nombre: 'Verano 2027', destino: null, pendiente_destino: true }),
       viaje('fin', { nombre: 'Praga 2025', estado: 'finalizado', fecha_inicio: '2025-06-20', fecha_fin: '2025-06-24' }),
-      viaje('arch', { nombre: 'Archivado 2024', estado: 'archivado' }),
     ])
 
     render(<MisViajes tokenSesion="token-acceso" mostrarEjemplos={false} />)
@@ -76,8 +76,17 @@ describe('MisViajes', () => {
     expect(anterior.textContent).toContain('20–24 jun 2025')
     expect(anterior.textContent).toContain('2 viajeros')
 
-    expect(screen.queryByText('Archivado 2024')).toBeNull()
     expect(screen.getByText('Viajes activos')).toBeTruthy()
+  })
+
+  it('pide los viajes sin filtros: el servidor ya deja fuera los que el usuario ha archivado', async () => {
+    conViajes([viaje('azul', { nombre: 'Lisboa 2027' })])
+
+    render(<MisViajes tokenSesion="token-acceso" mostrarEjemplos={false} />)
+
+    await screen.findByRole('button', { name: /Lisboa 2027/ })
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>
+    expect((fetchMock.mock.calls[0] as unknown as [string])[0]).toMatch(/\/viajes$/)
   })
 
   it('mantiene los viajes de ejemplo junto a los reales mientras se desarrolla', async () => {

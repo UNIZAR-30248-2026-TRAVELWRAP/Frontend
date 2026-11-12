@@ -144,8 +144,8 @@ describe('Itinerario · asas para reordenar', () => {
     expect(screen.queryByRole('button', { name: /^Mover / })).toBeNull()
   })
 
-  it('en un viaje archivado no hay asas', async () => {
-    simularBackend([actividad('Paseo', { orden: 1 }), actividad('Compras', { orden: 2 })], { estado: 'archivado' })
+  it('en un viaje finalizado no hay asas', async () => {
+    simularBackend([actividad('Paseo', { orden: 1 }), actividad('Compras', { orden: 2 })], { estado: 'finalizado' })
     renderizar()
 
     await screen.findByText('Paseo')

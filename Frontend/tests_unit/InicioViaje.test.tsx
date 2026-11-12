@@ -119,12 +119,12 @@ describe('InicioViaje', () => {
     expect(screen.queryByRole('button', { name: 'Finalizar viaje' })).toBeNull()
   })
 
-  it('un viaje archivado es de solo lectura', async () => {
-    simularBackend({ estado: 'archivado' })
+  it('un viaje finalizado es de solo lectura', async () => {
+    simularBackend({ estado: 'finalizado' })
     renderizar()
 
-    expect(await screen.findByText(/Este viaje está archivado/)).toBeTruthy()
-    expect(screen.getByText('Archivado')).toBeTruthy()
+    expect(await screen.findByText(/Este viaje está finalizado/)).toBeTruthy()
+    expect(screen.getByText('Finalizado')).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Editar viaje/ })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Finalizar viaje' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Invitar' })).toBeNull()

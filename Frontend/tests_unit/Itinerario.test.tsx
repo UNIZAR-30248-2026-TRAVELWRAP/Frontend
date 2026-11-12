@@ -361,8 +361,8 @@ describe('Itinerario', () => {
     expect(onAnadirActividad).toHaveBeenCalledTimes(1)
   })
 
-  it('en un viaje archivado se consultan las actividades pero no se puede añadir', async () => {
-    simularBackend({ estado: 'archivado' })
+  it('en un viaje finalizado se consultan las actividades pero no se puede añadir', async () => {
+    simularBackend({ estado: 'finalizado' })
     renderizar()
 
     expect(await screen.findByText('Visita al Coliseo')).toBeTruthy()

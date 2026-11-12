@@ -16,7 +16,8 @@ const viaje = {
   destino: 'Roma',
   fecha_inicio: '2027-05-12',
   fecha_fin: '2027-05-15',
-  estado: 'archivado',
+  estado: 'finalizado',
+  archivado: false,
   miembros: [
     { usuario_id: BERTA, nombre: 'Berta', avatar_url: null, rol: 'creador' },
     { usuario_id: ADRIANA, nombre: 'Adriana', avatar_url: null, rol: 'miembro' },
@@ -49,7 +50,7 @@ const simularBackend = ({
   balance = saldos as unknown[],
   falla = false,
   datosViaje = {} as Record<string, unknown>,
-  archivar = () => json(200, { ...viaje, estado: 'archivado' }),
+  archivar = () => json(200, { ...viaje, estado: 'finalizado', archivado: true }),
 } = {}) =>
   vi.stubGlobal(
     'fetch',
@@ -149,29 +150,36 @@ describe('FinDeViaje: diapositivas', () => {
     expect(alTerminar).toHaveBeenCalledTimes(1)
   })
 
-  it('«Archivar viaje» solo aparece al creador con el viaje finalizado y en la última diapositiva', async () => {
-    simularBackend({ datosViaje: { estado: 'finalizado', rol: 'creador' } })
+  it('«Archivar viaje» solo aparece en la última diapositiva, con el viaje finalizado y sin archivar', async () => {
+    simularBackend({ datosViaje: { rol: 'creador' } })
     await abrir()
     expect(screen.queryByRole('button', { name: 'Archivar viaje' })).toBeNull()
     await siguiente(6)
     expect(screen.getByRole('button', { name: 'Archivar viaje' })).toBeTruthy()
     cleanup()
 
-    for (const datosViaje of [
-      { estado: 'finalizado', rol: 'miembro' },
-      { estado: 'archivado', rol: 'creador' },
-    ]) {
-      simularBackend({ datosViaje })
-      await abrir()
-      await siguiente(6)
-      expect(screen.getByRole('button', { name: 'Ir a Mis viajes' })).toBeTruthy()
-      expect(screen.queryByRole('button', { name: 'Archivar viaje' })).toBeNull()
-      cleanup()
-    }
+    simularBackend({ datosViaje: { rol: 'creador', archivado: true } })
+    await abrir()
+    await siguiente(6)
+    expect(screen.getByRole('button', { name: 'Ir a Mis viajes' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Archivar viaje' })).toBeNull()
+  })
+
+  it('un miembro que no es el creador también puede archivar el viaje para sí mismo', async () => {
+    simularBackend({ datosViaje: { rol: 'miembro' } })
+    const alArchivar = vi.fn()
+    await abrir({ onArchivado: alArchivar })
+    await siguiente(6)
+    const usuario = userEvent.setup()
+
+    await usuario.click(screen.getByRole('button', { name: 'Archivar viaje' }))
+    await usuario.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Archivar viaje' }))
+
+    await waitFor(() => expect(alArchivar).toHaveBeenCalledTimes(1))
   })
 
   it('pide confirmación, archiva el viaje y avisa con onArchivado', async () => {
-    simularBackend({ datosViaje: { estado: 'finalizado', rol: 'creador' } })
+    simularBackend({ datosViaje: { rol: 'creador' } })
     const alArchivar = vi.fn()
     await abrir({ onArchivado: alArchivar })
     await siguiente(6)
@@ -180,7 +188,8 @@ describe('FinDeViaje: diapositivas', () => {
     await usuario.click(screen.getByRole('button', { name: 'Archivar viaje' }))
     const ventana = screen.getByRole('dialog')
     expect(ventana.textContent).toContain('¿Archivar este viaje?')
-    expect(ventana.textContent).toContain('Roma 2027 pasará a «Viajes archivados»')
+    expect(ventana.textContent).toContain('Roma 2027 pasará a «Viajes archivados» solo en tu perfil')
+    expect(ventana.textContent).toContain('Los demás viajeros lo seguirán viendo como ahora')
     await usuario.click(within(ventana).getByRole('button', { name: 'Cancelar' }))
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(alArchivar).not.toHaveBeenCalled()
@@ -195,8 +204,8 @@ describe('FinDeViaje: diapositivas', () => {
 
   it('si no se puede archivar muestra el error en el diálogo y no avisa', async () => {
     simularBackend({
-      datosViaje: { estado: 'finalizado', rol: 'creador' },
-      archivar: () => json(403, { error: { codigo: 'no_creador', mensaje: 'Solo el creador del viaje puede hacerlo' } }),
+      datosViaje: { rol: 'creador' },
+      archivar: () => json(409, { error: { codigo: 'viaje_archivado', mensaje: 'El viaje ya está archivado' } }),
     })
     const alArchivar = vi.fn()
     await abrir({ onArchivado: alArchivar })
@@ -207,7 +216,7 @@ describe('FinDeViaje: diapositivas', () => {
     await usuario.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Archivar viaje' }))
 
     const alerta = await within(screen.getByRole('dialog')).findByRole('alert')
-    expect(alerta.textContent).toBe('Solo el creador del viaje puede hacerlo')
+    expect(alerta.textContent).toBe('El viaje ya está archivado')
     expect(alArchivar).not.toHaveBeenCalled()
   })
 

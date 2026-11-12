@@ -69,8 +69,8 @@ describe('CarteraDocumentos: botón de eliminar', () => {
     expect(screen.getByRole('button', { name: 'Eliminar Seguro.pdf' })).toBeTruthy()
   })
 
-  it('no hay botón con el viaje archivado', async () => {
-    simularBackend({ estado: 'archivado' })
+  it('no hay botón con el viaje finalizado', async () => {
+    simularBackend({ estado: 'finalizado' })
     await abrir()
     expect(filas()).toHaveLength(2)
     expect(screen.queryByRole('button', { name: /^Eliminar / })).toBeNull()

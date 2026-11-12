@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ViajesArchivados from '../src/screens/ViajesArchivados'
+import { guardarItinerario, leerItinerario } from '../src/services/itinerarioGuardado'
 
 const respuesta = (estado: number, cuerpo?: unknown) =>
   Promise.resolve(
@@ -19,10 +20,11 @@ const viaje = (id: string, datos: Record<string, unknown> = {}) => ({
   fecha_fin: '2024-06-24',
   moneda: 'EUR',
   presupuesto: 1240,
-  estado: 'archivado',
+  estado: 'finalizado',
   creado_en: '2024-05-01T10:00:00Z',
   pendiente_destino: false,
   rol: 'creador',
+  archivado: true,
   miembros: [
     { usuario_id: 'u1', nombre: 'Adriana', avatar_url: null, rol: 'creador' },
     { usuario_id: 'u2', nombre: 'Daniel', avatar_url: null, rol: 'miembro' },
@@ -44,6 +46,7 @@ const dialogo = () => screen.queryByRole('dialog')
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
+  localStorage.clear()
 })
 
 describe('ViajesArchivados', () => {
@@ -57,7 +60,7 @@ describe('ViajesArchivados', () => {
     expect(tarjeta.textContent).toContain('2 viajeros')
     expect(tarjeta.textContent).toContain('1.240 €')
     expect(screen.getByText('1 viaje guardado')).toBeTruthy()
-    expect((fetchMock.mock.calls[0] as unknown as [string])[0]).toMatch(/\/viajes\?estado=archivado$/)
+    expect((fetchMock.mock.calls[0] as unknown as [string])[0]).toMatch(/\/viajes\?archivados=true$/)
   })
 
   it('muestra un estado vacío si no hay viajes archivados', async () => {
@@ -66,6 +69,7 @@ describe('ViajesArchivados', () => {
     render(<ViajesArchivados tokenSesion="token-acceso" />)
 
     expect(await screen.findByText('No tienes viajes archivados')).toBeTruthy()
+    expect(screen.getByText('Cuando archives un viaje finalizado aparecerá aquí.')).toBeTruthy()
   })
 
   it('avisa si no se pueden cargar', async () => {
@@ -92,13 +96,13 @@ describe('ViajesArchivados', () => {
 })
 
 describe('ViajesArchivados · eliminar con confirmación', () => {
-  it('solo el creador ve el botón de eliminar', async () => {
+  it('cualquier miembro ve el botón de eliminar, sea o no el creador', async () => {
     simularBackend([viaje('mio', { nombre: 'Mío' }), viaje('ajeno', { nombre: 'Ajeno', rol: 'miembro' })])
 
     render(<ViajesArchivados tokenSesion="token-acceso" />)
 
     expect(await screen.findByRole('button', { name: 'Eliminar Mío' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Eliminar Ajeno' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Eliminar Ajeno' })).toBeTruthy()
   })
 
   it('pide confirmación y al cancelar no borra nada', async () => {
@@ -108,9 +112,9 @@ describe('ViajesArchivados · eliminar con confirmación', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Eliminar París 2024' }))
     const ventana = dialogo()!
-    expect(within(ventana).getByText('¿Eliminar este viaje?')).toBeTruthy()
-    expect(ventana.textContent).toContain('París 2024')
-    expect(ventana.textContent).toContain('Esta acción no se puede deshacer.')
+    expect(within(ventana).getByText('¿Eliminar este viaje para ti?')).toBeTruthy()
+    expect(ventana.textContent).toContain('¿Quieres eliminar París 2024 para ti?')
+    expect(ventana.textContent).toContain('Dejará de aparecer en tu cuenta y no podrás recuperarlo')
 
     await user.click(within(ventana).getByRole('button', { name: 'Cancelar' }))
 
@@ -119,9 +123,11 @@ describe('ViajesArchivados · eliminar con confirmación', () => {
     expect(screen.getByRole('button', { name: /^París 2024/ })).toBeTruthy()
   })
 
-  it('al confirmar borra el viaje en el backend y lo quita de la lista', async () => {
+  it('al confirmar elimina el viaje en el backend, lo quita de la lista y borra su copia sin conexión', async () => {
     const user = userEvent.setup()
     const fetchMock = simularBackend([viaje('a', { nombre: 'París 2024' }), viaje('b', { nombre: 'Lisboa 2023' })])
+    guardarItinerario('a', { viaje: viaje('a') as never, actividades: [], guardadoEn: '2024-06-01T10:00:00.000Z' })
+    guardarItinerario('b', { viaje: viaje('b') as never, actividades: [], guardadoEn: '2024-06-01T10:00:00.000Z' })
     render(<ViajesArchivados tokenSesion="token-acceso" />)
 
     await user.click(await screen.findByRole('button', { name: 'Eliminar París 2024' }))
@@ -135,6 +141,8 @@ describe('ViajesArchivados · eliminar con confirmación', () => {
     expect(url).toMatch(/\/viajes\/a$/)
     expect(opciones.method).toBe('DELETE')
     expect(opciones.headers.Authorization).toBe('Bearer token-acceso')
+    expect(leerItinerario('a')).toBeNull()
+    expect(leerItinerario('b')?.viaje.id).toBe('b')
   })
 
   it('si el backend no lo borra muestra el error y mantiene el viaje', async () => {
@@ -150,10 +158,25 @@ describe('ViajesArchivados · eliminar con confirmación', () => {
     expect((await within(dialogo()!).findByRole('alert')).textContent).toBe('No se ha podido eliminar el viaje')
     expect(screen.getByRole('button', { name: /^París 2024/ })).toBeTruthy()
   })
+
+  it('si no se elimina conserva la copia sin conexión del viaje', async () => {
+    const user = userEvent.setup()
+    simularBackend([viaje('a', { nombre: 'París 2024' })], () =>
+      respuesta(502, { error: { codigo: 'error_viaje', mensaje: 'No se ha podido eliminar el viaje' } }),
+    )
+    guardarItinerario('a', { viaje: viaje('a') as never, actividades: [], guardadoEn: '2024-06-01T10:00:00.000Z' })
+    render(<ViajesArchivados tokenSesion="token-acceso" />)
+
+    await user.click(await screen.findByRole('button', { name: 'Eliminar París 2024' }))
+    await user.click(within(dialogo()!).getByRole('button', { name: 'Eliminar viaje' }))
+
+    await within(dialogo()!).findByRole('alert')
+    expect(leerItinerario('a')?.viaje.id).toBe('a')
+  })
 })
 
 // GET devuelve los archivados y POST /desarchivar la respuesta indicada
-const simularBackendDesarchivar = (viajes: unknown[], desarchivar = () => respuesta(200, viaje('a', { estado: 'activo' }))) => {
+const simularBackendDesarchivar = (viajes: unknown[], desarchivar = () => respuesta(200, viaje('a', { archivado: false }))) => {
   const fetchMock = vi.fn((_url: string, opciones?: RequestInit) =>
     opciones?.method === 'POST' ? desarchivar() : respuesta(200, { viajes }),
   )
@@ -162,13 +185,13 @@ const simularBackendDesarchivar = (viajes: unknown[], desarchivar = () => respue
 }
 
 describe('ViajesArchivados · desarchivar con confirmación', () => {
-  it('solo el creador ve el botón de desarchivar', async () => {
+  it('cualquier miembro ve el botón de desarchivar, sea o no el creador', async () => {
     simularBackendDesarchivar([viaje('mio', { nombre: 'Mío' }), viaje('ajeno', { nombre: 'Ajeno', rol: 'miembro' })])
 
     render(<ViajesArchivados tokenSesion="token-acceso" />)
 
     expect(await screen.findByRole('button', { name: 'Desarchivar Mío' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Desarchivar Ajeno' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Desarchivar Ajeno' })).toBeTruthy()
   })
 
   it('pide confirmación y al cancelar no desarchiva nada', async () => {
@@ -179,7 +202,8 @@ describe('ViajesArchivados · desarchivar con confirmación', () => {
     await user.click(await screen.findByRole('button', { name: 'Desarchivar París 2024' }))
     const ventana = dialogo()!
     expect(within(ventana).getByText('¿Desarchivar este viaje?')).toBeTruthy()
-    expect(ventana.textContent).toContain('París 2024 volverá a Mis viajes como activo y se podrá editar de nuevo')
+    expect(ventana.textContent).toContain('París 2024 volverá a Viajes anteriores, solo para ti')
+    expect(ventana.textContent).not.toContain('activo')
 
     await user.click(within(ventana).getByRole('button', { name: 'Cancelar' }))
 

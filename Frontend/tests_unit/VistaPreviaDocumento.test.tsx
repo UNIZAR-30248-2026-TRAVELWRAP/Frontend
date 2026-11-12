@@ -267,8 +267,8 @@ describe('CarteraDocumentos: abrir y descargar', () => {
     expect((await screen.findByRole('alert')).textContent).toMatch(/ya no existe/)
   })
 
-  it('en un viaje archivado también se puede abrir un documento', async () => {
-    await abrirCartera('archivado')
+  it('en un viaje finalizado también se puede abrir un documento', async () => {
+    await abrirCartera('finalizado')
 
     await userEvent.click(screen.getByRole('button', { name: 'Abrir Foto del hotel.png' }))
 

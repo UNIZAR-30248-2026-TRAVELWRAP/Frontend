@@ -272,8 +272,8 @@ describe('AnadirActividad · modo edición', () => {
     expect(screen.queryByLabelText('Nombre de la actividad')).toBeNull()
   })
 
-  it('en un viaje archivado avisa de que ya no se pueden modificar actividades', async () => {
-    simularBackend({ estado: 'archivado' })
+  it('en un viaje finalizado avisa de que ya no se pueden modificar actividades', async () => {
+    simularBackend({ estado: 'finalizado' })
     renderizar()
 
     expect((await screen.findByRole('alert')).textContent).toBe(
