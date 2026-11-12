@@ -9,6 +9,7 @@ import ProponerOpcion from "../components/ProponerOpcion"
 import { ApiError } from "../services/authApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import {
+  cambiarTipoVotacion,
   cerrarVotacion,
   listarVotaciones,
   obtenerVotacion,
@@ -20,7 +21,10 @@ import {
 import { escucharVotaciones } from "../services/votacionesTiempoReal"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
-import { conPorcentajes, enumerar, opcionesGanadoras } from "../utils/votaciones"
+import { conPorcentajes, enumerar, opcionesGanadoras, TIPOS_ELEGIBLES } from "../utils/votaciones"
+import { estiloDesplegable } from "../styles/formulario"
+
+type TipoCreable = (typeof TIPOS_ELEGIBLES)[number]["tipo"]
 import BotonVolver from "../components/BotonVolver"
 
 const FILTROS: { texto: string; tipo: TipoVotacion | null }[] = [
@@ -55,6 +59,7 @@ export default function Votaciones({ viajeId, tokenSesion, onVolver, onCrearVota
   const [porCerrar, setPorCerrar] = useState<Votacion | null>(null)
   const [cerrando, setCerrando] = useState(false)
   const [errorCierre, setErrorCierre] = useState("")
+  const [cambiandoTipo, setCambiandoTipo] = useState<string | null>(null)
 
   useEffect(() => {
     let vigente = true
@@ -128,6 +133,19 @@ export default function Votaciones({ viajeId, tokenSesion, onVolver, onCrearVota
       setErroresVoto((errores) => ({ ...errores, [votacion.id]: mensajeDeError(e) }))
     } finally {
       setVotando(null)
+    }
+  }
+
+  const cambiarTipo = async (votacion: Votacion, tipo: TipoCreable) => {
+    if (tipo === votacion.tipo) return
+    setCambiandoTipo(votacion.id)
+    setErroresVoto((errores) => ({ ...errores, [votacion.id]: "" }))
+    try {
+      reemplazar(await cambiarTipoVotacion(viajeId, votacion.id, tipo, tokenSesion))
+    } catch (e) {
+      setErroresVoto((errores) => ({ ...errores, [votacion.id]: mensajeDeError(e) }))
+    } finally {
+      setCambiandoTipo(null)
     }
   }
 
@@ -272,6 +290,27 @@ export default function Votaciones({ viajeId, tokenSesion, onVolver, onCrearVota
                     </Badge>
                   </div>
                   <Heading size={15}>{votacion.titulo}</Heading>
+                  {/* El creador del viaje puede cambiar el tipo mientras la votación está abierta (la de destino no) */}
+                  {editable && esCreador && votacion.tipo !== "destino" && (
+                    <select
+                      aria-label={`Tipo de la votación ${votacion.titulo}`}
+                      value={votacion.tipo === "presupuesto" ? "" : votacion.tipo}
+                      disabled={cambiandoTipo === votacion.id}
+                      onChange={(event) => cambiarTipo(votacion, event.target.value as TipoCreable)}
+                      style={{ ...estiloDesplegable, fontSize: 13, padding: "8px 36px 8px 12px", backgroundPosition: "right 14px center", marginTop: 10 }}
+                    >
+                      {votacion.tipo === "presupuesto" && (
+                        <option value="" disabled>
+                          Presupuesto
+                        </option>
+                      )}
+                      {TIPOS_ELEGIBLES.map(({ tipo, texto }) => (
+                        <option key={tipo} value={tipo}>
+                          {texto}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                   {votacion.descripcion && (
                     <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, marginTop: 4, lineHeight: 1.5 }}>
                       {votacion.descripcion}

@@ -8,17 +8,11 @@ import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { crearVotacion, type NuevaVotacion, type Votacion } from "../services/votacionesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
+import { TIPOS_ELEGIBLES } from "../utils/votaciones"
 import BotonVolver from "../components/BotonVolver"
-import { estiloCampo, estiloEtiqueta } from "../styles/formulario"
+import { estiloCampo, estiloDesplegable, estiloEtiqueta } from "../styles/formulario"
 
 type TipoCreable = NonNullable<NuevaVotacion["tipo"]>
-
-// La de destino no se crea a mano: se abre sola al crear un viaje sin destino
-const TIPOS: { tipo: TipoCreable; texto: string }[] = [
-  { tipo: "fecha", texto: "Fechas" },
-  { tipo: "actividad", texto: "Actividades" },
-  { tipo: "otro", texto: "Otro" },
-]
 
 const MAX_PREGUNTA = 200
 const MAX_OPCION = 100
@@ -56,7 +50,7 @@ type CrearVotacionProps = {
 
 export default function CrearVotacion({ viajeId, tokenSesion, onVolver, onCreada }: CrearVotacionProps) {
   const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
-  const [tipo, setTipo] = useState<TipoCreable>("fecha")
+  const [tipo, setTipo] = useState<TipoCreable>("otro")
   const [pregunta, setPregunta] = useState("")
   const [opciones, setOpciones] = useState<OpcionEnEdicion[]>([opcionVacia(), opcionVacia()])
   const [enviando, setEnviando] = useState(false)
@@ -119,7 +113,7 @@ export default function CrearVotacion({ viajeId, tokenSesion, onVolver, onCreada
       <div style={{ maxWidth: 480, margin: "0 auto" }}>
         {/* Cabecera con el tipo de votación */}
         <div style={{ background: GRADIENTS.header, padding: "20px 20px 24px", borderRadius: RADIUS.header }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <BotonVolver onClick={onVolver} />
             <div>
               <div
@@ -139,39 +133,27 @@ export default function CrearVotacion({ viajeId, tokenSesion, onVolver, onCreada
               </Heading>
             </div>
           </div>
-          <div role="radiogroup" aria-label="Tipo de votación" style={{ display: "flex", gap: 8, overflowX: "auto" }}>
-            {TIPOS.map(({ tipo: valor, texto }) => {
-              const activo = tipo === valor
-              return (
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={activo}
-                  key={valor}
-                  onClick={() => setTipo(valor)}
-                  style={{
-                    background: activo ? "white" : "rgba(255,255,255,0.18)",
-                    color: activo ? C.blue : "rgba(255,255,255,0.85)",
-                    border: "none",
-                    borderRadius: 999,
-                    padding: "8px 16px",
-                    fontFamily: NUNITO,
-                    fontWeight: 700,
-                    fontSize: 12,
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                    transition: "all 0.2s",
-                    flexShrink: 0,
-                  }}
-                >
-                  {texto}
-                </button>
-              )
-            })}
-          </div>
         </div>
 
         <form onSubmit={handleSubmit} noValidate style={{ padding: "20px 16px 32px" }}>
+          <div style={{ marginBottom: 22 }}>
+            <label htmlFor="votacion-tipo" style={estiloEtiqueta}>
+              Tipo de votación
+            </label>
+            <select
+              id="votacion-tipo"
+              value={tipo}
+              onChange={(event) => setTipo(event.target.value as TipoCreable)}
+              style={estiloDesplegable}
+            >
+              {TIPOS_ELEGIBLES.map(({ tipo: valor, texto }) => (
+                <option key={valor} value={valor}>
+                  {texto}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div style={{ marginBottom: 22 }}>
             <label htmlFor="votacion-pregunta" style={estiloEtiqueta}>
               Pregunta de la votación

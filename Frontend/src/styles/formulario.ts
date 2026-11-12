@@ -16,6 +16,22 @@ export const estiloCampo: CSSProperties = {
   boxSizing: "border-box",
 }
 
+// Desplegable: sin la flecha nativa (pegada al borde) y con una propia, separada 16 px del lado derecho
+const FLECHA_DESPLEGABLE = `url("data:image/svg+xml,${encodeURIComponent(
+  `<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='${C.navy}' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='1 1.5 6 6.5 11 1.5'/></svg>`,
+)}")`
+
+export const estiloDesplegable: CSSProperties = {
+  ...estiloCampo,
+  appearance: "none",
+  WebkitAppearance: "none",
+  backgroundImage: FLECHA_DESPLEGABLE,
+  backgroundRepeat: "no-repeat",
+  backgroundPosition: "right 16px center",
+  paddingRight: 40,
+  cursor: "pointer",
+}
+
 export const estiloEtiqueta: CSSProperties = {
   fontFamily: NUNITO,
   fontSize: 11,

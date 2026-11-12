@@ -77,6 +77,14 @@ export const obtenerVotacion = (viajeId: string, votacionId: string, tokenSesion
 export const crearVotacion = (viajeId: string, votacion: NuevaVotacion, tokenSesion: string) =>
   peticion<Votacion>(rutaVotaciones(viajeId), { metodo: "POST", cuerpo: votacion, token: tokenSesion })
 
+// Solo el creador del viaje, con la votación abierta. La de destino no se puede cambiar
+export const cambiarTipoVotacion = (
+  viajeId: string,
+  votacionId: string,
+  tipo: NonNullable<NuevaVotacion["tipo"]>,
+  tokenSesion: string,
+) => peticion<Votacion>(rutaVotacion(viajeId, votacionId), { metodo: "PATCH", cuerpo: { tipo }, token: tokenSesion })
+
 // Cualquier miembro propone opciones mientras la votación está abierta. Devuelve la votación actualizada
 export const proponerOpcion = (viajeId: string, votacionId: string, opcion: NuevaOpcion, tokenSesion: string) =>
   peticion<Votacion>(`${rutaVotacion(viajeId, votacionId)}/opciones`, {
