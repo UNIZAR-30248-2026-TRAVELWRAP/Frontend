@@ -192,7 +192,8 @@ test.describe('Resumen de fin de viaje (Wrap)', () => {
       await page.mouse.move(inicio.x, inicio.y);
       await page.mouse.down();
       await page.mouse.move(fin.x, fin.y, { steps: 8 });
-      await expect(page.getByText('días de aventura')).toBeVisible();
+      // En WebKit la caja de un elemento con giro 3D se mide con ancho 0 y Playwright lo da por oculto: basta con que esté en el DOM
+      await expect(page.getByText('días de aventura')).toBeAttached();
       await page.mouse.move(inicio.x, inicio.y, { steps: 8 });
       await page.mouse.up();
       await expect(page.getByRole('region')).toHaveAccessibleName(/1 de 7/);
