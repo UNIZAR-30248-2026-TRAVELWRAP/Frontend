@@ -1,4 +1,4 @@
-// Pasos de la cartera de documentos de un viaje: subir (PB-30) y abrir o previsualizar (PB-31).
+// Pasos de la cartera de documentos de un viaje: subir (PB-30), abrir o previsualizar (PB-31) y eliminar (PB-46).
 // Simulan el backend de los documentos. Usan la página y el login de login.steps.ts y los viajes de
 // gestion_viajes.steps.ts, y reutilizan sus pasos de textos, botones y mensajes de error
 import { Before, Given, Then, When } from '@cucumber/cucumber';
@@ -26,6 +26,9 @@ let rechazaPorContenido = false;
 // Documentos que el backend da por borrados (GET .../url responde 404) y enlaces que ha entregado
 let borrados: string[] = [];
 let enlacesEntregados: string[] = [];
+// Nombres de los documentos para los que ha llegado un DELETE (PB-46) y si el backend falla al eliminar
+let eliminaciones: string[] = [];
+let falloAlEliminar = false;
 
 const ARCHIVOS = 'https://storage.test/firmado';
 
@@ -57,6 +60,8 @@ Before(() => {
   rechazaPorContenido = false;
   borrados = [];
   enlacesEntregados = [];
+  eliminaciones = [];
+  falloAlEliminar = false;
 });
 
 const json = (status: number, cuerpo: unknown) => ({ status, contentType: 'application/json', body: JSON.stringify(cuerpo) });
@@ -89,6 +94,26 @@ const simularDocumentos = async () => {
     };
     documentos.unshift(nuevo);
     return route.fulfill(json(201, nuevo));
+  });
+};
+
+// DELETE .../documentos/:id. Si el backend no falla, el documento deja de estar en el listado.
+// Los enlaces .../:id/url no coinciden con este patrón, porque * no cruza barras
+const simularEliminacion = async () => {
+  await paginaActual().route('**/api/viajes/*/documentos/*', (route) => {
+    const peticion = route.request();
+    if (peticion.method() !== 'DELETE') return route.fallback();
+    if (falloAlEliminar) {
+      return route.fulfill(json(502, { error: { codigo: 'error_documento', mensaje: 'Fallo de Supabase' } }));
+    }
+    const id = new URL(peticion.url()).pathname.split('/').at(-1);
+    const documento = documentos.find((d) => d.id === id);
+    if (!documento) {
+      return route.fulfill(json(404, { error: { codigo: 'documento_no_encontrado', mensaje: 'El documento no existe en este viaje' } }));
+    }
+    eliminaciones.push(documento.nombre);
+    documentos = documentos.filter((d) => d.id !== id);
+    return route.fulfill({ status: 204 });
   });
 };
 
@@ -156,6 +181,10 @@ Given('que el documento {string} ya se ha eliminado del servidor', (nombre: stri
   borrados.push(nombre);
 });
 
+Given('que el servidor falla al eliminar documentos', () => {
+  falloAlEliminar = true;
+});
+
 Given('que el servidor rechaza los documentos porque su contenido no es un PDF ni una imagen', () => {
   rechazaPorContenido = true;
 });
@@ -166,6 +195,7 @@ When('abro la cartera de documentos del viaje {string}', async (viaje: string) =
   const id = idDe(viaje);
   await simularDocumentos();
   await simularApertura();
+  await simularEliminacion();
   await paginaActual().goto(new URL(`/viajes/${id}/documentos`, paginaActual().url()).toString());
   await expect(paginaActual().getByText('Documentos del viaje', { exact: true })).toBeVisible();
 });
@@ -180,6 +210,14 @@ When('subo un archivo {string} de tipo {string} de {int} bytes', async (nombre: 
 
 When('abro el documento {string}', async (nombre: string) => {
   await paginaActual().getByRole('button', { name: `Abrir ${nombre}` }).click();
+});
+
+When('pulso eliminar el documento {string}', async (nombre: string) => {
+  await paginaActual().getByRole('button', { name: `Eliminar ${nombre}` }).click();
+});
+
+When('cancelo la eliminación del documento', async () => {
+  await paginaActual().getByRole('dialog').getByRole('button', { name: 'Cancelar' }).click();
 });
 
 When('cierro la vista previa del documento', async () => {
@@ -238,4 +276,12 @@ Then('no veo la vista previa del documento', async () => {
 Then('el servidor ha entregado un enlace para abrir el documento {string}', (nombre: string) => {
   // En desarrollo React monta los efectos dos veces, así que la misma petición puede repetirse
   expect(new Set(enlacesEntregados)).toEqual(new Set([nombre]));
+});
+
+Then('el servidor ha recibido 1 petición de eliminar el documento {string}', (nombre: string) => {
+  expect(eliminaciones).toEqual([nombre]);
+});
+
+Then('el servidor ha recibido {int} peticiones de eliminar documentos', (cantidad: number) => {
+  expect(eliminaciones).toHaveLength(cantidad);
 });
