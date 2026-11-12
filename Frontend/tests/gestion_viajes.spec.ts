@@ -85,6 +85,10 @@ const simularBackendViajes = async (page: Page, iniciales: ViajeSimulado[]) => {
       actual.estado = 'archivado';
       return json(route, 200, actual);
     }
+    if (accion === 'desarchivar' && metodo === 'POST') {
+      actual.estado = 'activo';
+      return json(route, 200, actual);
+    }
     if (!accion && metodo === 'PATCH') {
       Object.assign(actual, peticion.postDataJSON());
       return json(route, 200, actual);
@@ -212,6 +216,29 @@ test.describe('Inicio del viaje y su gestión', () => {
     await expect(page.getByText('París 2024')).toHaveCount(0);
     await expect(page.getByText('1 viaje guardado')).toBeVisible();
     expect(peticiones.filter((p) => p.metodo === 'DELETE').map((p) => p.ruta)).toEqual(['/viajes/paris']);
+  });
+
+  test('el creador desarchiva un viaje, se queda en Viajes archivados y en Mis viajes aparece activo', async ({ page }) => {
+    await entrarConSesion(page);
+    const { peticiones } = await simularBackendViajes(page, [
+      viaje('paris', { nombre: 'París 2024', estado: 'archivado' }),
+      viaje('lisboa', { nombre: 'Lisboa 2023', estado: 'archivado', rol: 'miembro' }),
+    ]);
+
+    await page.goto('/viajes/archivados');
+    await expect(page.getByRole('button', { name: 'Desarchivar Lisboa 2023' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Desarchivar París 2024' }).click();
+    const dialogo = page.getByRole('dialog');
+    await expect(dialogo).toContainText('¿Desarchivar este viaje?');
+    await dialogo.getByRole('button', { name: 'Desarchivar viaje' }).click();
+
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page).toHaveURL(/\/viajes\/archivados$/);
+    await expect(page.getByRole('button', { name: /^París 2024/ })).toHaveCount(0);
+    expect(peticiones.filter((p) => p.metodo === 'POST').map((p) => p.ruta)).toEqual(['/viajes/paris/desarchivar']);
+
+    await page.goto('/viajes/paris');
+    await expect(page.getByRole('button', { name: /Editar viaje/ })).toBeVisible();
   });
 
   test('sin sesión el inicio de un viaje redirige al login', async ({ page }) => {
