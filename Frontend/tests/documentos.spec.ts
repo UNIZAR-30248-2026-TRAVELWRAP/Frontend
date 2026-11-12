@@ -119,16 +119,22 @@ const simularBackend = async (
     respuestaSubida,
     documentos = [documentoExistente],
     respuestaUrl,
+    respuestaBorrado,
   }: {
     estado?: string;
     respuestaSubida?: (nombre: string) => { status: number; cuerpo: unknown };
     documentos?: (typeof documentoExistente)[];
     respuestaUrl?: (documento: typeof documentoExistente) => { status: number; cuerpo: unknown };
+    // Respuesta de DELETE .../documentos/:id. Por defecto, 204 sin cuerpo
+    respuestaBorrado?: () => { status: number; cuerpo?: unknown };
   } = {},
 ) => {
   // Rutas (con su consulta) de los enlaces que ha pedido la pantalla
   const enlacesPedidos: string[] = [];
   const recibidas: Subida[] = [];
+  // Rutas de los DELETE recibidos y documentos que el servidor da ya por eliminados
+  const borrados: string[] = [];
+  const eliminados = new Set<string>();
   const subidos: unknown[] = [];
   const respuesta =
     respuestaSubida ??
@@ -149,7 +155,14 @@ const simularBackend = async (
     const ruta = new URL(peticion.url()).pathname.replace(/^.*\/api/, '');
 
     if (ruta === `/viajes/${VIAJE_ID}/documentos` && peticion.method() === 'GET') {
-      return json(route, 200, { documentos: [...subidos, ...documentos] });
+      return json(route, 200, { documentos: [...subidos, ...documentos].filter((d) => !eliminados.has(d.id)) });
+    }
+    const borrado = /^\/viajes\/[^/]+\/documentos\/([^/]+)$/.exec(ruta);
+    if (borrado && peticion.method() === 'DELETE') {
+      borrados.push(ruta);
+      const { status, cuerpo } = respuestaBorrado ? respuestaBorrado() : { status: 204, cuerpo: undefined };
+      if (status === 204) eliminados.add(borrado[1]);
+      return cuerpo === undefined ? route.fulfill({ status }) : json(route, status, cuerpo);
     }
     const enlace = /^\/viajes\/[^/]+\/documentos\/([^/]+)\/url$/.exec(ruta);
     if (enlace && peticion.method() === 'GET') {
@@ -173,7 +186,7 @@ const simularBackend = async (
     return json(route, 200, { ...viaje, estado });
   });
 
-  return { recibidas, enlacesPedidos };
+  return { recibidas, enlacesPedidos, borrados };
 };
 
 // Supabase Storage simulado: sirve un PDF de una página o un PNG de 1×1 según el documento, con CORS abierto como
@@ -384,5 +397,95 @@ test.describe('Cartera de documentos', () => {
   test('sin sesión lleva al login', async ({ page }) => {
     await page.goto(rutaCartera);
     await expect(page).toHaveURL(/\/login$/);
+  });
+
+  test.describe('eliminar un documento', () => {
+    const papelera = (page: Page) => page.getByRole('button', { name: 'Eliminar Reserva del hotel.pdf' });
+
+    test('al confirmar, el documento se elimina de la cartera', async ({ page }) => {
+      await entrarConSesion(page);
+      const { borrados } = await simularBackend(page);
+
+      await page.goto(rutaCartera);
+      await expect(filas(page)).toHaveCount(1);
+      await papelera(page).click();
+
+      const dialogo = page.getByRole('dialog');
+      await expect(dialogo).toContainText('¿Eliminar este documento?');
+      await expect(dialogo).toContainText('Reserva del hotel.pdf');
+      await dialogo.getByRole('button', { name: 'Eliminar documento' }).click();
+
+      await expect(page.getByRole('status')).toContainText('Documento eliminado');
+      await expect(dialogo).toHaveCount(0);
+      await expect(filas(page)).toHaveCount(0);
+      await expect(page.getByText('Aún no hay documentos en la cartera del viaje.')).toBeVisible();
+      // Es una acción del usuario, no de un efecto: llega una sola petición
+      expect(borrados).toEqual([`/viajes/${VIAJE_ID}/documentos/doc-1`]);
+    });
+
+    test('al cancelar, el documento se mantiene y no se llama al servidor', async ({ page }) => {
+      await entrarConSesion(page);
+      const { borrados } = await simularBackend(page);
+
+      await page.goto(rutaCartera);
+      await expect(filas(page)).toHaveCount(1);
+      await papelera(page).click();
+      await page.getByRole('dialog').getByRole('button', { name: 'Cancelar' }).click();
+
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expect(filas(page)).toHaveCount(1);
+      await expect(filas(page).first()).toContainText('Reserva del hotel.pdf');
+      expect(borrados).toHaveLength(0);
+    });
+
+    test('si el servidor falla, el error sale en el diálogo y el documento sigue en la lista', async ({ page }) => {
+      await entrarConSesion(page);
+      const { borrados } = await simularBackend(page, {
+        respuestaBorrado: () => ({
+          status: 502,
+          cuerpo: { error: { codigo: 'error_documento', mensaje: 'No se ha podido eliminar el documento' } },
+        }),
+      });
+
+      await page.goto(rutaCartera);
+      await expect(filas(page)).toHaveCount(1);
+      await papelera(page).click();
+      const dialogo = page.getByRole('dialog');
+      await dialogo.getByRole('button', { name: 'Eliminar documento' }).click();
+
+      await expect(dialogo.getByRole('alert')).toContainText('No se ha podido eliminar el documento');
+      await expect(dialogo.getByRole('button', { name: 'Eliminar documento' })).toBeEnabled();
+      await expect(filas(page)).toHaveCount(1);
+      await expect(page.getByRole('status')).toHaveCount(0);
+      expect(borrados).toHaveLength(1);
+    });
+
+    test('si otro miembro ya lo había eliminado, se quita de la lista con su aviso', async ({ page }) => {
+      await entrarConSesion(page);
+      await simularBackend(page, {
+        respuestaBorrado: () => ({
+          status: 404,
+          cuerpo: { error: { codigo: 'documento_no_encontrado', mensaje: 'El documento no existe en este viaje' } },
+        }),
+      });
+
+      await page.goto(rutaCartera);
+      await papelera(page).click();
+      await page.getByRole('dialog').getByRole('button', { name: 'Eliminar documento' }).click();
+
+      await expect(page.getByRole('status')).toContainText('Este documento ya lo había eliminado otro miembro');
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expect(filas(page)).toHaveCount(0);
+    });
+
+    test('en un viaje archivado no hay botón para eliminar', async ({ page }) => {
+      await entrarConSesion(page);
+      await simularBackend(page, { estado: 'archivado' });
+
+      await page.goto(rutaCartera);
+
+      await expect(filas(page)).toHaveCount(1);
+      await expect(page.getByRole('button', { name: /^Eliminar / })).toHaveCount(0);
+    });
   });
 });
