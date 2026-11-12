@@ -227,9 +227,9 @@ test.describe('Galería de fotos', () => {
     await expect(miniaturas(page)).toHaveCount(3);
   });
 
-  test('en un viaje archivado se ven las fotos pero no se puede subir ninguna', async ({ page }) => {
+  test('en un viaje finalizado se ven las fotos pero no se puede subir ninguna', async ({ page }) => {
     await entrarConSesion(page);
-    await simularBackend(page, { estado: 'archivado' });
+    await simularBackend(page, { estado: 'finalizado' });
 
     await page.goto(rutaGaleria);
 

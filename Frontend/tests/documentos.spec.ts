@@ -291,9 +291,9 @@ test.describe('Cartera de documentos', () => {
     await expect(filas(page)).toHaveCount(1);
   });
 
-  test('en un viaje archivado se ven los documentos pero no se puede subir ninguno', async ({ page }) => {
+  test('en un viaje finalizado se ven los documentos pero no se puede subir ninguno', async ({ page }) => {
     await entrarConSesion(page);
-    await simularBackend(page, { estado: 'archivado' });
+    await simularBackend(page, { estado: 'finalizado' });
 
     await page.goto(rutaCartera);
 
@@ -383,9 +383,9 @@ test.describe('Cartera de documentos', () => {
     await expect(page.getByRole('alert')).toContainText('ya no existe');
   });
 
-  test('en un viaje archivado también se abre un documento', async ({ page }) => {
+  test('en un viaje finalizado también se abre un documento', async ({ page }) => {
     await entrarConSesion(page);
-    await simularBackend(page, { estado: 'archivado', documentos: [imagenExistente] });
+    await simularBackend(page, { estado: 'finalizado', documentos: [imagenExistente] });
     await simularArchivos(page);
 
     await page.goto(rutaCartera);
@@ -478,9 +478,9 @@ test.describe('Cartera de documentos', () => {
       await expect(filas(page)).toHaveCount(0);
     });
 
-    test('en un viaje archivado no hay botón para eliminar', async ({ page }) => {
+    test('en un viaje finalizado no hay botón para eliminar', async ({ page }) => {
       await entrarConSesion(page);
-      await simularBackend(page, { estado: 'archivado' });
+      await simularBackend(page, { estado: 'finalizado' });
 
       await page.goto(rutaCartera);
 

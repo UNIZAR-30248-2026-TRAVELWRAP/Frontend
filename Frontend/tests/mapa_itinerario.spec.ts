@@ -363,8 +363,8 @@ test.describe('Itinerario · mapa de las actividades', () => {
     await expect(marcadores(page)).toHaveCount(0);
   });
 
-  test('en un viaje archivado el mapa se ve igual', async ({ page }) => {
-    await preparar(page, { estado: 'archivado' });
+  test('en un viaje finalizado el mapa se ve igual', async ({ page }) => {
+    await preparar(page, { estado: 'finalizado' });
 
     await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
 

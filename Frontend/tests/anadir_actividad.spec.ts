@@ -194,9 +194,9 @@ test.describe('Añadir actividad', () => {
     await expect(page).toHaveURL(new RegExp(`${rutaFormulario}$`));
   });
 
-  test('un viaje archivado no deja añadir actividades', async ({ page }) => {
+  test('un viaje finalizado no deja añadir actividades', async ({ page }) => {
     await entrarConSesion(page);
-    await simularBackend(page, { estado: 'archivado' });
+    await simularBackend(page, { estado: 'finalizado' });
 
     await page.goto(rutaFormulario);
 

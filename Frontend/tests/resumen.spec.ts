@@ -20,7 +20,7 @@ const viaje = {
   fecha_fin: '2027-05-15',
   moneda: 'EUR',
   presupuesto: 850,
-  estado: 'archivado',
+  estado: 'finalizado',
   creado_en: '2026-10-12T10:00:00Z',
   pendiente_destino: false,
   rol: 'miembro',

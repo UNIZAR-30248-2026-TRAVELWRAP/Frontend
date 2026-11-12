@@ -80,7 +80,6 @@ test.describe('RF8 · Mis viajes y crear viaje', () => {
       viaje('a', { nombre: 'Lisboa 2027', presupuesto: 1240 }),
       viaje('b', { nombre: 'Verano 2027', destino: null, pendiente_destino: true }),
       viaje('c', { nombre: 'Praga 2025', estado: 'finalizado', fecha_inicio: '2025-06-20', fecha_fin: '2025-06-24' }),
-      viaje('d', { nombre: 'Archivado 2024', estado: 'archivado' }),
     ]);
 
     await page.goto('/');
@@ -91,7 +90,6 @@ test.describe('RF8 · Mis viajes y crear viaje', () => {
     await expect(activo).toContainText('1.240 €');
     await expect(page.getByRole('button', { name: /Verano 2027/ })).toContainText('Pendiente de destino');
     await expect(page.getByRole('button', { name: /Praga 2025/ })).toContainText('20–24 jun 2025');
-    await expect(page.getByText('Archivado 2024')).toHaveCount(0);
   });
 
   test('crear un viaje con destino lo envía al backend y abre directamente la pantalla del viaje', async ({ page }) => {

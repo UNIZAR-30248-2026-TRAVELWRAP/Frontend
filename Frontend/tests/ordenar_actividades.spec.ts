@@ -301,8 +301,8 @@ test.describe('Itinerario · reordenar actividades arrastrando', () => {
     await expect(page.getByRole('button', { name: '2. Paseo' })).toBeVisible();
   });
 
-  test('en un viaje archivado no hay asas', async ({ page }) => {
-    await preparar(page, { estado: 'archivado' });
+  test('en un viaje finalizado no hay asas', async ({ page }) => {
+    await preparar(page, { estado: 'finalizado' });
 
     await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
 
