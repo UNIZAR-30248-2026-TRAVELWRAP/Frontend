@@ -265,6 +265,7 @@ test.describe('Galería de fotos · ampliar una foto', () => {
     const visor = page.getByRole('dialog');
     await expect(visor).toHaveAccessibleName('Foto 2 de 3: trevi.jpg');
     await expect(visor.getByRole('img', { name: 'trevi.jpg' })).toBeVisible();
+    await expect(visor).toContainText('Subida por Berta · 12 may 2027');
 
     await page.keyboard.press('ArrowRight');
     await expect(visor).toHaveAccessibleName('Foto 3 de 3: coliseo.jpg');

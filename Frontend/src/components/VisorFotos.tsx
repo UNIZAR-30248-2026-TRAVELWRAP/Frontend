@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type PointerEvent } from "react"
 import Icon from "./Icon"
 import { NUNITO } from "../styles/tokens"
 
-export type FotoVisor = { id: string; url: string; nombre: string }
+export type FotoVisor = { id: string; url: string; nombre: string; descripcion?: string }
 
 type VisorFotosProps = {
   fotos: FotoVisor[]
@@ -129,7 +129,7 @@ export default function VisorFotos({ fotos, indice, onCambiar, onCerrar }: Visor
         </button>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "center", gap: 8, padding: "0 8px 16px" }}>
+      <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "center", gap: 8, padding: "0 8px 8px" }}>
         <button
           type="button"
           onClick={() => onCambiar(indice - 1)}
@@ -182,6 +182,21 @@ export default function VisorFotos({ fotos, indice, onCambiar, onCerrar }: Visor
           <Icon name="arrow_right" size={20} color="white" strokeWidth={2.2} />
         </button>
       </div>
+      <p
+        style={{
+          fontFamily: NUNITO,
+          color: "rgba(255,255,255,0.85)",
+          fontSize: 13,
+          fontWeight: 700,
+          textAlign: "center",
+          margin: 0,
+          padding: "0 16px 20px",
+          minHeight: 18,
+          overflowWrap: "anywhere",
+        }}
+      >
+        {foto.descripcion}
+      </p>
     </div>
   )
 }

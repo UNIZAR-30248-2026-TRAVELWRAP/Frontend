@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_BYTES_FOTO, motivoParaNoSubirFoto, textoDeFotos, TIPOS_FOTO } from '../src/utils/galeria'
+import { descripcionDeFoto, MAX_BYTES_FOTO, motivoParaNoSubirFoto, textoDeFotos, TIPOS_FOTO } from '../src/utils/galeria'
 
 const archivo = (nombre: string, tipo: string, bytes = 10) => new File([new Uint8Array(bytes).fill(1)], nombre, { type: tipo })
 
@@ -46,5 +46,24 @@ describe('textoDeFotos', () => {
 
   it('usa el singular', () => {
     expect(textoDeFotos(1, 1)).toBe('1 foto · 1 miembro')
+  })
+})
+
+describe('descripcionDeFoto', () => {
+  const miembros = [{ usuario_id: 'u1', nombre: 'Berta' }, { usuario_id: 'u2', nombre: null }]
+
+  it('dice quién la subió y cuándo', () => {
+    expect(descripcionDeFoto('u1', '2027-05-12T10:00:00Z', miembros)).toBe('Subida por Berta · 12 may 2027')
+  })
+
+  it('si no se conoce a quien la subió, solo dice la fecha', () => {
+    expect(descripcionDeFoto(null, '2027-05-12T10:00:00Z', miembros)).toBe('Subida el 12 may 2027')
+    expect(descripcionDeFoto('u2', '2027-05-12T10:00:00Z', miembros)).toBe('Subida el 12 may 2027')
+    expect(descripcionDeFoto('otro', '2027-05-12T10:00:00Z', miembros)).toBe('Subida el 12 may 2027')
+  })
+
+  it('si la fecha no es válida, solo dice quién la subió o nada', () => {
+    expect(descripcionDeFoto('u1', 'no-es-fecha', miembros)).toBe('Subida por Berta')
+    expect(descripcionDeFoto(null, 'no-es-fecha', miembros)).toBe('')
   })
 })

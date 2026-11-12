@@ -30,6 +30,16 @@ describe('VisorFotos', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Cerrar foto' }))
   })
 
+  it('muestra quién subió la foto y cuándo, si se sabe', () => {
+    const { rerender } = render(
+      <VisorFotos fotos={[{ ...FOTOS[0], descripcion: 'Subida por Berta · 12 may 2027' }, FOTOS[1]]} indice={0} onCambiar={vi.fn()} onCerrar={vi.fn()} />,
+    )
+    expect(screen.getByText('Subida por Berta · 12 may 2027')).toBeTruthy()
+
+    rerender(<VisorFotos fotos={[{ ...FOTOS[0], descripcion: 'Subida por Berta · 12 may 2027' }, FOTOS[1]]} indice={1} onCambiar={vi.fn()} onCerrar={vi.fn()} />)
+    expect(screen.queryByText(/Subida por/)).toBeNull()
+  })
+
   it('cierra con el botón y con Escape', async () => {
     const user = userEvent.setup()
     const onCerrar = vi.fn()

@@ -12,7 +12,7 @@ import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { estiloAlerta } from "../styles/formulario"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
-import { motivoParaNoSubirFoto, textoDeFotos, TIPOS_FOTO } from "../utils/galeria"
+import { descripcionDeFoto, motivoParaNoSubirFoto, textoDeFotos, TIPOS_FOTO } from "../utils/galeria"
 
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
 
@@ -67,6 +67,12 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
 
   const miembros = (viaje?.miembros ?? []).map((m, indice) => aMiembro(m.nombre, indice, m.avatar_url))
   const activo = viaje?.estado === "activo"
+  const fotosDelVisor = fotos.map((foto) => ({
+    id: foto.id,
+    url: foto.url,
+    nombre: foto.nombre,
+    descripcion: descripcionDeFoto(foto.subido_por, foto.creado_en, viaje?.miembros ?? []),
+  }))
 
   const cerrarVisor = () => {
     const cerrada = fotoAbierta
@@ -291,7 +297,7 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
       </div>
 
       {fotoAbierta !== null && (
-        <VisorFotos fotos={fotos} indice={fotoAbierta} onCambiar={setFotoAbierta} onCerrar={cerrarVisor} />
+        <VisorFotos fotos={fotosDelVisor} indice={fotoAbierta} onCambiar={setFotoAbierta} onCerrar={cerrarVisor} />
       )}
 
       <BarraInferior activa="mas" onCambiar={onCambiarSeccion} />
