@@ -81,6 +81,13 @@ export const archivarViaje = (viajeId: string, tokenSesion: string) =>
     token: tokenSesion,
   })
 
+// Devuelve un viaje archivado a activo (solo el creador)
+export const desarchivarViaje = (viajeId: string, tokenSesion: string) =>
+  peticion<ViajeDelUsuario>(`/viajes/${encodeURIComponent(viajeId)}/desarchivar`, {
+    metodo: "POST",
+    token: tokenSesion,
+  })
+
 // Solo el creador, y solo viajes archivados. Responde 204 sin cuerpo
 export const eliminarViaje = (viajeId: string, tokenSesion: string) =>
   peticion<null>(`/viajes/${encodeURIComponent(viajeId)}`, { metodo: "DELETE", token: tokenSesion })
