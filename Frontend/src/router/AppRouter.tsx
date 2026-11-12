@@ -297,6 +297,7 @@ function RutaFinDeViaje({ sesion }: { sesion: Sesion }) {
       tokenSesion={sesion.token}
       onVolver={volver}
       onTerminar={() => navigate("/", { replace: true })}
+      onArchivado={() => navigate("/viajes/archivados", { replace: true })}
     />
   );
 }

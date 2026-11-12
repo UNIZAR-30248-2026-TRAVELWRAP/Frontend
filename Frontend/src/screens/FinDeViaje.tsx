@@ -7,7 +7,8 @@ import { ApiError } from "../services/authApi"
 import { listarFotos, type Foto } from "../services/fotosApi"
 import { obtenerBalance, type SaldoMiembro } from "../services/gastosApi"
 import { obtenerResumenDelViaje, type ResumenDelViaje } from "../services/resumenApi"
-import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
+import { archivarViaje, obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
+import DialogoConfirmacion from "../components/DialogoConfirmacion"
 import { estiloAlerta } from "../styles/formulario"
 import { C, NUNITO } from "../styles/tokens"
 import { conEuros } from "../utils/gastos"
@@ -31,6 +32,8 @@ type FinDeViajeProps = {
   tokenSesion: string
   onVolver?: () => void
   onTerminar?: () => void
+  // Tras archivar el viaje desde el balance final (solo el creador, con el viaje finalizado)
+  onArchivado?: () => void
 }
 
 const FONDOS = [
@@ -89,8 +92,11 @@ const estiloTarjeta: CSSProperties = {
   borderRadius: 14,
 }
 
-export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar }: FinDeViajeProps) {
+export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar, onArchivado }: FinDeViajeProps) {
   const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
+  const [confirmandoArchivar, setConfirmandoArchivar] = useState(false)
+  const [archivando, setArchivando] = useState(false)
+  const [errorArchivar, setErrorArchivar] = useState("")
   const [resumen, setResumen] = useState<ResumenDelViaje | null>(null)
   const [fotos, setFotos] = useState<Foto[]>([])
   const [saldos, setSaldos] = useState<SaldoMiembro[]>([])
@@ -131,6 +137,21 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar 
     }
   }, [viajeId, tokenSesion])
 
+  const handleArchivar = async () => {
+    setArchivando(true)
+    setErrorArchivar("")
+    try {
+      await archivarViaje(viajeId, tokenSesion)
+      setConfirmandoArchivar(false)
+      onArchivado?.()
+    } catch (e) {
+      setErrorArchivar(mensajeDeError(e))
+    } finally {
+      setArchivando(false)
+    }
+  }
+
+  const puedeArchivar = viaje?.estado === "finalizado" && viaje.rol === "creador"
   const miembros = (viaje?.miembros ?? []).map((m, indice) => aMiembro(m.nombre, indice))
   const nombres = miembros.map((m) => m.name)
   const dias = viaje?.fecha_inicio && viaje.fecha_fin ? diasDelViaje(viaje.fecha_inicio, viaje.fecha_fin) : []
@@ -565,12 +586,42 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar 
         </div>
 
         {total > 0 && !haySiguiente && (
-          <div style={{ display: "flex", padding: "12px 20px 20px" }}>
-            <button type="button" onClick={onTerminar} style={estiloBotonControl(true)}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "12px 20px 20px" }}>
+            {/* Aquí irá «Sellar» (PB-44), encima de «Archivar viaje» */}
+            {puedeArchivar && (
+              <button
+                type="button"
+                onClick={() => {
+                  setErrorArchivar("")
+                  setConfirmandoArchivar(true)
+                }}
+                style={{ ...estiloBotonControl(true), flex: "none", background: C.accent, border: "none" }}
+              >
+                <Icon name="finish" size={18} color="white" strokeWidth={2} />
+                Archivar viaje
+              </button>
+            )}
+            <button type="button" onClick={onTerminar} style={{ ...estiloBotonControl(true), flex: "none" }}>
               <Icon name="finish" size={18} color="white" strokeWidth={2} />
               Ir a Mis viajes
             </button>
           </div>
+        )}
+        {confirmandoArchivar && (
+          <DialogoConfirmacion
+            titulo="¿Archivar este viaje?"
+            icono="finish"
+            color={C.accent}
+            colorFondo={C.lightAccent}
+            textoConfirmar="Archivar viaje"
+            textoConfirmando="Archivando viaje..."
+            ocupado={archivando}
+            error={errorArchivar}
+            onConfirmar={handleArchivar}
+            onCancelar={() => setConfirmandoArchivar(false)}
+          >
+            {viaje?.nombre} pasará a «Viajes archivados» en tu perfil. Desde allí podrás desarchivarlo o eliminarlo.
+          </DialogoConfirmacion>
         )}
       </div>
     </div>
