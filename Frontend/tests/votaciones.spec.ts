@@ -249,6 +249,7 @@ test.describe('Crear una votación', () => {
     await page.getByRole('button', { name: 'Crear nueva votación' }).click();
     await expect(page).toHaveURL(/\/viajes\/roma\/votaciones\/nueva$/);
 
+    await page.getByLabel('Tipo de votación').selectOption({ label: 'Fechas' });
     await page.getByLabel('Pregunta de la votación').fill('¿Qué fin de semana salimos?');
     await page.getByLabel('Opción A', { exact: true }).fill('12 – 15 mayo');
     await page.getByLabel('Fecha de la opción A').fill('2027-05-12');

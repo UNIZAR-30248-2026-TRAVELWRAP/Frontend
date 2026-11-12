@@ -173,7 +173,10 @@ test.describe('Inicio del viaje y su gestión', () => {
     await page.route('**/api/viajes/roma/balance', (route) => json(route, 200, { saldos: [] }));
 
     await page.goto('/viajes/roma/resumen');
+    // Las teclas solo cuentan cuando el resumen ya ha cargado
+    await expect(page.getByText('TravelWrap · Resumen')).toBeVisible();
     for (let i = 0; i < 6; i++) await page.keyboard.press('ArrowRight');
+    await expect(page.getByText('Balance final', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Archivar viaje' }).click();
     const dialogo = page.getByRole('dialog');
     await expect(dialogo).toContainText('¿Archivar este viaje?');
