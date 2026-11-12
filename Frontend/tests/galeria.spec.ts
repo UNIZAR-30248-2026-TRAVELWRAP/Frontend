@@ -280,6 +280,39 @@ test.describe('Galería de fotos · ampliar una foto', () => {
     await expect(miniaturas(page).first().getByRole('button')).toBeFocused();
   });
 
+  test('en el visor se desliza con el dedo para pasar de foto, y si se devuelve no cambia', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularBackend(page);
+    await page.goto(rutaGaleria);
+    await page.getByRole('button', { name: 'Ampliar trevi.jpg' }).click();
+    const visor = page.getByRole('dialog');
+    await expect(visor).toHaveAccessibleName('Foto 2 de 3: trevi.jpg');
+
+    const caja = await page.getByTestId('zona-foto').boundingBox();
+    const y = (caja?.y ?? 0) + (caja?.height ?? 0) / 2;
+    const derecha = (caja?.x ?? 0) + (caja?.width ?? 0) * 0.8;
+    const izquierda = (caja?.x ?? 0) + (caja?.width ?? 0) * 0.1;
+
+    await page.mouse.move(derecha, y);
+    await page.mouse.down();
+    await page.mouse.move(izquierda, y, { steps: 6 });
+    await page.mouse.move(derecha, y, { steps: 6 });
+    await page.mouse.up();
+    await expect(visor).toHaveAccessibleName('Foto 2 de 3: trevi.jpg');
+
+    await page.mouse.move(derecha, y);
+    await page.mouse.down();
+    await page.mouse.move(izquierda, y, { steps: 6 });
+    await page.mouse.up();
+    await expect(visor).toHaveAccessibleName('Foto 3 de 3: coliseo.jpg');
+
+    await page.mouse.move(izquierda, y);
+    await page.mouse.down();
+    await page.mouse.move(derecha, y, { steps: 6 });
+    await page.mouse.up();
+    await expect(visor).toHaveAccessibleName('Foto 2 de 3: trevi.jpg');
+  });
+
   test('con el botón se cierra y la página de fondo no hace scroll mientras está abierto', async ({ page }) => {
     await entrarConSesion(page);
     await simularBackend(page);
