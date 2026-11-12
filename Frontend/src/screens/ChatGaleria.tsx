@@ -43,6 +43,7 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
   const [errorSubida, setErrorSubida] = useState("")
   const selectorFoto = useRef<HTMLInputElement>(null)
   const [subiendo, setSubiendo] = useState(false)
+  const [progreso, setProgreso] = useState({ hechas: 0, total: 0 })
   const [fotoAbierta, setFotoAbierta] = useState<number | null>(null)
   const miniaturas = useRef<(HTMLButtonElement | null)[]>([])
 
@@ -81,24 +82,38 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
   }
 
   const handleFotoElegida = async (evento: ChangeEvent<HTMLInputElement>) => {
-    const archivo = evento.target.files?.[0]
+    const archivos = Array.from(evento.target.files ?? [])
     evento.target.value = ""
-    if (!archivo) return
-    const motivo = motivoParaNoSubirFoto(archivo)
-    if (motivo) {
-      setErrorSubida(motivo)
-      return
-    }
+    if (archivos.length === 0) return
     setErrorSubida("")
     setSubiendo(true)
+    const fallos: { nombre: string; motivo: string }[] = []
     try {
-      const foto = await subirFoto(viajeId, archivo, tokenSesion)
-      if (conUrl(foto)) setFotos((anteriores) => [foto, ...anteriores])
-    } catch (e) {
-      setErrorSubida(`No se ha podido subir la foto: ${mensajeDeError(e)}`)
+      for (const [indice, archivo] of archivos.entries()) {
+        setProgreso({ hechas: indice, total: archivos.length })
+        const motivo = motivoParaNoSubirFoto(archivo)
+        if (motivo) {
+          fallos.push({ nombre: archivo.name, motivo })
+          continue
+        }
+        try {
+          const foto = await subirFoto(viajeId, archivo, tokenSesion)
+          if (conUrl(foto)) setFotos((anteriores) => [foto, ...anteriores])
+        } catch (e) {
+          fallos.push({ nombre: archivo.name, motivo: mensajeDeError(e) })
+        }
+      }
     } finally {
       setSubiendo(false)
     }
+    if (fallos.length === 0) return
+    if (archivos.length === 1) {
+      const [{ motivo }] = fallos
+      setErrorSubida(motivoParaNoSubirFoto(archivos[0]) ? motivo : `No se ha podido subir la foto: ${motivo}`)
+      return
+    }
+    const detalle = fallos.map((fallo) => `${fallo.nombre} (${fallo.motivo})`).join("; ")
+    setErrorSubida(`No se han podido subir ${fallos.length} de ${archivos.length} fotos: ${detalle}`)
   }
 
   return (
@@ -201,6 +216,7 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
                       type="file"
                       accept={TIPOS_FOTO.join(",")}
                       aria-label="Elegir la foto que se va a subir"
+                      multiple
                       onChange={handleFotoElegida}
                       hidden
                     />
@@ -227,7 +243,7 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
                       }}
                     >
                       <Icon name="plus" size={14} color="white" strokeWidth={2.5} />
-                      {subiendo ? "Subiendo..." : "Subir"}
+                      {subiendo ? (progreso.total > 1 ? `Subiendo ${progreso.hechas + 1} de ${progreso.total}...` : "Subiendo...") : "Subir"}
                     </button>
                   </>
                 )}

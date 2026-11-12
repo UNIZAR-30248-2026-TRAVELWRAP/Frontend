@@ -105,6 +105,12 @@ When('subo la foto {string} de tipo {string}', async (nombre: string, tipo: stri
   await selectorDeFoto().setInputFiles({ name: nombre, mimeType: tipo, buffer: Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]) });
 });
 
+When('subo a la vez las fotos {string}', async (nombres: string) => {
+  await selectorDeFoto().setInputFiles(
+    nombres.split(', ').map((nombre) => ({ name: nombre, mimeType: 'image/jpeg', buffer: Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]) })),
+  );
+});
+
 When('subo una foto {string} de tipo {string} de {int} bytes', async (nombre: string, tipo: string, bytes: number) => {
   await selectorDeFoto().setInputFiles({ name: nombre, mimeType: tipo, buffer: Buffer.alloc(bytes, 1) });
 });

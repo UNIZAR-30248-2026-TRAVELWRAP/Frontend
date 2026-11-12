@@ -167,6 +167,24 @@ test.describe('Galería de fotos', () => {
     expect(recibidas[0].cuerpo).toContain('name="archivo"; filename="nueva.jpg"');
   });
 
+  test('se pueden elegir varias fotos a la vez y se suben todas', async ({ page }) => {
+    await entrarConSesion(page);
+    const { recibidas } = await simularBackend(page);
+
+    await page.goto(rutaGaleria);
+    await expect(miniaturas(page)).toHaveCount(3);
+    await expect(selector(page)).toHaveAttribute('multiple', '');
+    await selector(page).setInputFiles([
+      { ...JPEG, name: 'uno.jpg' },
+      { ...JPEG, name: 'dos.jpg' },
+      { ...JPEG, name: 'tres.jpg' },
+    ]);
+
+    await expect(miniaturas(page)).toHaveCount(6);
+    await expect(page.getByText('6 fotos · 2 miembros')).toBeVisible();
+    expect(recibidas.map((r) => /filename="([^"]+)"/.exec(r.cuerpo)?.[1])).toEqual(['uno.jpg', 'dos.jpg', 'tres.jpg']);
+  });
+
   test('un archivo que no es una foto se rechaza sin llamar al servidor', async ({ page }) => {
     await entrarConSesion(page);
     const { recibidas } = await simularBackend(page);

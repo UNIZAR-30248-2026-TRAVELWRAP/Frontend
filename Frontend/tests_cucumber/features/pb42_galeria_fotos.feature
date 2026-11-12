@@ -30,6 +30,13 @@ Característica: Galería de fotos compartida del viaje (PB-42)
     Entonces veo en la galería, por este orden, "plaza.jpg, coliseo.jpg"
     Y el servidor ha recibido 1 foto "plaza.jpg"
 
+  Escenario: Subir varias fotos a la vez las añade todas a la galería
+    Dado que soy miembro, pero no creador, del viaje activo "Roma 2027"
+    Cuando abro la galería del viaje "Roma 2027"
+    Y subo a la vez las fotos "uno.jpg, dos.jpg"
+    Entonces veo en la galería, por este orden, "dos.jpg, uno.jpg"
+    Y veo el texto "2 fotos"
+
   Escenario: Un PDF no se puede subir como foto y la galería no cambia
     Dado que soy miembro, pero no creador, del viaje activo "Roma 2027"
     Y que en la galería del viaje "Roma 2027" está la foto "coliseo.jpg"
