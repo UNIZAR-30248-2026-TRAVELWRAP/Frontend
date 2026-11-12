@@ -12,6 +12,8 @@ type Viaje = Record<string, unknown> & { id: string; nombre: string; estado: str
 let viajes: Viaje[] = [];
 let finalizados = 0;
 let archivados = 0;
+let desarchivados = 0;
+let fallaDesarchivar = false;
 let eliminados: string[] = [];
 let fallaEliminar = false;
 let rutaRegistrada = false;
@@ -20,6 +22,8 @@ Before(() => {
   viajes = [];
   finalizados = 0;
   archivados = 0;
+  desarchivados = 0;
+  fallaDesarchivar = false;
   eliminados = [];
   fallaEliminar = false;
   rutaRegistrada = false;
@@ -93,6 +97,16 @@ const simularBackend = async () => {
       viaje.estado = 'archivado';
       return route.fulfill(responder(viaje));
     }
+    if (accion === 'desarchivar' && metodo === 'POST') {
+      if (fallaDesarchivar) {
+        return route.fulfill(
+          responder({ error: { codigo: 'error_viaje', mensaje: 'No se ha podido desarchivar el viaje' } }, 502),
+        );
+      }
+      desarchivados += 1;
+      viaje.estado = 'activo';
+      return route.fulfill(responder(viaje));
+    }
     if (!accion && metodo === 'PATCH') {
       Object.assign(viaje, peticion.postDataJSON());
       return route.fulfill(responder(viaje));
@@ -141,6 +155,24 @@ Given('que soy miembro, pero no creador, del viaje activo {string}', async (nomb
     }),
   );
   await simularBackend();
+});
+
+Given('que soy miembro, pero no creador, del viaje archivado {string}', async (nombre: string) => {
+  viajes.push(
+    nuevoViaje(nombre, {
+      estado: 'archivado',
+      rol: 'miembro',
+      miembros: [
+        { usuario_id: 'otro', nombre: 'Berta', avatar_url: null, rol: 'creador' },
+        { usuario_id: USUARIO_ID, nombre: 'Adriana', avatar_url: null, rol: 'miembro' },
+      ],
+    }),
+  );
+  await simularBackend();
+});
+
+Given('que el servidor no puede desarchivar viajes', () => {
+  fallaDesarchivar = true;
 });
 
 Given('que el servidor no puede eliminar viajes', () => {
@@ -199,6 +231,11 @@ Then('ya no veo el viaje archivado {string}', async (nombre: string) => {
   await expect(paginaActual().getByRole('button', { name: new RegExp(`^${nombre}`) })).toHaveCount(0);
 });
 
+Then('veo el viaje activo {string} en mis viajes', async (nombre: string) => {
+  await expect(paginaActual().getByRole('button', { name: new RegExp(nombre) })).toBeVisible();
+  await expect(paginaActual().getByText('Viajes anteriores')).toHaveCount(0);
+});
+
 Then('veo el viaje anterior {string}', async (nombre: string) => {
   await expect(paginaActual().getByText('Viajes anteriores')).toBeVisible();
   await expect(paginaActual().getByRole('button', { name: new RegExp(nombre) })).toBeVisible();
@@ -210,6 +247,10 @@ Then('el servidor ha finalizado {int} viaje', (cantidad: number) => {
 
 Then('el servidor ha archivado {int} viaje', (cantidad: number) => {
   expect(archivados).toBe(cantidad);
+});
+
+Then('el servidor ha desarchivado {int} viaje', (cantidad: number) => {
+  expect(desarchivados).toBe(cantidad);
 });
 
 Then('el servidor ha eliminado el viaje {string}', (nombre: string) => {
