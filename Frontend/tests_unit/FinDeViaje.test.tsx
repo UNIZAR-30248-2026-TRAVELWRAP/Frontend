@@ -107,6 +107,29 @@ describe('FinDeViaje: diapositivas', () => {
     expect(screen.getByRole('list', { name: 'Pagos pendientes entre los viajeros' }).textContent).toContain('Adriana paga a Berta')
   })
 
+  it('la portada usa como fondo la última foto subida', async () => {
+    const antigua = { ...foto, id: 'f0', nombre: 'antigua.jpg', url: 'https://storage.test/antigua.jpg', creado_en: '2027-05-12T09:00:00Z' }
+    const reciente = { ...foto, id: 'f2', nombre: 'reciente.jpg', url: 'https://storage.test/reciente.jpg', creado_en: '2027-05-14T18:00:00Z' }
+    simularBackend({ fotos: [antigua, reciente, { ...antigua, id: 'f3', creado_en: '2027-05-13T12:00:00Z' }] })
+    const { container } = render(<FinDeViaje viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
+    await screen.findByText('TravelWrap · Resumen')
+
+    const fondo = (container.firstElementChild as HTMLElement).style.background
+    expect(fondo).toContain('https://storage.test/reciente.jpg')
+    expect(fondo).not.toContain('antigua.jpg')
+
+    await siguiente()
+    expect((container.firstElementChild as HTMLElement).style.background).not.toContain('storage.test')
+  })
+
+  it('sin fotos la portada conserva su degradado', async () => {
+    simularBackend({ fotos: [] })
+    const { container } = render(<FinDeViaje viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
+    await screen.findByText('TravelWrap · Resumen')
+
+    expect((container.firstElementChild as HTMLElement).style.background).not.toContain('url(')
+  })
+
   it('en la última diapositiva el botón lleva a Mis viajes', async () => {
     simularBackend()
     const alTerminar = vi.fn()

@@ -434,7 +434,12 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar 
 
   const avanzarSola = () => setPagina((p) => Math.min(p + 1, total - 1))
 
-  const fondo = total > 0 ? FONDOS[pagina % FONDOS.length] : FONDOS[0]
+  const ultimaFoto = fotos.reduce<Foto | null>((ultima, foto) => (!ultima || foto.creado_en > ultima.creado_en ? foto : ultima), null)
+  const fondoDe = (indice: number) =>
+    indice === 0 && ultimaFoto?.url
+      ? `linear-gradient(180deg, rgba(10,20,40,0.55) 0%, rgba(10,20,40,0.82) 100%), url("${ultimaFoto.url.replaceAll('"', "%22")}") center / cover no-repeat, ${C.navy}`
+      : FONDOS[indice % FONDOS.length]
+  const fondo = fondoDe(total > 0 ? pagina : 0)
 
   return (
     <div style={{ background: fondo, minHeight: "100dvh", display: "flex", justifyContent: "center" }}>
@@ -535,7 +540,7 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar 
                       position: "absolute",
                       inset: 0,
                       boxSizing: "border-box",
-                      background: FONDOS[i % FONDOS.length],
+                      background: fondoDe(i),
                       backfaceVisibility: "hidden",
                       transform: `rotateY(${posicion * 90}deg) translateZ(${medidas.ancho / 2}px)`,
                     }}
