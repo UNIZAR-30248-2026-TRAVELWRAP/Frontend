@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from "react"
+﻿import { useEffect, useState, type CSSProperties } from "react"
 import AvatarStack from "../components/AvatarStack"
 import BarraInferior, { ALTO_BARRA_INFERIOR, type SeccionViaje } from "../components/BarraInferior"
 import Badge from "../components/Badge"
@@ -20,6 +20,21 @@ const tarjetaStyle: CSSProperties = {
   boxShadow: SHADOWS.cardSoft,
 }
 
+const botonCuadradoStyle: CSSProperties = {
+  width: 80,
+  height: 80,
+  background: "white",
+  border: `1.5px solid ${C.border}`,
+  borderRadius: RADIUS.lg,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 6,
+  cursor: "pointer",
+  boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
+  flexShrink: 0,
+}
 const avisoStyle = (fondo: string, borde: string): CSSProperties => ({
   background: fondo,
   border: `1.5px solid ${borde}`,
@@ -42,7 +57,6 @@ type InicioViajeProps = {
   onEditar?: () => void
   onInvitar?: () => void
   onVotaciones?: () => void
-  onDocumentos?: () => void
   onResumen?: () => void
   // Un viaje sin destino solo muestra la votación del destino
   onPendienteDestino?: () => void
@@ -58,7 +72,6 @@ export default function InicioViaje({
   onEditar,
   onInvitar,
   onVotaciones,
-  onDocumentos,
   onResumen,
   onPendienteDestino,
   onArchivado,
@@ -283,101 +296,73 @@ export default function InicioViaje({
             </div>
           )}
 
-          {/* Viajeros con «Invitar» debajo y, a la derecha, acceso a las votaciones (como en el prototipo) */}
+          {/* Anclado sobre la barra inferior: viajeros con «Invitar» a la izquierda; votaciones y ajustes a la derecha */}
           {viaje && (
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "4px 0" }}>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
-                <div role="group" aria-label={`${miembros.length} ${miembros.length === 1 ? "viajero" : "viajeros"}`}>
-                  <AvatarStack members={miembros} size={36} max={5} />
-                </div>
-                {activo && (
-                  <button
-                    type="button"
-                    onClick={onInvitar}
-                    style={{
-                      background: C.lightBlue,
-                      border: "none",
-                      borderRadius: 8,
-                      padding: "4px 11px",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                      color: C.blue,
-                      fontSize: 10,
-                      fontFamily: NUNITO,
-                      fontWeight: 700,
-                    }}
-                  >
-                    <Icon name="plus" size={11} color={C.blue} strokeWidth={2.5} />
-                    Invitar
-                  </button>
-                )}
-              </div>
-              {activo && (
-                <button
-                  type="button"
-                  onClick={onVotaciones}
-                  style={{
-                    width: 80,
-                    height: 80,
-                    background: "white",
-                    border: `1.5px solid ${C.border}`,
-                    borderRadius: RADIUS.lg,
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 6,
-                    cursor: "pointer",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
-                    flexShrink: 0,
-                  }}
-                >
-                  <Icon name="vote" size={26} color={C.blue} strokeWidth={1.8} />
-                  <span style={{ fontFamily: NUNITO, fontWeight: 800, fontSize: 11, color: C.navy }}>Votaciones</span>
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* La cartera también se consulta en viajes finalizados */}
-          {viaje && (
-            <button
-              type="button"
-              onClick={onDocumentos}
+            <div
               style={{
-                ...tarjetaStyle,
-                width: "100%",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 14,
-                textAlign: "left",
+                position: "fixed",
+                left: 0,
+                right: 0,
+                bottom: ALTO_BARRA_INFERIOR,
+                zIndex: 20,
+                pointerEvents: "none",
               }}
             >
               <div
                 style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: 13,
-                  background: C.lightBlue,
+                  maxWidth: 480,
+                  margin: "0 auto",
+                  padding: "12px 16px",
                   display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
+                  justifyContent: "space-between",
+                  alignItems: "flex-end",
+                  gap: 12,
                 }}
               >
-                <Icon name="folder" size={21} color={C.blue} strokeWidth={1.8} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: NUNITO, fontWeight: 800, color: C.navy, fontSize: 14 }}>Cartera de Documentos</div>
-                <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, marginTop: 2 }}>
-                  Billetes, reservas y otros documentos del viaje
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8, pointerEvents: "auto" }}>
+                  <div role="group" aria-label={`${miembros.length} ${miembros.length === 1 ? "viajero" : "viajeros"}`}>
+                    <AvatarStack members={miembros} size={36} max={5} />
+                  </div>
+                  {activo && (
+                    <button
+                      type="button"
+                      onClick={onInvitar}
+                      style={{
+                        background: C.lightBlue,
+                        border: "none",
+                        borderRadius: 8,
+                        padding: "4px 11px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                        color: C.blue,
+                        fontSize: 10,
+                        fontFamily: NUNITO,
+                        fontWeight: 700,
+                      }}
+                    >
+                      <Icon name="plus" size={11} color={C.blue} strokeWidth={2.5} />
+                      Invitar
+                    </button>
+                  )}
+                </div>
+                <div style={{ display: "flex", gap: 10, pointerEvents: "auto" }}>
+                  {activo && (
+                    <button type="button" onClick={onVotaciones} style={botonCuadradoStyle}>
+                      <Icon name="vote" size={26} color={C.blue} strokeWidth={1.8} />
+                      <span style={{ fontFamily: NUNITO, fontWeight: 800, fontSize: 11, color: C.navy }}>Votaciones</span>
+                    </button>
+                  )}
+                  {activo && esCreador && (
+                    <button type="button" onClick={onEditar} style={botonCuadradoStyle}>
+                      <Icon name="settings" size={26} color={C.blue} strokeWidth={1.8} />
+                      <span style={{ fontFamily: NUNITO, fontWeight: 800, fontSize: 11, color: C.navy }}>Editar viaje</span>
+                    </button>
+                  )}
                 </div>
               </div>
-              <Icon name="arrow_right" size={18} color={C.muted} strokeWidth={2} />
-            </button>
+            </div>
           )}
 
           {viaje && !activo && (
@@ -418,43 +403,6 @@ export default function InicioViaje({
             </button>
           )}
 
-          {viaje && activo && esCreador && (
-            <button
-              type="button"
-              onClick={onEditar}
-              style={{
-                ...tarjetaStyle,
-                width: "100%",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 14,
-                textAlign: "left",
-              }}
-            >
-              <div
-                style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: 13,
-                  background: C.lightBlue,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
-              >
-                <Icon name="settings" size={21} color={C.blue} strokeWidth={1.8} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: NUNITO, fontWeight: 800, color: C.navy, fontSize: 14 }}>Editar viaje</div>
-                <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, marginTop: 2 }}>
-                  Nombre, fechas, destino y presupuesto
-                </div>
-              </div>
-              <Icon name="arrow_right" size={18} color={C.muted} strokeWidth={2} />
-            </button>
-          )}
         </div>
       </div>
 

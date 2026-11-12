@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react"
 import { QRCodeSVG } from "qrcode.react"
-import type { Miembro } from "../components/Avatar"
+import Avatar, { type Miembro } from "../components/Avatar"
 import { ApiError } from "../services/authApi"
 import { obtenerEnlaceInvitacion } from "../services/invitacionesApi"
 import { obtenerViaje } from "../services/viajesApi"
@@ -85,35 +85,6 @@ function SectionLabel({ children }: { children: ReactNode }) {
       }}
     >
       {children}
-    </div>
-  )
-}
-
-function Avatar({ member, size = 38 }: { member: Miembro; size?: number }) {
-  return (
-    <div
-      style={{
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        background: member.color,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexShrink: 0,
-      }}
-    >
-      <span
-        style={{
-          color: "white",
-          fontSize: size * 0.36,
-          fontWeight: 800,
-          fontFamily: NUNITO,
-          lineHeight: 1,
-        }}
-      >
-        {member.initial}
-      </span>
     </div>
   )
 }
@@ -234,7 +205,7 @@ export default function InvitarViajeros({ viajeId, tokenSesion, onBack }: Invita
                     i < miembros.length - 1 ? `1px solid ${C.border}` : "none",
                 }}
               >
-                <Avatar member={m} />
+                <Avatar member={m} size={38} showBorder={false} />
                 <div style={{ flex: 1 }}>
                   <div
                     style={{
