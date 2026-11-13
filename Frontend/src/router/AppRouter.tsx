@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import type { ComponentProps } from "react";
+import { useEffect, useState, type ComponentProps } from "react";
 import type { Sesion } from "../services/authApi";
 import Login from "../screens/Login";
 import MisViajes from "../screens/MisViajes";
@@ -19,6 +19,7 @@ import AnadirActividad from "../screens/AnadirActividad";
 import AnadirGasto from "../screens/AnadirGasto";
 import ControlGastos from "../screens/ControlGastos";
 import DetalleGasto from "../screens/DetalleGasto";
+import { obtenerGasto, type DetalleGasto as DetalleGastoDelApi } from "../services/gastosApi";
 import Itinerario from "../screens/Itinerario";
 import CarteraDocumentos from "../screens/CarteraDocumentos";
 import ChatGaleria from "../screens/ChatGaleria";
@@ -278,6 +279,40 @@ function RutaDetalleGasto({ sesion }: { sesion: Sesion }) {
       tokenSesion={sesion.token}
       usuarioId={sesion.usuario.id}
       onVolver={() => navigate(`/viajes/${viajeId}/gastos`)}
+      onModificar={() => navigate(`/viajes/${viajeId}/gastos/${gastoId}/editar`)}
+    />
+  );
+}
+
+// Modificar un gasto: el mismo formulario que Añadir Gasto, relleno con los datos del gasto. Al guardar se vuelve al detalle
+function RutaEditarGasto({ sesion }: { sesion: Sesion }) {
+  const { viajeId = "", gastoId = "" } = useParams();
+  const navigate = useNavigate();
+  const [gasto, setGasto] = useState<DetalleGastoDelApi | null>(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let vigente = true;
+    obtenerGasto(viajeId, gastoId, sesion.token)
+      .then((datos) => vigente && setGasto(datos))
+      .catch((e) => vigente && setError(e instanceof Error ? e.message : "Ha ocurrido un error"));
+    return () => {
+      vigente = false;
+    };
+  }, [viajeId, gastoId, sesion.token]);
+
+  const volverAlDetalle = () => navigate(`/viajes/${viajeId}/gastos/${gastoId}`, { replace: true });
+  if (error) return <p role="alert">No se ha podido cargar el gasto: {error}</p>;
+  if (!gasto) return <p>Cargando gasto...</p>;
+  return (
+    <AnadirGasto
+      key={gastoId}
+      viajeId={viajeId}
+      tokenSesion={sesion.token}
+      usuarioId={sesion.usuario.id}
+      gastoInicial={gasto}
+      onVolver={volverAlDetalle}
+      onGuardado={volverAlDetalle}
     />
   );
 }
@@ -479,6 +514,12 @@ export default function AppRouter({
         <Route
           path="/viajes/:viajeId/gastos/:gastoId"
           element={session ? <RutaDetalleGasto sesion={session} /> : <Navigate to="/login" replace />}
+        />
+
+        {/* Modificar un gasto del viaje (privada) */}
+        <Route
+          path="/viajes/:viajeId/gastos/:gastoId/editar"
+          element={session ? <RutaEditarGasto sesion={session} /> : <Navigate to="/login" replace />}
         />
 
         {/* Cartera de documentos compartida del viaje (privada) */}

@@ -4,7 +4,7 @@ import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import SectionLabel from "../components/SectionLabel"
 import { ApiError } from "../services/authApi"
-import { crearGasto, type CategoriaGasto, type Gasto } from "../services/gastosApi"
+import { crearGasto, editarGasto, type CategoriaGasto, type Gasto } from "../services/gastosApi"
 import { obtenerViaje, type MiembroDelViaje } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
@@ -75,16 +75,30 @@ type AnadirGastoProps = {
   usuarioId: string
   onVolver?: () => void
   onRegistrado?: (gasto: Gasto) => void
+  // Si se pasa, la pantalla modifica este gasto en lugar de registrar uno nuevo
+  gastoInicial?: Gasto
+  onGuardado?: (gasto: Gasto) => void
 }
 
-export default function AnadirGasto({ viajeId, tokenSesion, usuarioId, onVolver, onRegistrado }: AnadirGastoProps) {
+export default function AnadirGasto({
+  viajeId,
+  tokenSesion,
+  usuarioId,
+  onVolver,
+  onRegistrado,
+  gastoInicial,
+  onGuardado,
+}: AnadirGastoProps) {
+  const editando = gastoInicial !== undefined
   const [miembros, setMiembros] = useState<MiembroDelViaje[]>([])
   const [cargando, setCargando] = useState(true)
-  const [importe, setImporte] = useState("")
-  const [concepto, setConcepto] = useState("")
-  const [categoria, setCategoria] = useState<CategoriaGasto>("comida")
-  const [pagadoPor, setPagadoPor] = useState("")
-  const [participantes, setParticipantes] = useState<string[]>([])
+  const [importe, setImporte] = useState(gastoInicial ? String(gastoInicial.importe).replace(".", ",") : "")
+  const [concepto, setConcepto] = useState(gastoInicial?.concepto ?? "")
+  const [categoria, setCategoria] = useState<CategoriaGasto>(gastoInicial?.categoria ?? "comida")
+  const [pagadoPor, setPagadoPor] = useState(gastoInicial?.pagado_por ?? "")
+  const [participantes, setParticipantes] = useState<string[]>(
+    gastoInicial ? gastoInicial.repartos.map((r) => r.usuario_id) : [],
+  )
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState("")
   // Un campo está «tocado» al salir de él o al intentar registrar: desde entonces se avisa también de que falta
@@ -94,7 +108,7 @@ export default function AnadirGasto({ viajeId, tokenSesion, usuarioId, onVolver,
   const conceptoRef = useRef<HTMLInputElement>(null)
 
   // Los miembros del viaje son los que pueden pagar y entre los que se divide. Por defecto paga quien
-  // registra el gasto y se divide entre todos
+  // registra el gasto y se divide entre todos. Al modificar, se parte del gasto y sus participantes actuales
   useEffect(() => {
     let vigente = true
     obtenerViaje(viajeId, tokenSesion)
@@ -102,6 +116,11 @@ export default function AnadirGasto({ viajeId, tokenSesion, usuarioId, onVolver,
         if (!vigente) return
         const ids = viaje.miembros.map((m) => m.usuario_id)
         setMiembros(viaje.miembros)
+        if (gastoInicial) {
+          // Quien ya abandonó el viaje no puede participar, así que no se preselecciona
+          setParticipantes(gastoInicial.repartos.map((r) => r.usuario_id).filter((id) => ids.includes(id)))
+          return
+        }
         setPagadoPor(ids.includes(usuarioId) ? usuarioId : (ids[0] ?? ""))
         setParticipantes(ids)
       })
@@ -114,7 +133,7 @@ export default function AnadirGasto({ viajeId, tokenSesion, usuarioId, onVolver,
     return () => {
       vigente = false
     }
-  }, [viajeId, tokenSesion, usuarioId])
+  }, [viajeId, tokenSesion, usuarioId, gastoInicial])
 
   // Se mantiene el orden de los miembros para que el reparto que se ve coincida con el que guarda el backend
   const alternarParticipante = (id: string) => {
@@ -156,17 +175,20 @@ export default function AnadirGasto({ viajeId, tokenSesion, usuarioId, onVolver,
     setEnviando(true)
     setError("")
     try {
-      const gasto = await crearGasto(
-        viajeId,
-        {
-          concepto: concepto.trim(),
-          importe: importeValido as number,
-          categoria,
-          pagado_por: pagadoPor,
-          participantes,
-        },
-        tokenSesion,
-      )
+      const datos = {
+        concepto: concepto.trim(),
+        importe: importeValido as number,
+        categoria,
+        pagado_por: pagadoPor,
+        participantes,
+      }
+      if (gastoInicial) {
+        // Al modificar se conserva la fecha del gasto, que el formulario no cambia
+        const gasto = await editarGasto(viajeId, gastoInicial.id, { ...datos, fecha: gastoInicial.fecha }, tokenSesion)
+        onGuardado?.(gasto)
+        return
+      }
+      const gasto = await crearGasto(viajeId, datos, tokenSesion)
       onRegistrado?.(gasto)
     } catch (e) {
       // El backend explica el motivo (viaje finalizado, alguien que ya no es miembro...)
@@ -214,7 +236,7 @@ export default function AnadirGasto({ viajeId, tokenSesion, usuarioId, onVolver,
                 Control de Gastos
               </div>
               <Heading size={22} color="white">
-                Añadir Gasto
+                {editando ? "Modificar gasto" : "Añadir Gasto"}
               </Heading>
             </div>
           </div>
@@ -477,7 +499,13 @@ export default function AnadirGasto({ viajeId, tokenSesion, usuarioId, onVolver,
             }}
           >
             <Icon name="plus" size={18} color="white" strokeWidth={2.5} />
-            {enviando ? "Registrando gasto..." : "Registrar gasto"}
+            {editando
+              ? enviando
+                ? "Guardando cambios..."
+                : "Guardar cambios"
+              : enviando
+                ? "Registrando gasto..."
+                : "Registrar gasto"}
           </button>
         </form>
       </div>

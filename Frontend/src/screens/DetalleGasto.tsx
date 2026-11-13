@@ -24,10 +24,11 @@ type DetalleGastoProps = {
   // Usuario de la sesión, para marcar su parte en el reparto
   usuarioId: string
   onVolver?: () => void
+  onModificar?: () => void
 }
 
 // Pantalla: Detalle del gasto (importe, quién pagó y el reparto de cada miembro)
-export default function DetalleGasto({ viajeId, gastoId, tokenSesion, usuarioId, onVolver }: DetalleGastoProps) {
+export default function DetalleGasto({ viajeId, gastoId, tokenSesion, usuarioId, onVolver, onModificar }: DetalleGastoProps) {
   const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
   const [gasto, setGasto] = useState<Detalle | null>(null)
   const [cargando, setCargando] = useState(true)
@@ -58,6 +59,10 @@ export default function DetalleGasto({ viajeId, gastoId, tokenSesion, usuarioId,
     return indice === -1 ? MIEMBRO_ABANDONADO : aMiembro(miembros[indice].nombre, indice)
   }
   const categoria = gasto ? CATEGORIAS_GASTO.find((c) => c.categoria === gasto.categoria) : undefined
+  // Solo quien registró el gasto y el creador del viaje lo modifican, y solo con el viaje activo
+  const puedeModificar = Boolean(
+    viaje && gasto && viaje.estado === "activo" && (gasto.creado_por === usuarioId || viaje.rol === "creador"),
+  )
 
   return (
     <div style={{ background: C.bg, minHeight: "100vh" }}>
@@ -208,6 +213,29 @@ export default function DetalleGasto({ viajeId, gastoId, tokenSesion, usuarioId,
                   })}
                 </ul>
               </section>
+
+              {puedeModificar && onModificar && (
+                <button
+                  type="button"
+                  onClick={onModificar}
+                  style={{
+                    width: "100%",
+                    background: C.blue,
+                    color: "white",
+                    border: "none",
+                    borderRadius: RADIUS.md,
+                    padding: 13,
+                    fontFamily: NUNITO,
+                    fontWeight: 800,
+                    fontSize: 14,
+                    cursor: "pointer",
+                    boxShadow: SHADOWS.button,
+                    marginBottom: 16,
+                  }}
+                >
+                  Modificar
+                </button>
+              )}
             </>
           )}
         </div>
