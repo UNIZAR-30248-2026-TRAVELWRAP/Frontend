@@ -1,7 +1,16 @@
 // Test unitario de la función crearGasto de gastosApi.ts
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../src/services/authApi'
-import { crearGasto, listarGastos, obtenerBalance, obtenerLiquidacion, type NuevoGasto } from '../src/services/gastosApi'
+import {
+  crearGasto,
+  editarGasto,
+  eliminarGasto,
+  listarGastos,
+  obtenerBalance,
+  obtenerGasto,
+  obtenerLiquidacion,
+  type NuevoGasto,
+} from '../src/services/gastosApi'
 
 const VIAJE_ID = '123e4567-e89b-12d3-a456-426614174000'
 const ADRIANA = 'df77cba6-4be5-4cbc-814b-1e228dd73dcc'
@@ -160,5 +169,57 @@ describe('gastosApi · liquidación', () => {
     expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/gastos/liquidacion$`))
     expect(opciones.method).toBe('GET')
     expect(opciones.headers.Authorization).toBe('Bearer token-acceso')
+  })
+})
+
+describe('gastosApi · detalle, edición y borrado', () => {
+  const GASTO_ID = '9f3c2a1b-7d6e-4f5a-8b9c-0d1e2f3a4b5c'
+
+  it('obtenerGasto pide el gasto con GET a /viajes/:id/gastos/:gastoId', async () => {
+    const detalle = { id: GASTO_ID, concepto: 'Cena', repartos: [{ usuario_id: ADRIANA, nombre: 'Adriana', abandonado: false, importe: 10 }] }
+    const fetchMock = vi.fn(() => respuesta(200, detalle))
+    vi.stubGlobal('fetch', fetchMock)
+
+    expect(await obtenerGasto(VIAJE_ID, GASTO_ID, 'token-acceso')).toEqual(detalle)
+    const [url, opciones] = llamada(fetchMock)
+    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/gastos/${GASTO_ID}$`))
+    expect(opciones.method).toBe('GET')
+    expect(opciones.headers.Authorization).toBe('Bearer token-acceso')
+  })
+
+  it('editarGasto envía PATCH al gasto con los datos y devuelve el gasto editado', async () => {
+    const editado = { id: GASTO_ID, concepto: 'Cena', importe: 12, repartos: [] }
+    const fetchMock = vi.fn(() => respuesta(200, editado))
+    vi.stubGlobal('fetch', fetchMock)
+    const datos: NuevoGasto = { concepto: 'Cena', importe: 12, pagado_por: ADRIANA, participantes: [ADRIANA] }
+
+    expect(await editarGasto(VIAJE_ID, GASTO_ID, datos, 'token-acceso')).toEqual(editado)
+    const [url, opciones] = llamada(fetchMock)
+    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/gastos/${GASTO_ID}$`))
+    expect(opciones.method).toBe('PATCH')
+    expect(JSON.parse(opciones.body as string)).toEqual(datos)
+  })
+
+  it('eliminarGasto envía DELETE y acepta la respuesta 204 sin cuerpo', async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(new Response(null, { status: 204 })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    expect(await eliminarGasto(VIAJE_ID, GASTO_ID, 'token-acceso')).toBeNull()
+    const [url, opciones] = llamada(fetchMock)
+    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/gastos/${GASTO_ID}$`))
+    expect(opciones.method).toBe('DELETE')
+    expect(opciones.headers.Authorization).toBe('Bearer token-acceso')
+  })
+
+  it('eliminarGasto propaga el 404 de un gasto que no existe', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => respuesta(404, { error: { codigo: 'gasto_no_encontrado', mensaje: 'El gasto no existe o no pertenece a este viaje' } })),
+    )
+
+    await expect(eliminarGasto(VIAJE_ID, GASTO_ID, 'token-acceso')).rejects.toMatchObject({
+      estado: 404,
+      codigo: 'gasto_no_encontrado',
+    })
   })
 })

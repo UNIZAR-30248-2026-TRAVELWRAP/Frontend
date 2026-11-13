@@ -525,3 +525,127 @@ test.describe('Importes grandes en un móvil de 320 px', () => {
     expect(await importe.evaluate((el: HTMLInputElement) => el.scrollWidth <= el.clientWidth)).toBe(true);
   });
 });
+
+// Detalle, modificar y eliminar un gasto. El backend simulado guarda el gasto en memoria: GET, PATCH y DELETE del
+// gasto cambian lo que devuelven el historial, el total y el detalle
+const GASTO_ID = 'g1';
+const NOMBRES = { [USUARIO_ID]: 'Adriana', [BERTA_ID]: 'Berta', [DANIEL_ID]: 'Daniel' } as Record<string, string>;
+
+const gastoCena = () => ({
+  id: GASTO_ID,
+  viaje_id: VIAJE_ID,
+  concepto: 'Cena en el Trastevere',
+  importe: 60.5,
+  categoria: 'comida',
+  pagado_por: BERTA_ID,
+  fecha: '2027-05-12',
+  creado_por: USUARIO_ID,
+  creado_en: '2026-10-29T10:00:00Z',
+  actualizado_en: '2026-10-29T10:00:00Z',
+  repartos: [
+    { usuario_id: BERTA_ID, importe: 30.25 },
+    { usuario_id: USUARIO_ID, importe: 30.25 },
+  ],
+});
+
+// Reparto a partes iguales para el backend simulado (sin céntimos sobrantes en estos casos)
+const repartir = (importe: number, participantes: string[]) =>
+  participantes.map((id) => ({ usuario_id: id, importe: Math.round((importe / participantes.length) * 100) / 100 }));
+
+const simularGastoEnViaje = async (page: Page) => {
+  let gastos = [gastoCena()];
+  const conNombre = (gasto: ReturnType<typeof gastoCena>) => ({
+    ...gasto,
+    repartos: gasto.repartos.map((r) => ({ ...r, nombre: NOMBRES[r.usuario_id] ?? null, abandonado: false })),
+  });
+  const total = () => gastos.reduce((suma, g) => suma + Math.round(g.importe * 100), 0) / 100;
+
+  await page.route('**/api/viajes/**', async (route) => {
+    const peticion = route.request();
+    const ruta = new URL(peticion.url()).pathname.replace(/^.*\/api/, '');
+    const metodo = peticion.method();
+
+    if (ruta === `/viajes/${VIAJE_ID}/gastos/${GASTO_ID}`) {
+      if (metodo === 'DELETE') {
+        gastos = gastos.filter((g) => g.id !== GASTO_ID);
+        return route.fulfill({ status: 204, body: '' });
+      }
+      if (metodo === 'PATCH') {
+        const cuerpo = peticion.postDataJSON();
+        gastos = gastos.map((g) => ({
+          ...g,
+          concepto: cuerpo.concepto,
+          importe: cuerpo.importe,
+          pagado_por: cuerpo.pagado_por,
+          repartos: repartir(cuerpo.importe, cuerpo.participantes),
+        }));
+        return json(route, 200, gastos[0]);
+      }
+      const gasto = gastos.find((g) => g.id === GASTO_ID);
+      return gasto ? json(route, 200, conNombre(gasto)) : json(route, 404, { error: { codigo: 'gasto_no_encontrado', mensaje: 'El gasto no existe o no pertenece a este viaje' } });
+    }
+    if (ruta === `/viajes/${VIAJE_ID}/gastos/balance`) return json(route, 200, { saldos: [] });
+    if (ruta === `/viajes/${VIAJE_ID}/gastos/liquidacion`) return json(route, 200, { transferencias: [] });
+    if (ruta === `/viajes/${VIAJE_ID}/gastos`) return json(route, 200, { gastos, total: total() });
+    return json(route, 200, viaje);
+  });
+};
+
+const detalle = (page: Page) => page.getByRole('region', { name: 'Datos del gasto' });
+const reparto = (page: Page) => page.getByRole('list', { name: 'Parte de cada miembro' }).getByRole('listitem');
+
+test.describe('Detalle y gestión de un gasto', () => {
+  test('desde el historial se abre el detalle con la parte de cada miembro', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularGastoEnViaje(page);
+
+    await page.goto(rutaControl);
+    await page.getByRole('button', { name: 'Ver el detalle de Cena en el Trastevere' }).click();
+
+    await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}/gastos/${GASTO_ID}$`));
+    await expect(detalle(page)).toContainText('60,50 €');
+    await expect(reparto(page).nth(0)).toContainText('Berta');
+    await expect(reparto(page).nth(1)).toContainText('Adriana (tú)');
+    await expect(reparto(page).nth(1)).toContainText('30,25 €');
+  });
+
+  test('modificar el importe actualiza el detalle y el reparto', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularGastoEnViaje(page);
+
+    await page.goto(`/viajes/${VIAJE_ID}/gastos/${GASTO_ID}`);
+    await page.getByRole('button', { name: 'Modificar' }).click();
+    await expect(page.getByText('Modificar gasto', { exact: true })).toBeVisible();
+    await page.getByLabel('Importe').fill('30');
+    await page.getByRole('button', { name: 'Guardar cambios' }).click();
+
+    await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}/gastos/${GASTO_ID}$`));
+    await expect(detalle(page)).toContainText('30,00 €');
+    await expect(reparto(page).nth(1)).toContainText('15,00 €');
+  });
+
+  test('eliminar tras confirmar vuelve a Control de Gastos sin el gasto', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularGastoEnViaje(page);
+
+    await page.goto(`/viajes/${VIAJE_ID}/gastos/${GASTO_ID}`);
+    await page.getByRole('button', { name: 'Eliminar', exact: true }).click();
+    await expect(page.getByRole('dialog')).toContainText('¿Eliminar este gasto?');
+    await page.getByRole('button', { name: 'Eliminar gasto' }).click();
+
+    await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}/gastos$`));
+    await expect(page.getByText('Todavía no hay gastos en este viaje.')).toBeVisible();
+  });
+
+  test('cancelar la eliminación no borra el gasto', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularGastoEnViaje(page);
+
+    await page.goto(`/viajes/${VIAJE_ID}/gastos/${GASTO_ID}`);
+    await page.getByRole('button', { name: 'Eliminar', exact: true }).click();
+    await page.getByRole('button', { name: 'Cancelar' }).click();
+
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(detalle(page)).toContainText('60,50 €');
+  });
+});

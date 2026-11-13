@@ -25,11 +25,16 @@ let gastos: GastoRecibido[] = [];
 // Gastos que ya tenía el viaje al empezar el escenario
 let previos: GastoGuardado[] = [];
 let rechazaPorViajeCerrado = false;
+// Gastos que el escenario ha editado o borrado, tal como los ha recibido el backend simulado
+let editados: GastoRecibido[] = [];
+let borrados: string[] = [];
 
 Before(() => {
   gastos = [];
   previos = [];
   rechazaPorViajeCerrado = false;
+  editados = [];
+  borrados = [];
 });
 
 // Fecha de los gastos registrados en el escenario: posterior a la de los previos, así que salen primero
@@ -42,6 +47,27 @@ const historial = () => {
   const lista = [...nuevos, ...anteriores].map((gasto, i) => ({ id: `gasto-${i + 1}`, ...gasto, repartos: [] }));
   const total = lista.reduce((suma, gasto) => suma + Math.round(gasto.importe * 100), 0) / 100;
   return { gastos: lista, total };
+};
+
+// Nombre de cada miembro a partir de su id, para el reparto del detalle
+const NOMBRE_DE = Object.fromEntries(Object.entries(ID_DE).map(([nombre, id]) => [id, nombre]));
+
+// Detalle de un gasto como lo devuelve GET /gastos/:id: la parte de cada participante a partes iguales en céntimos
+// (los que sobran, para los primeros). Quien lo registra es Adriana, así que puede modificarlo y eliminarlo
+const detalleDe = (gasto: ReturnType<typeof historial>['gastos'][number]) => {
+  const centimos = Math.round(gasto.importe * 100);
+  const base = Math.floor(centimos / gasto.participantes.length);
+  const sobran = centimos % gasto.participantes.length;
+  return {
+    ...gasto,
+    creado_por: ID_DE['Adriana'],
+    repartos: gasto.participantes.map((id, i) => ({
+      usuario_id: id,
+      nombre: NOMBRE_DE[id],
+      abandonado: false,
+      importe: (base + (i < sobran ? 1 : 0)) / 100,
+    })),
+  };
 };
 
 // Saldo de cada miembro a partir del historial: lo pagado menos su parte, repartida a partes iguales en
@@ -117,6 +143,36 @@ const simularGastos = async () => {
       contentType: 'application/json',
       body: JSON.stringify({ id: `gasto-${gastos.length}`, ...gasto, repartos: [] }),
     });
+  });
+
+  // Detalle, edición y borrado de un gasto del historial. Se registra el último, así que tiene prioridad
+  await paginaActual().route('**/api/viajes/*/gastos/*', (route) => {
+    const peticion = route.request();
+    const ultimo = new URL(peticion.url()).pathname.split('/').pop();
+    if (ultimo === 'balance' || ultimo === 'liquidacion') return route.fallback();
+
+    const gasto = historial().gastos.find((g) => g.id === ultimo);
+    if (!gasto) {
+      return route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: { codigo: 'gasto_no_encontrado', mensaje: 'El gasto no existe o no pertenece a este viaje' } }),
+      });
+    }
+    if (peticion.method() === 'DELETE') {
+      borrados.push(gasto.concepto);
+      return route.fulfill({ status: 204, body: '' });
+    }
+    if (peticion.method() === 'PATCH') {
+      const cuerpo = peticion.postDataJSON() as GastoRecibido;
+      editados.push(cuerpo);
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ...gasto, ...cuerpo, repartos: [] }),
+      });
+    }
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(detalleDe(gasto)) });
   });
 };
 
@@ -263,4 +319,55 @@ Then('en la liquidación pendiente veo {string} con {string}', async (texto: str
 
 Then('en la liquidación pendiente veo {string}', async (texto: string) => {
   await expect(paginaActual().getByRole('region', { name: 'Liquidación pendiente' })).toContainText(texto);
+});
+
+// Detalle, modificar y eliminar (PB-29)
+
+When('abro el detalle del gasto {string}', async (concepto: string) => {
+  await paginaActual().getByRole('button', { name: `Ver el detalle de ${concepto}` }).click();
+  await expect(paginaActual().getByRole('region', { name: 'Datos del gasto' })).toBeVisible();
+});
+
+When('cambio el importe a {string}', async (importe: string) => {
+  await paginaActual().getByLabel('Importe').fill(importe);
+});
+
+When('confirmo la eliminación', async () => {
+  await paginaActual().getByRole('button', { name: 'Eliminar gasto' }).click();
+});
+
+Then('en el detalle veo el importe {string}', async (importe: string) => {
+  await expect(paginaActual().getByRole('region', { name: 'Datos del gasto' })).toContainText(importe);
+});
+
+Then('en el reparto del gasto la parte de {string} es {string}', async (nombre: string, parte: string) => {
+  const fila = paginaActual()
+    .getByRole('list', { name: 'Parte de cada miembro' })
+    .getByRole('listitem')
+    .filter({ hasText: nombre });
+  await expect(fila).toContainText(parte);
+});
+
+Then(
+  'el servidor ha guardado la edición del gasto {string} con importe {float} entre {string}',
+  (concepto: string, importe: number, participantes: string) => {
+    expect(editados).toEqual([
+      {
+        concepto,
+        importe,
+        categoria: 'comida',
+        pagado_por: ID_DE['Berta'],
+        participantes: participantes.split(', ').map((nombre) => ID_DE[nombre]),
+        fecha: '2027-05-12',
+      },
+    ]);
+  },
+);
+
+Then('el servidor ha borrado el gasto {string}', (concepto: string) => {
+  expect(borrados).toEqual([concepto]);
+});
+
+Then('el servidor no ha borrado ningún gasto', () => {
+  expect(borrados).toEqual([]);
 });
