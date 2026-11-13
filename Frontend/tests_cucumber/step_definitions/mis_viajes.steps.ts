@@ -105,7 +105,14 @@ Given('que el navegador me deja usar el portapapeles', async () => {
 
 When('abro mis viajes', async () => {
   await irA('/');
-  await expect(paginaActual().getByText(/^Viajes? activos?$/).or(paginaActual().getByText('Viajes anteriores')).first()).toBeVisible();
+  // Si solo hay viajes archivados no se pinta ninguna sección: se ve el aviso de que no hay viajes
+  await expect(
+    paginaActual()
+      .getByText(/^Viajes? activos?$/)
+      .or(paginaActual().getByText('Viajes anteriores'))
+      .or(paginaActual().getByText('Aún no tienes viajes'))
+      .first(),
+  ).toBeVisible();
 });
 
 When('pulso el viaje {string}', async (nombre: string) => {
