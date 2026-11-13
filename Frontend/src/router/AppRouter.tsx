@@ -18,6 +18,7 @@ import ElegirDestino from "../screens/ElegirDestino";
 import AnadirActividad from "../screens/AnadirActividad";
 import AnadirGasto from "../screens/AnadirGasto";
 import ControlGastos from "../screens/ControlGastos";
+import DetalleGasto from "../screens/DetalleGasto";
 import Itinerario from "../screens/Itinerario";
 import CarteraDocumentos from "../screens/CarteraDocumentos";
 import ChatGaleria from "../screens/ChatGaleria";
@@ -259,7 +260,24 @@ function RutaControlGastos({ sesion }: { sesion: Sesion }) {
       usuarioId={sesion.usuario.id}
       onVolver={() => navigate("/")}
       onAnadirGasto={() => navigate(`/viajes/${viajeId}/gastos/nuevo`)}
+      onAbrirGasto={(gastoId) => navigate(`/viajes/${viajeId}/gastos/${gastoId}`)}
       onCambiarSeccion={(seccion) => navigate(rutaDeSeccion(viajeId, seccion))}
+    />
+  );
+}
+
+// Detalle de un gasto del historial. Al volver se regresa a Control de Gastos
+function RutaDetalleGasto({ sesion }: { sesion: Sesion }) {
+  const { viajeId = "", gastoId = "" } = useParams();
+  const navigate = useNavigate();
+  return (
+    <DetalleGasto
+      key={gastoId}
+      viajeId={viajeId}
+      gastoId={gastoId}
+      tokenSesion={sesion.token}
+      usuarioId={sesion.usuario.id}
+      onVolver={() => navigate(`/viajes/${viajeId}/gastos`)}
     />
   );
 }
@@ -455,6 +473,12 @@ export default function AppRouter({
         <Route
           path="/viajes/:viajeId/gastos/nuevo"
           element={session ? <RutaAnadirGasto sesion={session} /> : <Navigate to="/login" replace />}
+        />
+
+        {/* Detalle de un gasto del viaje (privada) */}
+        <Route
+          path="/viajes/:viajeId/gastos/:gastoId"
+          element={session ? <RutaDetalleGasto sesion={session} /> : <Navigate to="/login" replace />}
         />
 
         {/* Cartera de documentos compartida del viaje (privada) */}

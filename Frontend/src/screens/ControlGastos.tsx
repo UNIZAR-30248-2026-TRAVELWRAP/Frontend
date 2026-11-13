@@ -41,6 +41,8 @@ type ControlGastosProps = {
   usuarioId: string
   onVolver?: () => void
   onAnadirGasto?: () => void
+  // Abre el detalle del gasto pulsado en el historial
+  onAbrirGasto?: (gastoId: string) => void
   onCambiarSeccion?: (seccion: SeccionViaje) => void
 }
 
@@ -50,6 +52,7 @@ export default function ControlGastos({
   usuarioId,
   onVolver,
   onAnadirGasto,
+  onAbrirGasto,
   onCambiarSeccion,
 }: ControlGastosProps) {
   const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
@@ -428,60 +431,72 @@ export default function ControlGastos({
                     return (
                       <li
                         key={gasto.id}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 12,
-                          padding: "13px 16px",
-                          borderBottom: i < gastos.length - 1 ? `1px solid ${C.border}` : "none",
-                        }}
+                        style={{ borderBottom: i < gastos.length - 1 ? `1px solid ${C.border}` : "none" }}
                       >
-                        <div
-                          aria-hidden="true"
+                        {/* Toda la fila abre el detalle del gasto */}
+                        <button
+                          type="button"
+                          onClick={() => onAbrirGasto?.(gasto.id)}
+                          aria-label={`Ver el detalle de ${gasto.concepto}`}
                           style={{
-                            width: 42,
-                            height: 42,
-                            borderRadius: 13,
-                            background: C.bg,
                             display: "flex",
                             alignItems: "center",
-                            justifyContent: "center",
-                            flexShrink: 0,
+                            gap: 12,
+                            width: "100%",
+                            padding: "13px 16px",
+                            background: "none",
+                            border: "none",
+                            textAlign: "left",
+                            cursor: "pointer",
                           }}
                         >
-                          <Icon name={iconoDeCategoriaGasto(gasto.categoria)} size={20} color={C.blue} strokeWidth={1.6} />
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div
+                            aria-hidden="true"
+                            style={{
+                              width: 42,
+                              height: 42,
+                              borderRadius: 13,
+                              background: C.bg,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              flexShrink: 0,
+                            }}
+                          >
+                            <Icon name={iconoDeCategoriaGasto(gasto.categoria)} size={20} color={C.blue} strokeWidth={1.6} />
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div
+                              style={{
+                                fontFamily: NUNITO,
+                                color: C.navy,
+                                fontSize: 13,
+                                fontWeight: 700,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {gasto.concepto}
+                            </div>
+                            <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 11, marginTop: 2 }}>
+                              Pagó <span style={{ color: quien.color, fontWeight: 700 }}>{quien.name}</span> ·{" "}
+                              {fechaDelGasto(gasto.fecha)}
+                            </div>
+                          </div>
                           <div
                             style={{
                               fontFamily: NUNITO,
                               color: C.navy,
-                              fontSize: 13,
-                              fontWeight: 700,
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
+                              fontSize: tamanoSegunLongitud(conEuros(gasto.importe).length, 15, 13, 12, 18),
+                              fontWeight: 900,
+                              flexShrink: 0,
                               whiteSpace: "nowrap",
                             }}
                           >
-                            {gasto.concepto}
+                            {conEuros(gasto.importe)}
                           </div>
-                          <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 11, marginTop: 2 }}>
-                            Pagó <span style={{ color: quien.color, fontWeight: 700 }}>{quien.name}</span> ·{" "}
-                            {fechaDelGasto(gasto.fecha)}
-                          </div>
-                        </div>
-                        <div
-                          style={{
-                            fontFamily: NUNITO,
-                            color: C.navy,
-                            fontSize: tamanoSegunLongitud(conEuros(gasto.importe).length, 15, 13, 12, 18),
-                            fontWeight: 900,
-                            flexShrink: 0,
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {conEuros(gasto.importe)}
-                        </div>
+                        </button>
                       </li>
                     )
                   })}

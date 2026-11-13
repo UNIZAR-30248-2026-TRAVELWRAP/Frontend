@@ -51,6 +51,19 @@ export type SaldoMiembro = {
   saldo: number
 }
 
+// Parte de un miembro en el detalle: con su nombre, y abandonado si ya dejó el viaje
+export type RepartoDetalle = {
+  usuario_id: string
+  nombre: string | null
+  abandonado: boolean
+  importe: number
+}
+
+// Gasto con el nombre y la parte de cada miembro
+export type DetalleGasto = Omit<Gasto, "repartos"> & {
+  repartos: RepartoDetalle[]
+}
+
 export type Balance = {
   // Primero los miembros actuales, en el orden del viaje. Entre todos suman 0
   saldos: SaldoMiembro[]
@@ -83,6 +96,10 @@ export const obtenerBalance = (viajeId: string, tokenSesion: string) =>
 // Transferencias propuestas para saldar las cuentas del viaje
 export const obtenerLiquidacion = (viajeId: string, tokenSesion: string) =>
   peticion<Liquidacion>(`${rutaGastos(viajeId)}/liquidacion`, { token: tokenSesion })
+
+// Detalle de un gasto: su importe, quién pagó y la parte de cada miembro
+export const obtenerGasto = (viajeId: string, gastoId: string, tokenSesion: string) =>
+  peticion<DetalleGasto>(`${rutaGastos(viajeId)}/${encodeURIComponent(gastoId)}`, { token: tokenSesion })
 
 // Registra el gasto y su reparto a partes iguales. Devuelve el gasto con la parte de cada participante
 export const crearGasto = (viajeId: string, gasto: NuevoGasto, tokenSesion: string) =>
