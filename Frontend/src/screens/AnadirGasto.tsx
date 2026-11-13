@@ -67,7 +67,7 @@ const AvisoDelCampo = ({ id, texto }: { id: string; texto: string }) =>
     </p>
   ) : null
 
-// ─── Pantalla: Añadir gasto ───────────────────────────────────────────────────
+// Pantalla: Añadir gasto
 type AnadirGastoProps = {
   viajeId: string
   tokenSesion: string

@@ -280,6 +280,7 @@ function RutaDetalleGasto({ sesion }: { sesion: Sesion }) {
       usuarioId={sesion.usuario.id}
       onVolver={() => navigate(`/viajes/${viajeId}/gastos`)}
       onModificar={() => navigate(`/viajes/${viajeId}/gastos/${gastoId}/editar`)}
+      onEliminado={() => navigate(`/viajes/${viajeId}/gastos`, { replace: true })}
     />
   );
 }

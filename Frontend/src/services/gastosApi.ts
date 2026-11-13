@@ -101,13 +101,17 @@ export const obtenerLiquidacion = (viajeId: string, tokenSesion: string) =>
 export const obtenerGasto = (viajeId: string, gastoId: string, tokenSesion: string) =>
   peticion<DetalleGasto>(`${rutaGastos(viajeId)}/${encodeURIComponent(gastoId)}`, { token: tokenSesion })
 
-// Corrige el gasto y vuelve a repartirlo a partes iguales. Devuelve el gasto con el reparto nuevo
+// Corrige el gasto y vuelve a repartirlo a partes iguales, devuelve el gasto con el reparto nuevo
 export const editarGasto = (viajeId: string, gastoId: string, gasto: NuevoGasto, tokenSesion: string) =>
   peticion<Gasto>(`${rutaGastos(viajeId)}/${encodeURIComponent(gastoId)}`, {
     metodo: "PATCH",
     cuerpo: gasto,
     token: tokenSesion,
   })
+
+// Borra el gasto y, con él, su reparto. La respuesta no trae cuerpo
+export const eliminarGasto = (viajeId: string, gastoId: string, tokenSesion: string) =>
+  peticion<null>(`${rutaGastos(viajeId)}/${encodeURIComponent(gastoId)}`, { metodo: "DELETE", token: tokenSesion })
 
 // Registra el gasto y su reparto a partes iguales. Devuelve el gasto con la parte de cada participante
 export const crearGasto = (viajeId: string, gasto: NuevoGasto, tokenSesion: string) =>

@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react"
 import Avatar, { type Miembro } from "../components/Avatar"
+import DialogoConfirmacion from "../components/DialogoConfirmacion"
 import BarraInferior, { ALTO_BARRA_INFERIOR } from "../components/BarraInferior"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import SectionLabel from "../components/SectionLabel"
 import { ApiError } from "../services/authApi"
-import { obtenerGasto, type DetalleGasto as Detalle } from "../services/gastosApi"
+import { eliminarGasto, obtenerGasto, type DetalleGasto as Detalle } from "../services/gastosApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { estiloAlerta } from "../styles/formulario"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
@@ -14,7 +15,7 @@ import { CATEGORIAS_GASTO, conEuros, fechaDelGasto, iconoDeCategoriaGasto, taman
 
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
 
-// Miembro que ya no está en el viaje: se muestra sin nombre
+// Miembro que ya no está en el viaje, que se muestra sin nombre
 const MIEMBRO_ABANDONADO: Miembro = { name: "Antiguo miembro", initial: "?", color: C.muted }
 
 type DetalleGastoProps = {
@@ -25,14 +26,27 @@ type DetalleGastoProps = {
   usuarioId: string
   onVolver?: () => void
   onModificar?: () => void
+  // Se llama al borrar el gasto, para volver a Control de Gastos
+  onEliminado?: () => void
 }
 
 // Pantalla: Detalle del gasto (importe, quién pagó y el reparto de cada miembro)
-export default function DetalleGasto({ viajeId, gastoId, tokenSesion, usuarioId, onVolver, onModificar }: DetalleGastoProps) {
+export default function DetalleGasto({
+  viajeId,
+  gastoId,
+  tokenSesion,
+  usuarioId,
+  onVolver,
+  onModificar,
+  onEliminado,
+}: DetalleGastoProps) {
   const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
   const [gasto, setGasto] = useState<Detalle | null>(null)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState("")
+  const [confirmandoEliminar, setConfirmandoEliminar] = useState(false)
+  const [eliminando, setEliminando] = useState(false)
+  const [errorEliminar, setErrorEliminar] = useState("")
 
   useEffect(() => {
     let vigente = true
@@ -59,10 +73,24 @@ export default function DetalleGasto({ viajeId, gastoId, tokenSesion, usuarioId,
     return indice === -1 ? MIEMBRO_ABANDONADO : aMiembro(miembros[indice].nombre, indice)
   }
   const categoria = gasto ? CATEGORIAS_GASTO.find((c) => c.categoria === gasto.categoria) : undefined
-  // Solo quien registró el gasto y el creador del viaje lo modifican, y solo con el viaje activo
+  // Solo quien registró el gasto y el creador del viaje lo modifican o eliminan, y solo con el viaje activo
   const puedeModificar = Boolean(
     viaje && gasto && viaje.estado === "activo" && (gasto.creado_por === usuarioId || viaje.rol === "creador"),
   )
+
+  const handleEliminar = async () => {
+    setEliminando(true)
+    setErrorEliminar("")
+    try {
+      await eliminarGasto(viajeId, gastoId, tokenSesion)
+      setConfirmandoEliminar(false)
+      onEliminado?.()
+    } catch (e) {
+      setErrorEliminar(mensajeDeError(e))
+    } finally {
+      setEliminando(false)
+    }
+  }
 
   return (
     <div style={{ background: C.bg, minHeight: "100vh" }}>
@@ -214,27 +242,48 @@ export default function DetalleGasto({ viajeId, gastoId, tokenSesion, usuarioId,
                 </ul>
               </section>
 
-              {puedeModificar && onModificar && (
-                <button
-                  type="button"
-                  onClick={onModificar}
-                  style={{
-                    width: "100%",
-                    background: C.blue,
-                    color: "white",
-                    border: "none",
-                    borderRadius: RADIUS.md,
-                    padding: 13,
-                    fontFamily: NUNITO,
-                    fontWeight: 800,
-                    fontSize: 14,
-                    cursor: "pointer",
-                    boxShadow: SHADOWS.button,
-                    marginBottom: 16,
-                  }}
-                >
-                  Modificar
-                </button>
+              {puedeModificar && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+                  {onModificar && (
+                    <button
+                      type="button"
+                      onClick={onModificar}
+                      style={{
+                        width: "100%",
+                        background: C.blue,
+                        color: "white",
+                        border: "none",
+                        borderRadius: RADIUS.md,
+                        padding: 13,
+                        fontFamily: NUNITO,
+                        fontWeight: 800,
+                        fontSize: 14,
+                        cursor: "pointer",
+                        boxShadow: SHADOWS.button,
+                      }}
+                    >
+                      Modificar
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setConfirmandoEliminar(true)}
+                    style={{
+                      width: "100%",
+                      background: "white",
+                      color: C.red,
+                      border: `1.5px solid ${C.red}55`,
+                      borderRadius: RADIUS.md,
+                      padding: 13,
+                      fontFamily: NUNITO,
+                      fontWeight: 800,
+                      fontSize: 14,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Eliminar
+                  </button>
+                </div>
               )}
             </>
           )}
@@ -242,6 +291,24 @@ export default function DetalleGasto({ viajeId, gastoId, tokenSesion, usuarioId,
       </div>
 
       <BarraInferior activa="gastos" />
+
+      {confirmandoEliminar && (
+        <DialogoConfirmacion
+          titulo="¿Eliminar este gasto?"
+          icono="trash"
+          color={C.red}
+          colorFondo={C.redBg}
+          textoConfirmar="Eliminar gasto"
+          textoConfirmando="Eliminando gasto..."
+          ocupado={eliminando}
+          error={errorEliminar}
+          onConfirmar={handleEliminar}
+          onCancelar={() => setConfirmandoEliminar(false)}
+        >
+          Los saldos y la liquidación se recalcularán sin este gasto, y dejará de aparecer en el historial.
+          <strong style={{ display: "block", color: C.red, marginTop: 6 }}>Esta acción no se puede deshacer.</strong>
+        </DialogoConfirmacion>
+      )}
     </div>
   )
 }
