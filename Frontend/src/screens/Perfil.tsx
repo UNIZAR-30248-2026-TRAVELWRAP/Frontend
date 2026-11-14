@@ -1,10 +1,18 @@
-import { useRef, useState, type ChangeEvent } from "react"
+import { useEffect, useRef, useState, type ChangeEvent } from "react"
 import Avatar from "../components/Avatar"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
+import PasaporteViajes from "../components/PasaporteViajes"
 import SectionLabel from "../components/SectionLabel"
 import type { Usuario } from "../services/authApi"
 import { actualizarNombre, quitarAvatar, subirAvatar } from "../services/perfilApi"
+import {
+  cambiarDisenoSello,
+  listarMisSellos,
+  quitarSelloPorId,
+  type DisenoSello,
+  type Sello,
+} from "../services/sellosApi"
 import { C, NUNITO, RADIUS } from "../styles/tokens"
 import { mensajeErrorPerfil, prepararAvatar, validarFotoAvatar } from "../utils/avatar"
 
@@ -56,6 +64,48 @@ export default function Perfil({
   const [borrador, setBorrador] = useState(nombre)
   const [guardando, setGuardando] = useState(false)
   const [errorNombre, setErrorNombre] = useState("")
+
+  const [sellos, setSellos] = useState<Sello[]>([])
+  const [cargaSellos, setCargaSellos] = useState<"cargando" | "listo" | "error">(token ? "cargando" : "listo")
+  const [pasaporte, setPasaporte] = useState(false)
+
+  const [intentoSellos, setIntentoSellos] = useState(0)
+
+  useEffect(() => {
+    if (!token) return
+    let vigente = true
+    listarMisSellos(token)
+      .then((respuesta) => {
+        if (!vigente) return
+        setSellos(respuesta.sellos)
+        setCargaSellos("listo")
+      })
+      .catch(() => {
+        if (vigente) setCargaSellos("error")
+      })
+    return () => {
+      vigente = false
+    }
+  }, [token, intentoSellos])
+
+  const handleReintentarSellos = () => {
+    setCargaSellos("cargando")
+    setIntentoSellos((n) => n + 1)
+  }
+
+  // Cambia el diseño de un sello o lo quita; la lista se actualiza solo si el servidor lo ha aceptado
+  const handleGuardarSello = async (sello: Sello, diseno: DisenoSello | null) => {
+    if (diseno === null) {
+      await quitarSelloPorId(sello.id, token)
+      setSellos((previos) => previos.filter((s) => s.id !== sello.id))
+      return
+    }
+    const { sello: cambiado } = await cambiarDisenoSello(sello.id, diseno, token)
+    setSellos((previos) => previos.map((s) => (s.id === cambiado.id ? cambiado : s)))
+  }
+
+  const textoSellos =
+    sellos.length === 1 ? "1 sello conseguido" : `${sellos.length} sellos conseguidos`
 
   const usuario = { name: nombre, initial: nombre.charAt(0).toUpperCase(), color: C.accent, imageUrl: avatarUrl }
   const nombreVacio = borrador.trim() === ""
@@ -419,6 +469,63 @@ export default function Perfil({
             <Icon name="arrow_right" size={18} color={C.muted} strokeWidth={2} />
           </button>
 
+          <SectionLabel>Sellos de viaje</SectionLabel>
+          <button
+            type="button"
+            onClick={() => setPasaporte(true)}
+            disabled={cargaSellos !== "listo"}
+            style={{
+              width: "100%",
+              background: "white",
+              border: `1.5px solid ${C.border}`,
+              borderRadius: 18,
+              padding: "16px 20px",
+              cursor: cargaSellos === "listo" ? "pointer" : "default",
+              display: "flex",
+              alignItems: "center",
+              gap: 14,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+              marginBottom: cargaSellos === "error" ? 8 : 24,
+            }}
+          >
+            <div
+              style={{
+                width: 46,
+                height: 46,
+                borderRadius: 13,
+                background: C.lightAccent,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <Icon name="medal" size={22} color={C.accent} strokeWidth={1.8} />
+            </div>
+            <div style={{ flex: 1, textAlign: "left", minWidth: 0 }}>
+              <div style={{ fontFamily: NUNITO, fontWeight: 800, color: C.navy, fontSize: 14 }}>
+                Mi colección de sellos
+              </div>
+              <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, marginTop: 2 }}>
+                {cargaSellos === "cargando"
+                  ? "Cargando…"
+                  : cargaSellos === "error"
+                    ? "No se han podido cargar los sellos"
+                    : textoSellos}
+              </div>
+            </div>
+            <Icon name="arrow_right" size={18} color={C.muted} strokeWidth={2} />
+          </button>
+          {cargaSellos === "error" && (
+            <button
+              type="button"
+              onClick={handleReintentarSellos}
+              style={{ ...estiloOpcionHoja(C.navy), width: "100%", marginBottom: 24 }}
+            >
+              Reintentar
+            </button>
+          )}
+
           <SectionLabel>Cuenta y seguridad</SectionLabel>
 
           {error && (
@@ -480,6 +587,10 @@ export default function Perfil({
           </button>
         </div>
       </div>
+
+      {pasaporte && (
+        <PasaporteViajes sellos={sellos} onGuardarSello={handleGuardarSello} onCerrar={() => setPasaporte(false)} />
+      )}
 
       {confirmando && (
         <div
