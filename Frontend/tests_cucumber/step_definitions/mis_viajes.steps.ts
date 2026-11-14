@@ -8,8 +8,9 @@ import { paginaActual } from './login.steps';
 const YO = 'df77cba6-4be5-4cbc-814b-1e228dd73dcc';
 const URL_APP = 'http://localhost:5174';
 
-type Estado = 'activo' | 'finalizado' | 'archivado';
-type ViajeSimulado = { id: string; nombre: string; destino: string | null; estado: Estado };
+type Estado = 'activo' | 'finalizado';
+// archivado: lo ha archivado el usuario (es personal, no cambia el estado del viaje)
+type ViajeSimulado = { id: string; nombre: string; destino: string | null; estado: Estado; archivado: boolean };
 
 let viajes: ViajeSimulado[] = [];
 let rutasRegistradas = false;
@@ -50,7 +51,10 @@ const simular = async () => {
     const ruta = url.pathname.replace(/^.*\/api/, '');
     if (ruta === '/viajes') {
       const estado = url.searchParams.get('estado');
-      return json(route, 200, { viajes: viajes.filter((v) => !estado || v.estado === estado).map(enFormatoApi) });
+      const archivados = url.searchParams.get('archivados') === 'true';
+      return json(route, 200, {
+        viajes: viajes.filter((v) => (!estado || v.estado === estado) && v.archivado === archivados).map(enFormatoApi),
+      });
     }
     const [, , id, accion] = ruta.split('/');
     const viaje = viajes.find((v) => v.id === id);
@@ -61,8 +65,8 @@ const simular = async () => {
   });
 };
 
-const anadir = async (nombre: string, estado: Estado, destino: string | null) => {
-  viajes.push({ id: `viaje-${viajes.length + 1}`, nombre, destino, estado });
+const anadir = async (nombre: string, estado: Estado, destino: string | null, archivado = false) => {
+  viajes.push({ id: `viaje-${viajes.length + 1}`, nombre, destino, estado, archivado });
   await simular();
 };
 
@@ -90,7 +94,7 @@ Given('que estuve en el viaje {string}, que ya ha finalizado', async (nombre: st
 });
 
 Given('que archivé el viaje {string}', async (nombre: string) => {
-  await anadir(nombre, 'archivado', 'París');
+  await anadir(nombre, 'finalizado', 'París', true);
 });
 
 Given('que el navegador me deja usar el portapapeles', async () => {
@@ -101,7 +105,14 @@ Given('que el navegador me deja usar el portapapeles', async () => {
 
 When('abro mis viajes', async () => {
   await irA('/');
-  await expect(paginaActual().getByText(/^Viajes? activos?$/).or(paginaActual().getByText('Viajes anteriores')).first()).toBeVisible();
+  // Si solo hay viajes archivados no se pinta ninguna sección: se ve el aviso de que no hay viajes
+  await expect(
+    paginaActual()
+      .getByText(/^Viajes? activos?$/)
+      .or(paginaActual().getByText('Viajes anteriores'))
+      .or(paginaActual().getByText('Aún no tienes viajes'))
+      .first(),
+  ).toBeVisible();
 });
 
 When('pulso el viaje {string}', async (nombre: string) => {
@@ -148,6 +159,10 @@ Then('no veo el viaje {string} en mis viajes', async (nombre: string) => {
 Then('estoy en el inicio del viaje {string}', async (nombre: string) => {
   await expect(paginaActual()).toHaveURL(new RegExp(`/viajes/${elViaje(nombre).id}$`));
   await expect(paginaActual().getByRole('navigation', { name: 'Secciones del viaje' })).toBeVisible();
+});
+
+Then('estoy en el resumen del viaje {string}', async (nombre: string) => {
+  await expect(paginaActual()).toHaveURL(new RegExp(`/viajes/${elViaje(nombre).id}/resumen$`));
 });
 
 Then('estoy en la votación del destino del viaje {string}', async (nombre: string) => {

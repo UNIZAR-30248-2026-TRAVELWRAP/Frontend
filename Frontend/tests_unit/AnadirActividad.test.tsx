@@ -277,8 +277,8 @@ describe('AnadirActividad', () => {
     expect(botonAnadir()).toHaveProperty('disabled', false)
   })
 
-  it('no ofrece el formulario si el viaje está archivado', async () => {
-    simularBackend({ estado: 'archivado' })
+  it('no ofrece el formulario si el viaje está finalizado', async () => {
+    simularBackend({ estado: 'finalizado' })
     renderizar()
 
     expect((await screen.findByRole('alert')).textContent).toBe(

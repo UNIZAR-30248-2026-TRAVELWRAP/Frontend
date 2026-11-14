@@ -212,9 +212,9 @@ describe('CarteraDocumentos: subida', () => {
   })
 })
 
-describe('CarteraDocumentos: viaje archivado', () => {
+describe('CarteraDocumentos: viaje finalizado', () => {
   it('muestra los documentos pero no deja subir ninguno', async () => {
-    simularBackend({ viaje: () => json(200, { id: VIAJE_ID, nombre: 'Roma 2027', estado: 'archivado', miembros }) })
+    simularBackend({ viaje: () => json(200, { id: VIAJE_ID, nombre: 'Roma 2027', estado: 'finalizado', miembros }) })
     await abrir()
 
     expect(screen.queryByRole('button', { name: 'Subir documento' })).toBeNull()

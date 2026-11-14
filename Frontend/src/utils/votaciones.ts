@@ -1,5 +1,12 @@
 // Cálculos de las votaciones, compartidos por «Votaciones» y «Elegir destino»
 
+// Tipos de votación que se pueden elegir a mano (la de destino la abre sola el sistema), en el orden del desplegable
+export const TIPOS_ELEGIBLES = [
+  { tipo: "fecha", texto: "Fechas" },
+  { tipo: "actividad", texto: "Actividades" },
+  { tipo: "otro", texto: "Otro" },
+] as const
+
 export type OpcionConVotos = {
   id: string
   texto: string

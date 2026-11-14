@@ -5,7 +5,8 @@ import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import SectionLabel from "../components/SectionLabel"
 import { ApiError } from "../services/authApi"
-import { eliminarViaje, listarViajes, type ViajeDelUsuario } from "../services/viajesApi"
+import { borrarItinerario } from "../services/itinerarioGuardado"
+import { desarchivarViaje, eliminarViaje, listarViajes, type ViajeDelUsuario } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { formatearFechasAnterior, formatearImporte } from "../utils/formatoViaje"
 import BotonVolver from "../components/BotonVolver"
@@ -28,10 +29,13 @@ export default function ViajesArchivados({ tokenSesion, onVolver, onVerViaje }: 
   const [aEliminar, setAEliminar] = useState<ViajeDelUsuario | null>(null)
   const [eliminando, setEliminando] = useState(false)
   const [errorEliminar, setErrorEliminar] = useState("")
+  const [aDesarchivar, setADesarchivar] = useState<ViajeDelUsuario | null>(null)
+  const [desarchivando, setDesarchivando] = useState(false)
+  const [errorDesarchivar, setErrorDesarchivar] = useState("")
 
   useEffect(() => {
     let vigente = true
-    listarViajes(tokenSesion, "archivado")
+    listarViajes(tokenSesion, { archivados: true })
       .then((respuesta) => {
         if (vigente) setViajes(respuesta.viajes)
       })
@@ -52,6 +56,7 @@ export default function ViajesArchivados({ tokenSesion, onVolver, onVerViaje }: 
     setErrorEliminar("")
     try {
       await eliminarViaje(aEliminar.id, tokenSesion)
+      borrarItinerario(aEliminar.id)
       setViajes((actuales) => actuales.filter((v) => v.id !== aEliminar.id))
       setAEliminar(null)
     } catch (e) {
@@ -61,7 +66,23 @@ export default function ViajesArchivados({ tokenSesion, onVolver, onVerViaje }: 
     }
   }
 
-  const sinViajes = !cargando && !error && viajes.length === 0
+  // Sale de esta lista y vuelve a «Viajes anteriores» de «Mis viajes» (sigue finalizado), solo para el usuario
+  const handleDesarchivar = async () => {
+    if (!aDesarchivar) return
+    setDesarchivando(true)
+    setErrorDesarchivar("")
+    try {
+      await desarchivarViaje(aDesarchivar.id, tokenSesion)
+      setViajes((actuales) => actuales.filter((v) => v.id !== aDesarchivar.id))
+      setADesarchivar(null)
+    } catch (e) {
+      setErrorDesarchivar(mensajeDeError(e))
+    } finally {
+      setDesarchivando(false)
+    }
+  }
+
+  const sinViajes =!cargando && !error && viajes.length === 0
 
   return (
     <div style={{ background: C.bg, minHeight: "100vh" }}>
@@ -114,7 +135,7 @@ export default function ViajesArchivados({ tokenSesion, onVolver, onVerViaje }: 
                 No tienes viajes archivados
               </div>
               <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>
-                Cuando finalices un viaje aparecerá aquí, de solo lectura.
+                Cuando archives un viaje finalizado aparecerá aquí.
               </div>
             </div>
           )}
@@ -188,31 +209,52 @@ export default function ViajesArchivados({ tokenSesion, onVolver, onVerViaje }: 
                         </div>
                       </div>
                     </button>
-                    {/* Solo el creador puede eliminar el viaje, para todos sus miembros */}
-                    {viaje.rol === "creador" && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setErrorEliminar("")
-                          setAEliminar(viaje)
-                        }}
-                        aria-label={`Eliminar ${viaje.nombre}`}
-                        style={{
-                          width: 38,
-                          height: 38,
-                          borderRadius: 11,
-                          background: C.redBg,
-                          border: `1px solid ${C.red}30`,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          cursor: "pointer",
-                          flexShrink: 0,
-                        }}
-                      >
-                        <Icon name="trash" size={17} color={C.red} strokeWidth={1.9} />
-                      </button>
-                    )}
+                    {/* Cualquier miembro desarchiva el viaje, solo para él */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setErrorDesarchivar("")
+                        setADesarchivar(viaje)
+                      }}
+                      aria-label={`Desarchivar ${viaje.nombre}`}
+                      style={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: 11,
+                        background: C.lightBlue,
+                        border: `1px solid ${C.blue}30`,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Icon name="desarchivar" size={17} color={C.blue} strokeWidth={1.9} />
+                    </button>
+                    {/* Cualquier miembro lo elimina, solo para él: los demás lo conservan */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setErrorEliminar("")
+                        setAEliminar(viaje)
+                      }}
+                      aria-label={`Eliminar ${viaje.nombre}`}
+                      style={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: 11,
+                        background: C.redBg,
+                        border: `1px solid ${C.red}30`,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Icon name="trash" size={17} color={C.red} strokeWidth={1.9} />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -221,9 +263,26 @@ export default function ViajesArchivados({ tokenSesion, onVolver, onVerViaje }: 
         </div>
       </div>
 
+      {aDesarchivar && (
+        <DialogoConfirmacion
+          titulo="¿Desarchivar este viaje?"
+          icono="desarchivar"
+          color={C.blue}
+          colorFondo={C.lightBlue}
+          textoConfirmar="Desarchivar viaje"
+          textoConfirmando="Desarchivando..."
+          ocupado={desarchivando}
+          error={errorDesarchivar}
+          onConfirmar={handleDesarchivar}
+          onCancelar={() => setADesarchivar(null)}
+        >
+          <strong style={{ color: C.navy }}>{aDesarchivar.nombre}</strong> volverá a Viajes anteriores, solo para ti.
+        </DialogoConfirmacion>
+      )}
+
       {aEliminar && (
         <DialogoConfirmacion
-          titulo="¿Eliminar este viaje?"
+          titulo="¿Eliminar este viaje para ti?"
           icono="trash"
           color={C.red}
           colorFondo={C.redBg}
@@ -234,8 +293,8 @@ export default function ViajesArchivados({ tokenSesion, onVolver, onVerViaje }: 
           onConfirmar={handleEliminar}
           onCancelar={() => setAEliminar(null)}
         >
-          Se eliminarán <strong style={{ color: C.navy }}>{aEliminar.nombre}</strong> y todos sus datos para todos los
-          viajeros. Esta acción no se puede deshacer.
+          ¿Quieres eliminar <strong style={{ color: C.navy }}>{aEliminar.nombre}</strong> para ti? Dejará de aparecer en tu
+          cuenta y no podrás recuperarlo.
         </DialogoConfirmacion>
       )}
     </div>

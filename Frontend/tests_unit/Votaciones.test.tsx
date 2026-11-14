@@ -235,8 +235,8 @@ describe('Votaciones · proponer opciones', () => {
     expect(llamadas(fetchMock, 'POST', '/votaciones/fechas/opciones')).toHaveLength(0)
   })
 
-  it('en un viaje archivado no se pueden proponer opciones', async () => {
-    await abrir({ viaje: { ...viajeConDestino, estado: 'archivado' }, votaciones: [fechas()] })
+  it('en un viaje finalizado no se pueden proponer opciones', async () => {
+    await abrir({ viaje: { ...viajeConDestino, estado: 'finalizado' }, votaciones: [fechas()] })
 
     expect(screen.queryByLabelText('Proponer opción')).toBeNull()
   })

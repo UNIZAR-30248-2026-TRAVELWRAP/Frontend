@@ -9,7 +9,7 @@ const YO = 'df77cba6-4be5-4cbc-814b-1e228dd73dcc';
 
 type Invitacion = {
   token: string;
-  viaje: { id: string; nombre: string; destino: string | null; estado: 'activo' | 'archivado' };
+  viaje: { id: string; nombre: string; destino: string | null; estado: 'activo' | 'finalizado' };
   yaSoyMiembro: boolean;
 };
 
@@ -97,7 +97,7 @@ Given('que ya soy miembro del viaje {string} al que me invita Berta', async (nom
 });
 
 Given('que Berta me ha invitado a su viaje {string}, que ya ha terminado', async (nombre: string) => {
-  invitaciones.push({ token: tokenDe(nombre), viaje: { id: `viaje-${invitaciones.length + 1}`, nombre, destino: 'Oporto', estado: 'archivado' }, yaSoyMiembro: false });
+  invitaciones.push({ token: tokenDe(nombre), viaje: { id: `viaje-${invitaciones.length + 1}`, nombre, destino: 'Oporto', estado: 'finalizado' }, yaSoyMiembro: false });
   await simular();
 });
 

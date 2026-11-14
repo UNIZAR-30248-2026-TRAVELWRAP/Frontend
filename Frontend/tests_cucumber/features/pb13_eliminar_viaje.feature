@@ -1,8 +1,8 @@
 # language: es
-Característica: Eliminar un viaje archivado (PB-13)
-  Como creador de un viaje
-  Quiero eliminar un viaje archivado, confirmándolo antes
-  Para borrar todos sus datos para todos los viajeros
+Característica: Eliminar un viaje archivado (PB-13 y MEJ-12)
+  Como viajero, sea o no el creador
+  Quiero eliminar para mí un viaje archivado, confirmándolo antes
+  Para que deje de aparecer en mi cuenta sin que cambie lo que ven los demás viajeros
 
   Antecedentes:
     Dado que existe un usuario registrado con email "adriana@travelwrap.app" y contraseña "secreta123"
@@ -14,11 +14,20 @@ Característica: Eliminar un viaje archivado (PB-13)
     Cuando abro mi perfil
     Y pulso el botón "Viajes archivados"
     Y pulso el botón "Eliminar París 2024"
-    Entonces veo el diálogo de confirmación "¿Eliminar este viaje?"
+    Entonces veo el diálogo de confirmación "¿Eliminar este viaje para ti?"
     Cuando confirmo en el diálogo "Eliminar viaje"
     Entonces ya no veo el viaje archivado "París 2024"
     Y veo el viaje archivado "Lisboa 2023"
     Y el servidor ha eliminado el viaje "París 2024"
+
+  Escenario: Un miembro que no es el creador también puede eliminar el viaje para sí mismo
+    Dado que soy miembro, pero no creador, del viaje archivado "Oporto 2022"
+    Cuando abro mi perfil
+    Y pulso el botón "Viajes archivados"
+    Y pulso el botón "Eliminar Oporto 2022"
+    Y confirmo en el diálogo "Eliminar viaje"
+    Entonces ya no veo el viaje archivado "Oporto 2022"
+    Y el servidor ha eliminado el viaje "Oporto 2022"
 
   Escenario: Cancelar la eliminación
     Cuando abro mi perfil

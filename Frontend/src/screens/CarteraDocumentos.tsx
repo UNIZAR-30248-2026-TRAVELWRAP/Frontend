@@ -1,16 +1,32 @@
-import { useEffect, useRef, useState, type ChangeEvent } from "react"
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react"
 import BarraInferior, { ALTO_BARRA_INFERIOR, type SeccionViaje } from "../components/BarraInferior"
 import BotonVolver from "../components/BotonVolver"
+import DialogoConfirmacion from "../components/DialogoConfirmacion"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
+import VistaPreviaDocumento from "../components/VistaPreviaDocumento"
 import SectionLabel from "../components/SectionLabel"
 import { ApiError } from "../services/authApi"
-import { listarDocumentos, subirDocumento, TIPOS_DOCUMENTO, type Documento } from "../services/documentosApi"
+import {
+  eliminarDocumento,
+  listarDocumentos,
+  subirDocumento,
+  TIPOS_DOCUMENTO,
+  type Documento,
+} from "../services/documentosApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { estiloAlerta } from "../styles/formulario"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
-import { aspectoDeDocumento, fechaDeSubida, motivoParaNoSubir, tamanoLegible } from "../utils/documentos"
+import {
+  aspectoDeDocumento,
+  descargarDocumento,
+  fechaDeSubida,
+  mensajeAlAbrir,
+  mensajeAlEliminar,
+  motivoParaNoSubir,
+  tamanoLegible,
+} from "../utils/documentos"
 
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
 
@@ -30,6 +46,11 @@ export default function CarteraDocumentos({ viajeId, tokenSesion, onVolver, onCa
   const [subiendo, setSubiendo] = useState(false)
   const [errorSubida, setErrorSubida] = useState("")
   const [aviso, setAviso] = useState("")
+  const [abierto, setAbierto] = useState<Documento | null>(null)
+  const [errorDescarga, setErrorDescarga] = useState("")
+  const [aEliminar, setAEliminar] = useState<Documento | null>(null)
+  const [eliminando, setEliminando] = useState(false)
+  const [errorEliminar, setErrorEliminar] = useState("")
   const selectorArchivo = useRef<HTMLInputElement>(null)
 
   // El viaje hace falta para saber quién subió cada documento y si aún se pueden subir
@@ -56,7 +77,7 @@ export default function CarteraDocumentos({ viajeId, tokenSesion, onVolver, onCa
   // Nombre y color de quien lo subió, con el mismo color que su avatar en el resto de pantallas
   const autor = (usuarioId: string | null) => {
     const indice = miembros.findIndex((m) => m.usuario_id === usuarioId)
-    return indice === -1 ? { name: "Un antiguo miembro", color: C.muted } : aMiembro(miembros[indice].nombre, indice)
+    return indice === -1 ? { name: "Un antiguo miembro", color: C.muted } : aMiembro(miembros[indice].nombre, indice, miembros[indice].avatar_url)
   }
   const activo = viaje?.estado === "activo"
 
@@ -83,6 +104,50 @@ export default function CarteraDocumentos({ viajeId, tokenSesion, onVolver, onCa
       setErrorSubida(`No se ha podido subir el documento: ${mensajeDeError(e)}`)
     } finally {
       setSubiendo(false)
+    }
+  }
+
+  const cerrarVistaPrevia = useCallback(() => setAbierto(null), [])
+
+  const handleAbrir = (documento: Documento) => {
+    setErrorDescarga("")
+    setAbierto(documento)
+  }
+
+  const handleDescargar = async (documento: Documento) => {
+    setErrorDescarga("")
+    try {
+      await descargarDocumento(viajeId, documento.id, tokenSesion)
+    } catch (e) {
+      setErrorDescarga(mensajeAlAbrir(e))
+    }
+  }
+
+  const handlePedirEliminar = (documento: Documento) => {
+    setErrorEliminar("")
+    setAEliminar(documento)
+  }
+
+  const handleEliminar = async () => {
+    if (!aEliminar) return
+    setEliminando(true)
+    setErrorEliminar("")
+    const quitarDeLaLista = (aviso: string) => {
+      setDocumentos((anteriores) => anteriores.filter((documento) => documento.id !== aEliminar.id))
+      setAEliminar(null)
+      setErrorDescarga("")
+      setErrorSubida("")
+      setAviso(aviso)
+    }
+    try {
+      await eliminarDocumento(viajeId, aEliminar.id, tokenSesion)
+      quitarDeLaLista("Documento eliminado")
+    } catch (e) {
+      // Si otro miembro lo eliminó antes, ya no está en la cartera: se quita igualmente de la lista
+      if (e instanceof ApiError && e.estado === 404) quitarDeLaLista("Este documento ya lo había eliminado otro miembro")
+      else setErrorEliminar(mensajeAlEliminar(e))
+    } finally {
+      setEliminando(false)
     }
   }
 
@@ -177,6 +242,11 @@ export default function CarteraDocumentos({ viajeId, tokenSesion, onVolver, onCa
                 </p>
               )}
 
+              {errorDescarga && (
+                <div role="alert" style={{ ...estiloAlerta, marginBottom: 16 }}>
+                  {errorDescarga}
+                </div>
+              )}
               {errorSubida && (
                 <div role="alert" style={{ ...estiloAlerta, marginBottom: 16 }}>
                   {errorSubida}
@@ -229,42 +299,101 @@ export default function CarteraDocumentos({ viajeId, tokenSesion, onVolver, onCa
                           border: `1.5px solid ${C.border}`,
                         }}
                       >
-                        <div
-                          aria-hidden="true"
+                        <button
+                          type="button"
+                          aria-label={`Abrir ${documento.nombre}`}
+                          onClick={() => handleAbrir(documento)}
                           style={{
-                            width: 46,
-                            height: 46,
+                            flex: 1,
+                            minWidth: 0,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 12,
+                            background: "none",
+                            border: "none",
+                            padding: 0,
+                            textAlign: "left",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <div
+                            aria-hidden="true"
+                            style={{
+                              width: 46,
+                              height: 46,
+                              borderRadius: 13,
+                              background: aspecto.fondo,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              flexShrink: 0,
+                            }}
+                          >
+                            <Icon name={aspecto.icono} size={22} color={aspecto.color} strokeWidth={1.6} />
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div
+                              style={{
+                                fontFamily: NUNITO,
+                                color: C.navy,
+                                fontSize: 13,
+                                fontWeight: 700,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {documento.nombre}
+                            </div>
+                            <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 11, marginTop: 2 }}>
+                              {aspecto.texto} · {tamanoLegible(documento.tamano_bytes)} · {fechaDeSubida(documento.creado_en)}
+                            </div>
+                            <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 11, marginTop: 2 }}>
+                              Subido por <span style={{ color: quien.color, fontWeight: 700 }}>{quien.name}</span>
+                            </div>
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`Descargar ${documento.nombre}`}
+                          onClick={() => handleDescargar(documento)}
+                          style={{
+                            width: 44,
+                            height: 44,
                             borderRadius: 13,
-                            background: aspecto.fondo,
+                            border: `1.5px solid ${C.border}`,
+                            background: "white",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
+                            cursor: "pointer",
                             flexShrink: 0,
                           }}
                         >
-                          <Icon name={aspecto.icono} size={22} color={aspecto.color} strokeWidth={1.6} />
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div
+                          <Icon name="download" size={18} color={C.navy} strokeWidth={1.8} />
+                        </button>
+                        {/* Solo con el viaje activo: en uno finalizado la cartera es de solo lectura */}
+                        {activo && (
+                          <button
+                            type="button"
+                            aria-label={`Eliminar ${documento.nombre}`}
+                            onClick={() => handlePedirEliminar(documento)}
                             style={{
-                              fontFamily: NUNITO,
-                              color: C.navy,
-                              fontSize: 13,
-                              fontWeight: 700,
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
+                              width: 44,
+                              height: 44,
+                              borderRadius: 13,
+                              border: `1.5px solid ${C.border}`,
+                              background: "white",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              cursor: "pointer",
+                              flexShrink: 0,
                             }}
                           >
-                            {documento.nombre}
-                          </div>
-                          <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 11, marginTop: 2 }}>
-                            {aspecto.texto} · {tamanoLegible(documento.tamano_bytes)} · {fechaDeSubida(documento.creado_en)}
-                          </div>
-                          <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 11, marginTop: 2 }}>
-                            Subido por <span style={{ color: quien.color, fontWeight: 700 }}>{quien.name}</span>
-                          </div>
-                        </div>
+                            <Icon name="trash" size={18} color={C.red} strokeWidth={1.8} />
+                          </button>
+                        )}
                       </li>
                     )
                   })}
@@ -274,6 +403,28 @@ export default function CarteraDocumentos({ viajeId, tokenSesion, onVolver, onCa
           )}
         </div>
       </div>
+
+      {abierto && (
+        <VistaPreviaDocumento viajeId={viajeId} documento={abierto} tokenSesion={tokenSesion} onCerrar={cerrarVistaPrevia} />
+      )}
+
+      {aEliminar && (
+        <DialogoConfirmacion
+          titulo="¿Eliminar este documento?"
+          icono="trash"
+          color={C.red}
+          colorFondo={C.redBg}
+          textoConfirmar="Eliminar documento"
+          textoConfirmando="Eliminando..."
+          ocupado={eliminando}
+          error={errorEliminar}
+          onConfirmar={handleEliminar}
+          onCancelar={() => setAEliminar(null)}
+        >
+          Se eliminará <strong style={{ color: C.navy, overflowWrap: "anywhere" }}>{aEliminar.nombre}</strong> de la
+          cartera para todos los viajeros. Esta acción no se puede deshacer.
+        </DialogoConfirmacion>
+      )}
 
       <BarraInferior activa="agenda" onCambiar={onCambiarSeccion} />
     </div>

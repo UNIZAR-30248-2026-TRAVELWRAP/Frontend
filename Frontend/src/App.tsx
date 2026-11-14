@@ -9,6 +9,7 @@ import {
   reenviarConfirmacion,
   cerrarSesion,
   type Sesion,
+  type Usuario,
 } from "./services/authApi"
 import { borrarSesion, guardarSesion, leerSesion } from "./services/sesionStorage"
 
@@ -131,6 +132,14 @@ export default function App() {
     setError(mensaje)
   }, [])
 
+  // Mezcla en la sesión los datos del perfil que devuelve el servidor (nombre, foto)
+  const actualizarUsuario = (usuario: Usuario) => {
+    if (!sesion) return
+    const actualizada = { ...sesion, usuario }
+    guardarSesion(actualizada)
+    setSesion(actualizada)
+  }
+
   const handleCerrarSesion = async () => {
     setCerrandoSesion(true)
     if (sesion) await cerrarSesion(sesion.token).catch(() => undefined)
@@ -157,6 +166,7 @@ export default function App() {
       handleSesionGoogle={handleSesionGoogle}
       handleErrorGoogle={handleErrorGoogle}
       handleCerrarSesion={handleCerrarSesion}
+      actualizarUsuario={actualizarUsuario}
       cerrandoSesion={cerrandoSesion}
       error={error}
       loading={cargando}

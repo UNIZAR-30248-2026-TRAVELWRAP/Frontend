@@ -38,6 +38,13 @@ export default function Icon({
         <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
       </>
     ),
+    // Carpeta con una flecha hacia la izquierda: sacar un viaje de «Viajes archivados»
+    desarchivar: (
+      <>
+        <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
+        <path d="M16.5 14h-9M11 10.5L7.5 14l3.5 3.5" />
+      </>
+    ),
     chat: (
       <>
         <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />

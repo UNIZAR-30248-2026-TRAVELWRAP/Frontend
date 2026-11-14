@@ -244,9 +244,9 @@ test.describe('Itinerario · editar una actividad', () => {
     await expect(page.getByLabel('Nombre de la actividad')).toHaveCount(0);
   });
 
-  test('en un viaje archivado no hay botones y la pantalla de edición no deja modificar', async ({ page }) => {
+  test('en un viaje finalizado no hay botones y la pantalla de edición no deja modificar', async ({ page }) => {
     await entrarConSesion(page);
-    await simularBackend(page, { datosViaje: { estado: 'archivado' } });
+    await simularBackend(page, { datosViaje: { estado: 'finalizado' } });
 
     await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
     await expect(agenda(page)).toHaveCount(2);

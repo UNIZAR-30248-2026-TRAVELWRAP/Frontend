@@ -257,9 +257,9 @@ test.describe('Itinerario · agenda del día', () => {
     await expect(agenda(page)).toHaveText(['Playa']);
   });
 
-  test('un viaje archivado se consulta pero no deja añadir actividades', async ({ page }) => {
+  test('un viaje finalizado se consulta pero no deja añadir actividades', async ({ page }) => {
     await entrarConSesion(page);
-    await simularBackend(page, { estado: 'archivado' });
+    await simularBackend(page, { estado: 'finalizado' });
 
     await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
 

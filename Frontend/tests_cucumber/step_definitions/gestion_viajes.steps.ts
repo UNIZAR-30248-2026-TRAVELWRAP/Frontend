@@ -6,18 +6,25 @@ import { paginaActual } from './login.steps';
 
 const USUARIO_ID = 'df77cba6-4be5-4cbc-814b-1e228dd73dcc';
 
-type Viaje = Record<string, unknown> & { id: string; nombre: string; estado: string };
+type Viaje = Record<string, unknown> & { id: string; nombre: string; estado: string; archivado: boolean };
 
-// Backend de viajes simulado en memoria para cada escenario
+// Backend de viajes simulado en memoria para cada escenario. Archivar y eliminar son personales:
+// `archivado` y `eliminado` son del usuario de la sesión y no cambian el estado del viaje
 let viajes: Viaje[] = [];
+let finalizados = 0;
 let archivados = 0;
+let desarchivados = 0;
+let fallaDesarchivar = false;
 let eliminados: string[] = [];
 let fallaEliminar = false;
 let rutaRegistrada = false;
 
 Before(() => {
   viajes = [];
+  finalizados = 0;
   archivados = 0;
+  desarchivados = 0;
+  fallaDesarchivar = false;
   eliminados = [];
   fallaEliminar = false;
   rutaRegistrada = false;
@@ -36,6 +43,7 @@ const nuevoViaje = (nombre: string, datos: Record<string, unknown> = {}): Viaje 
   creado_en: '2026-10-12T10:00:00Z',
   pendiente_destino: false,
   rol: 'creador',
+  archivado: false,
   miembros: [{ usuario_id: USUARIO_ID, nombre: 'Adriana', avatar_url: null, rol: 'creador' }],
   ...datos,
 });
@@ -45,6 +53,19 @@ const responder = (cuerpo: unknown, status = 200) => ({
   contentType: 'application/json',
   body: cuerpo === undefined ? '' : JSON.stringify(cuerpo),
 });
+
+// Lo que pide el resumen de fin de viaje (sin gastos, sin fotos y sin pagos pendientes)
+const DATOS_DEL_RESUMEN: Record<string, unknown> = {
+  resumen: { dias: 4, gasto_total: 0, gasto_mayor: null, actividad_mas_votada: null, alma_del_grupo: null },
+  fotos: { fotos: [] },
+  balance: { saldos: [] },
+};
+
+const avanzarDiapositivas = async (veces: number): Promise<void> => {
+  if (veces === 0) return;
+  await paginaActual().keyboard.press('ArrowRight');
+  await avanzarDiapositivas(veces - 1);
+};
 
 const simularBackend = async () => {
   if (rutaRegistrada) return;
@@ -57,7 +78,10 @@ const simularBackend = async () => {
 
     if (ruta === '/viajes' && metodo === 'GET') {
       const estado = url.searchParams.get('estado');
-      return route.fulfill(responder({ viajes: viajes.filter((v) => !estado || v.estado === estado) }));
+      const archivados = url.searchParams.get('archivados') === 'true';
+      return route.fulfill(
+        responder({ viajes: viajes.filter((v) => (!estado || v.estado === estado) && v.archivado === archivados) }),
+      );
     }
 
     const [, , id, accion] = ruta.split('/');
@@ -67,9 +91,25 @@ const simularBackend = async () => {
         responder({ error: { codigo: 'viaje_no_encontrado', mensaje: 'El viaje no existe o no perteneces a él' } }, 404),
       );
     }
+    if (accion && accion in DATOS_DEL_RESUMEN) return route.fulfill(responder(DATOS_DEL_RESUMEN[accion]));
+    if (accion === 'finalizar' && metodo === 'POST') {
+      finalizados += 1;
+      viaje.estado = 'finalizado';
+      return route.fulfill(responder(viaje));
+    }
     if (accion === 'archivar' && metodo === 'POST') {
       archivados += 1;
-      viaje.estado = 'archivado';
+      viaje.archivado = true;
+      return route.fulfill(responder(viaje));
+    }
+    if (accion === 'desarchivar' && metodo === 'POST') {
+      if (fallaDesarchivar) {
+        return route.fulfill(
+          responder({ error: { codigo: 'error_viaje', mensaje: 'No se ha podido desarchivar el viaje' } }, 502),
+        );
+      }
+      desarchivados += 1;
+      viaje.archivado = false;
       return route.fulfill(responder(viaje));
     }
     if (!accion && metodo === 'PATCH') {
@@ -99,8 +139,14 @@ Given('que tengo el viaje activo {string} con destino {string} y presupuesto {in
   await simularBackend();
 });
 
+Given('que tengo el viaje finalizado {string}', async (nombre: string) => {
+  viajes.push(nuevoViaje(nombre, { estado: 'finalizado' }));
+  await simularBackend();
+});
+
+// Un viaje que el usuario ha archivado sigue finalizado: archivar solo lo saca de sus «Viajes anteriores»
 Given('que tengo el viaje archivado {string}', async (nombre: string) => {
-  viajes.push(nuevoViaje(nombre, { estado: 'archivado' }));
+  viajes.push(nuevoViaje(nombre, { estado: 'finalizado', archivado: true }));
   await simularBackend();
 });
 
@@ -117,6 +163,39 @@ Given('que soy miembro, pero no creador, del viaje activo {string}', async (nomb
   await simularBackend();
 });
 
+Given('que soy miembro, pero no creador, del viaje finalizado {string}', async (nombre: string) => {
+  viajes.push(
+    nuevoViaje(nombre, {
+      estado: 'finalizado',
+      rol: 'miembro',
+      miembros: [
+        { usuario_id: 'otro', nombre: 'Berta', avatar_url: null, rol: 'creador' },
+        { usuario_id: USUARIO_ID, nombre: 'Adriana', avatar_url: null, rol: 'miembro' },
+      ],
+    }),
+  );
+  await simularBackend();
+});
+
+Given('que soy miembro, pero no creador, del viaje archivado {string}', async (nombre: string) => {
+  viajes.push(
+    nuevoViaje(nombre, {
+      estado: 'finalizado',
+      archivado: true,
+      rol: 'miembro',
+      miembros: [
+        { usuario_id: 'otro', nombre: 'Berta', avatar_url: null, rol: 'creador' },
+        { usuario_id: USUARIO_ID, nombre: 'Adriana', avatar_url: null, rol: 'miembro' },
+      ],
+    }),
+  );
+  await simularBackend();
+});
+
+Given('que el servidor no puede desarchivar viajes', () => {
+  fallaDesarchivar = true;
+});
+
 Given('que el servidor no puede eliminar viajes', () => {
   fallaEliminar = true;
 });
@@ -128,8 +207,15 @@ When('abro el viaje {string} desde mis viajes', async (nombre: string) => {
   await expect(paginaActual()).toHaveURL(/\/viajes\/[^/]+$/);
 });
 
-When('abro el viaje archivado {string}', async (nombre: string) => {
-  await paginaActual().getByRole('button', { name: new RegExp(`^${nombre}`) }).click();
+When('abro el inicio del viaje {string}', async (nombre: string) => {
+  await irA(`/viajes/${idDelViaje(nombre)}`);
+});
+
+When('llego al balance final del resumen del viaje {string}', async (nombre: string) => {
+  await irA(`/viajes/${idDelViaje(nombre)}/resumen`);
+  await expect(paginaActual().getByText('TravelWrap · Resumen')).toBeVisible();
+  await avanzarDiapositivas(6);
+  await expect(paginaActual().getByText('Balance final', { exact: true })).toBeVisible();
 });
 
 When('cambio el nombre a {string} y el presupuesto a {string}', async (nombre: string, presupuesto: string) => {
@@ -166,8 +252,28 @@ Then('ya no veo el viaje archivado {string}', async (nombre: string) => {
   await expect(paginaActual().getByRole('button', { name: new RegExp(`^${nombre}`) })).toHaveCount(0);
 });
 
+Then('veo el viaje anterior {string} en mis viajes, no en curso', async (nombre: string) => {
+  await expect(paginaActual().getByText('Viajes anteriores')).toBeVisible();
+  const tarjeta = paginaActual().getByRole('button', { name: new RegExp(nombre) });
+  await expect(tarjeta).toBeVisible();
+  await expect(tarjeta).not.toContainText('En curso');
+});
+
+Then('veo el viaje anterior {string}', async (nombre: string) => {
+  await expect(paginaActual().getByText('Viajes anteriores')).toBeVisible();
+  await expect(paginaActual().getByRole('button', { name: new RegExp(nombre) })).toBeVisible();
+});
+
+Then('el servidor ha finalizado {int} viaje', (cantidad: number) => {
+  expect(finalizados).toBe(cantidad);
+});
+
 Then('el servidor ha archivado {int} viaje', (cantidad: number) => {
   expect(archivados).toBe(cantidad);
+});
+
+Then('el servidor ha desarchivado {int} viaje', (cantidad: number) => {
+  expect(desarchivados).toBe(cantidad);
 });
 
 Then('el servidor ha eliminado el viaje {string}', (nombre: string) => {

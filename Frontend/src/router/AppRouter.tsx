@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useEffect, useState, type ComponentProps } from "react";
-import type { Sesion } from "../services/authApi";
+import type { Sesion, Usuario } from "../services/authApi";
 import Login from "../screens/Login";
 import MisViajes from "../screens/MisViajes";
 import CrearViaje from "../screens/CrearViaje";
@@ -23,6 +23,7 @@ import { obtenerGasto, type DetalleGasto as DetalleGastoDelApi } from "../servic
 import Itinerario from "../screens/Itinerario";
 import CarteraDocumentos from "../screens/CarteraDocumentos";
 import ChatGaleria from "../screens/ChatGaleria";
+import FinDeViaje from "../screens/FinDeViaje";
 import { buscarDirecciones } from "../services/actividadesApi";
 import type { SeccionViaje } from "../components/BarraInferior";
 import { rutaTrasLogin } from "../services/invitacionPendiente";
@@ -40,6 +41,7 @@ interface AppRouterProps {
   handleSesionGoogle: (sesion: Sesion) => void;
   handleErrorGoogle: (mensaje: string) => void;
   handleCerrarSesion: () => void;
+  actualizarUsuario: (usuario: Usuario) => void;
   cerrandoSesion: boolean;
   error: string;
   loading: boolean;
@@ -61,6 +63,7 @@ type NavegacionMisViajes = "onCreateTrip" | "onViewPerfil" | "onSelectTrip" | "o
 function RutaMisViajes(props: Omit<ComponentProps<typeof MisViajes>, NavegacionMisViajes>) {
   const navigate = useNavigate();
   const abrirViaje = (id: string) => navigate(`/viajes/${id}`);
+  const abrirResumen = (id: string) => navigate(`/viajes/${id}/resumen`);
   return (
     <MisViajes
       {...props}
@@ -68,7 +71,7 @@ function RutaMisViajes(props: Omit<ComponentProps<typeof MisViajes>, NavegacionM
       onViewPerfil={() => navigate("/perfil")}
       onSelectTrip={abrirViaje}
       onSelectPendingTrip={(id) => navigate(`/viajes/${id}/destino`)}
-      onViewPastTrip={abrirViaje}
+      onViewPastTrip={abrirResumen}
     />
   );
 }
@@ -88,7 +91,7 @@ const RUTAS_DE_SECCION: Partial<Record<SeccionViaje, string>> = {
 const rutaDeSeccion = (viajeId: string, seccion: SeccionViaje) =>
   RUTAS_DE_SECCION[seccion] ? `/viajes/${viajeId}/${RUTAS_DE_SECCION[seccion]}` : `/viajes/${viajeId}`;
 
-// Inicio del viaje de la URL. Al finalizarlo queda archivado y se va a «Viajes archivados»
+// Inicio del viaje de la URL. Al finalizarlo queda en «Viajes anteriores» y se vuelve a «Mis viajes»
 function RutaInicioViaje({ sesion }: { sesion: Sesion }) {
   const { viajeId = "" } = useParams();
   const navigate = useNavigate();
@@ -101,10 +104,10 @@ function RutaInicioViaje({ sesion }: { sesion: Sesion }) {
       onEditar={() => navigate(`/viajes/${viajeId}/editar`)}
       onInvitar={() => navigate(`/viajes/${viajeId}/invitar`)}
       onVotaciones={() => navigate(`/viajes/${viajeId}/votaciones`)}
-      onDocumentos={() => navigate(`/viajes/${viajeId}/documentos`)}
+      onResumen={() => navigate(`/viajes/${viajeId}/resumen`)}
       onCambiarSeccion={(seccion) => navigate(rutaDeSeccion(viajeId, seccion))}
       onPendienteDestino={() => navigate(`/viajes/${viajeId}/destino`, { replace: true })}
-      onArchivado={() => navigate("/viajes/archivados")}
+      onFinalizado={() => navigate("/", { replace: true })}
     />
   );
 }
@@ -130,7 +133,7 @@ function RutaViajesArchivados({ sesion }: { sesion: Sesion }) {
     <ViajesArchivados
       tokenSesion={sesion.token}
       onVolver={() => navigate("/perfil")}
-      onVerViaje={(id) => navigate(`/viajes/${id}`)}
+      onVerViaje={(id) => navigate(`/viajes/${id}/resumen`)}
     />
   );
 }
@@ -333,6 +336,26 @@ function RutaCarteraDocumentos({ sesion }: { sesion: Sesion }) {
   );
 }
 
+function RutaFinDeViaje({ sesion }: { sesion: Sesion }) {
+  const { viajeId = "" } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const volver = () => {
+    if (location.key === "default") void navigate("/", { replace: true });
+    else void navigate(-1);
+  };
+  return (
+    <FinDeViaje
+      key={viajeId}
+      viajeId={viajeId}
+      tokenSesion={sesion.token}
+      onVolver={volver}
+      onTerminar={() => navigate("/", { replace: true })}
+      onArchivado={() => navigate("/viajes/archivados", { replace: true })}
+    />
+  );
+}
+
 function RutaChatGaleria({ sesion }: { sesion: Sesion }) {
   const { viajeId = "" } = useParams();
   const navigate = useNavigate();
@@ -394,6 +417,7 @@ export default function AppRouter({
   handleSesionGoogle,
   handleErrorGoogle,
   handleCerrarSesion,
+  actualizarUsuario,
   cerrandoSesion,
   error,
   loading,
@@ -428,6 +452,7 @@ export default function AppRouter({
               <RutaMisViajes
                 nombreUsuario={session.usuario.nombre ?? session.usuario.email.split("@")[0]}
                 emailUsuario={session.usuario.email}
+                avatarUsuario={session.usuario.avatar_url}
                 tokenSesion={session.token}
                 mostrarEjemplos={false}
               />
@@ -445,6 +470,9 @@ export default function AppRouter({
               <RutaPerfil
                 nombre={session.usuario.nombre ?? session.usuario.email.split("@")[0]}
                 email={session.usuario.email}
+                avatarUrl={session.usuario.avatar_url}
+                token={session.token}
+                onPerfilActualizado={actualizarUsuario}
                 onCerrarSesion={handleCerrarSesion}
                 cerrandoSesion={cerrandoSesion}
               />
@@ -460,7 +488,7 @@ export default function AppRouter({
           element={session ? <RutaCrearViaje sesion={session} /> : <Navigate to="/login" replace />}
         />
 
-        {/* Viajes archivados, de solo lectura, con la opción de eliminarlos (privada) */}
+        {/* Viajes que el usuario ha archivado, con la opción de desarchivarlos o eliminarlos para sí mismo (privada) */}
         <Route
           path="/viajes/archivados"
           element={session ? <RutaViajesArchivados sesion={session} /> : <Navigate to="/login" replace />}
@@ -527,6 +555,11 @@ export default function AppRouter({
         <Route
           path="/viajes/:viajeId/documentos"
           element={session ? <RutaCarteraDocumentos sesion={session} /> : <Navigate to="/login" replace />}
+        />
+
+        <Route
+          path="/viajes/:viajeId/resumen"
+          element={session ? <RutaFinDeViaje sesion={session} /> : <Navigate to="/login" replace />}
         />
 
         <Route

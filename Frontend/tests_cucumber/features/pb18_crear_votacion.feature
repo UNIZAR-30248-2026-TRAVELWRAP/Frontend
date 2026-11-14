@@ -12,6 +12,7 @@ Característica: Crear una votación (PB-18)
   Escenario: Crear una votación de fechas con sus opciones
     Cuando abro las votaciones del viaje "Roma 2027"
     Y pulso el botón "Crear nueva votación"
+    Y elijo el tipo de votación "Fechas"
     Y escribo la pregunta "¿Qué fin de semana salimos?"
     Y escribo las opciones "12 – 15 mayo" y "19 – 22 mayo"
     Y pulso el botón "Publicar votación"
@@ -38,7 +39,7 @@ Característica: Crear una votación (PB-18)
     Y pulso el botón "Publicar votación"
     Entonces estoy en las votaciones del viaje
     Y veo el texto "Todavía no hay opciones. Propón la primera."
-    Y el servidor ha recibido la votación "¿Dónde cenamos el sábado?" de tipo "fecha" con 0 opciones
+    Y el servidor ha recibido la votación "¿Dónde cenamos el sábado?" de tipo "otro" con 0 opciones
 
   Escenario: No se puede crear una votación sin pregunta
     Cuando abro las votaciones del viaje "Roma 2027"

@@ -148,7 +148,7 @@ describe('ControlGastos', () => {
     expect(onAnadirGasto).toHaveBeenCalledTimes(1)
   })
 
-  it.each(['archivado', 'finalizado'])('en un viaje %s se consultan los gastos pero no se pueden añadir', async (estado) => {
+  it.each(['finalizado'])('en un viaje %s se consultan los gastos pero no se pueden añadir', async (estado) => {
     simularBackend({ viaje: () => json(200, { id: VIAJE_ID, nombre: 'Roma 2027', estado, miembros }) })
     await abrir()
 

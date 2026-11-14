@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from "react"
+﻿import { useEffect, useState, type CSSProperties } from "react"
 import AvatarStack from "../components/AvatarStack"
 import BarraInferior, { ALTO_BARRA_INFERIOR, type SeccionViaje } from "../components/BarraInferior"
 import Badge from "../components/Badge"
@@ -6,7 +6,7 @@ import DialogoConfirmacion from "../components/DialogoConfirmacion"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import { ApiError } from "../services/authApi"
-import { archivarViaje, obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
+import { finalizarViaje, obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro, formatearFechasActivo, formatearImporte } from "../utils/formatoViaje"
 
@@ -20,6 +20,21 @@ const tarjetaStyle: CSSProperties = {
   boxShadow: SHADOWS.cardSoft,
 }
 
+const botonCuadradoStyle: CSSProperties = {
+  width: 80,
+  height: 80,
+  background: "white",
+  border: `1.5px solid ${C.border}`,
+  borderRadius: RADIUS.lg,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 6,
+  cursor: "pointer",
+  boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
+  flexShrink: 0,
+}
 const avisoStyle = (fondo: string, borde: string): CSSProperties => ({
   background: fondo,
   border: `1.5px solid ${borde}`,
@@ -42,11 +57,11 @@ type InicioViajeProps = {
   onEditar?: () => void
   onInvitar?: () => void
   onVotaciones?: () => void
-  onDocumentos?: () => void
+  onResumen?: () => void
   // Un viaje sin destino solo muestra la votación del destino
   onPendienteDestino?: () => void
-  // Tras finalizar el viaje (queda archivado)
-  onArchivado?: (viaje: ViajeDelUsuario) => void
+  // Tras finalizar el viaje (queda finalizado, en «Viajes anteriores»)
+  onFinalizado?: (viaje: ViajeDelUsuario) => void
   onCambiarSeccion?: (seccion: SeccionViaje) => void
 }
 
@@ -57,9 +72,9 @@ export default function InicioViaje({
   onEditar,
   onInvitar,
   onVotaciones,
-  onDocumentos,
+  onResumen,
   onPendienteDestino,
-  onArchivado,
+  onFinalizado,
   onCambiarSeccion,
 }: InicioViajeProps) {
   const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
@@ -92,10 +107,10 @@ export default function InicioViaje({
     setCerrando(true)
     setErrorFinalizar("")
     try {
-      const archivado = await archivarViaje(viajeId, tokenSesion)
-      setViaje(archivado)
+      const finalizado = await finalizarViaje(viajeId, tokenSesion)
+      setViaje(finalizado)
       setConfirmandoFinalizar(false)
-      onArchivado?.(archivado)
+      onFinalizado?.(finalizado)
     } catch (e) {
       setErrorFinalizar(mensajeDeError(e))
     } finally {
@@ -105,7 +120,7 @@ export default function InicioViaje({
 
   const activo = viaje?.estado === "activo"
   const esCreador = viaje?.rol === "creador"
-  const miembros = (viaje?.miembros ?? []).map((m, i) => aMiembro(m.nombre, i))
+  const miembros = (viaje?.miembros ?? []).map((m, i) => aMiembro(m.nombre, i, m.avatar_url))
 
   if (pendiente) return null
 
@@ -214,7 +229,7 @@ export default function InicioViaje({
             )}
             {viaje && !activo && (
               <Badge bg="rgba(255,255,255,0.2)" color="white">
-                {viaje.estado === "archivado" ? "Archivado" : "Finalizado"}
+                Finalizado
               </Badge>
             )}
           </div>
@@ -275,75 +290,85 @@ export default function InicioViaje({
             <div style={avisoStyle(C.lightAccent, `${C.accent}40`)}>
               <Icon name="lock" size={18} color={C.accent} strokeWidth={2} />
               <span>
-                Este viaje está {viaje.estado === "archivado" ? "archivado" : "finalizado"}: puedes consultarlo, pero ya no se
+                Este viaje está finalizado: puedes consultarlo, pero ya no se
                 pueden modificar sus datos ni añadir actividades o gastos.
               </span>
             </div>
           )}
 
-          {/* Viajeros con «Invitar» debajo y, a la derecha, acceso a las votaciones (como en el prototipo) */}
+          {/* Anclado sobre la barra inferior: viajeros con «Invitar» a la izquierda; votaciones y ajustes a la derecha */}
           {viaje && (
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "4px 0" }}>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
-                <div role="group" aria-label={`${miembros.length} ${miembros.length === 1 ? "viajero" : "viajeros"}`}>
-                  <AvatarStack members={miembros} size={36} max={5} />
+            <div
+              style={{
+                position: "fixed",
+                left: 0,
+                right: 0,
+                bottom: ALTO_BARRA_INFERIOR,
+                zIndex: 20,
+                pointerEvents: "none",
+              }}
+            >
+              <div
+                style={{
+                  maxWidth: 480,
+                  margin: "0 auto",
+                  padding: "12px 16px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-end",
+                  gap: 12,
+                }}
+              >
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8, pointerEvents: "auto" }}>
+                  <div role="group" aria-label={`${miembros.length} ${miembros.length === 1 ? "viajero" : "viajeros"}`}>
+                    <AvatarStack members={miembros} size={36} max={5} />
+                  </div>
+                  {activo && (
+                    <button
+                      type="button"
+                      onClick={onInvitar}
+                      style={{
+                        background: C.lightBlue,
+                        border: "none",
+                        borderRadius: 8,
+                        padding: "4px 11px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                        color: C.blue,
+                        fontSize: 10,
+                        fontFamily: NUNITO,
+                        fontWeight: 700,
+                      }}
+                    >
+                      <Icon name="plus" size={11} color={C.blue} strokeWidth={2.5} />
+                      Invitar
+                    </button>
+                  )}
                 </div>
-                {activo && (
-                  <button
-                    type="button"
-                    onClick={onInvitar}
-                    style={{
-                      background: C.lightBlue,
-                      border: "none",
-                      borderRadius: 8,
-                      padding: "4px 11px",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                      color: C.blue,
-                      fontSize: 10,
-                      fontFamily: NUNITO,
-                      fontWeight: 700,
-                    }}
-                  >
-                    <Icon name="plus" size={11} color={C.blue} strokeWidth={2.5} />
-                    Invitar
-                  </button>
-                )}
+                <div style={{ display: "flex", gap: 10, pointerEvents: "auto" }}>
+                  {activo && (
+                    <button type="button" onClick={onVotaciones} style={botonCuadradoStyle}>
+                      <Icon name="vote" size={26} color={C.blue} strokeWidth={1.8} />
+                      <span style={{ fontFamily: NUNITO, fontWeight: 800, fontSize: 11, color: C.navy }}>Votaciones</span>
+                    </button>
+                  )}
+                  {activo && esCreador && (
+                    <button type="button" onClick={onEditar} style={botonCuadradoStyle}>
+                      <Icon name="settings" size={26} color={C.blue} strokeWidth={1.8} />
+                      <span style={{ fontFamily: NUNITO, fontWeight: 800, fontSize: 11, color: C.navy }}>Editar viaje</span>
+                    </button>
+                  )}
+                </div>
               </div>
-              {activo && (
-                <button
-                  type="button"
-                  onClick={onVotaciones}
-                  style={{
-                    width: 80,
-                    height: 80,
-                    background: "white",
-                    border: `1.5px solid ${C.border}`,
-                    borderRadius: RADIUS.lg,
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 6,
-                    cursor: "pointer",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
-                    flexShrink: 0,
-                  }}
-                >
-                  <Icon name="vote" size={26} color={C.blue} strokeWidth={1.8} />
-                  <span style={{ fontFamily: NUNITO, fontWeight: 800, fontSize: 11, color: C.navy }}>Votaciones</span>
-                </button>
-              )}
             </div>
           )}
 
-          {/* La cartera también se consulta en viajes finalizados */}
-          {viaje && (
+          {viaje && !activo && (
             <button
               type="button"
-              onClick={onDocumentos}
+              onClick={onResumen}
               style={{
                 ...tarjetaStyle,
                 width: "100%",
@@ -359,62 +384,25 @@ export default function InicioViaje({
                   width: 42,
                   height: 42,
                   borderRadius: 13,
-                  background: C.lightBlue,
+                  background: C.lightAccent,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   flexShrink: 0,
                 }}
               >
-                <Icon name="folder" size={21} color={C.blue} strokeWidth={1.8} />
+                <Icon name="medal" size={21} color={C.accent} strokeWidth={1.8} />
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: NUNITO, fontWeight: 800, color: C.navy, fontSize: 14 }}>Cartera de Documentos</div>
+                <div style={{ fontFamily: NUNITO, fontWeight: 800, color: C.navy, fontSize: 14 }}>Resumen del viaje</div>
                 <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, marginTop: 2 }}>
-                  Billetes, reservas y otros documentos del viaje
+                  Revive el Wrap: días, gastos y el momento estrella
                 </div>
               </div>
               <Icon name="arrow_right" size={18} color={C.muted} strokeWidth={2} />
             </button>
           )}
 
-          {viaje && activo && esCreador && (
-            <button
-              type="button"
-              onClick={onEditar}
-              style={{
-                ...tarjetaStyle,
-                width: "100%",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 14,
-                textAlign: "left",
-              }}
-            >
-              <div
-                style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: 13,
-                  background: C.lightBlue,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
-              >
-                <Icon name="settings" size={21} color={C.blue} strokeWidth={1.8} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: NUNITO, fontWeight: 800, color: C.navy, fontSize: 14 }}>Editar viaje</div>
-                <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, marginTop: 2 }}>
-                  Nombre, fechas, destino y presupuesto
-                </div>
-              </div>
-              <Icon name="arrow_right" size={18} color={C.muted} strokeWidth={2} />
-            </button>
-          )}
         </div>
       </div>
 
@@ -433,7 +421,7 @@ export default function InicioViaje({
           onConfirmar={handleFinalizarViaje}
           onCancelar={() => setConfirmandoFinalizar(false)}
         >
-          El viaje pasará a «Viajes archivados» y quedará de solo lectura: ya no se podrán editar sus datos ni añadir
+          El viaje pasará a «Viajes anteriores» en Mis viajes y quedará de solo lectura: ya no se podrán editar sus datos ni añadir
           actividades o gastos.
           <strong style={{ display: "block", color: C.red, marginTop: 6 }}>Esta acción no se puede deshacer.</strong>
         </DialogoConfirmacion>

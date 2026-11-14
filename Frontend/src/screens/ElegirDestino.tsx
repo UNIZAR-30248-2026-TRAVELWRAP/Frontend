@@ -97,7 +97,7 @@ export default function ElegirDestino({ viajeId, tokenSesion, onVolver, onInvita
     if (viaje && conDestino) onDestinoFijado?.(viaje)
   }, [viaje, conDestino, onDestinoFijado])
 
-  const miembros = (viaje?.miembros ?? []).map((m, i) => aMiembro(m.nombre, i))
+  const miembros = (viaje?.miembros ?? []).map((m, i) => aMiembro(m.nombre, i, m.avatar_url))
   const esCreador = viaje?.rol === "creador"
 
   const conVotos = conPorcentajes(votacion?.opciones ?? [])

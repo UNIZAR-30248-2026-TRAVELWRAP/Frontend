@@ -364,7 +364,7 @@ export default function AnadirGasto({
               <div role="radiogroup" aria-label="Quién pagó" style={{ display: "flex", gap: 8, marginBottom: 18, overflowX: "auto" }}>
                 {miembros.map((m, i) => {
                   const activo = pagadoPor === m.usuario_id
-                  const miembro = aMiembro(m.nombre, i)
+                  const miembro = aMiembro(m.nombre, i, m.avatar_url)
                   return (
                     <button
                       type="button"
@@ -417,7 +417,7 @@ export default function AnadirGasto({
                 {miembros.map((m, i) => {
                   const incluido = participantes.includes(m.usuario_id)
                   const parte = incluido ? partes[participantes.indexOf(m.usuario_id)] : undefined
-                  const miembro = aMiembro(m.nombre, i)
+                  const miembro = aMiembro(m.nombre, i, m.avatar_url)
                   return (
                     <label
                       key={m.usuario_id}

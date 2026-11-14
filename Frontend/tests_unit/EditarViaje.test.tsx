@@ -151,14 +151,14 @@ describe('EditarViaje', () => {
     expect(onGuardado).not.toHaveBeenCalled()
   })
 
-  it('no muestra el formulario a quien no es el creador ni en un viaje archivado', async () => {
+  it('no muestra el formulario a quien no es el creador ni en un viaje finalizado', async () => {
     simularBackend({ rol: 'miembro' })
     const { unmount } = renderizar()
     expect((await screen.findByRole('alert')).textContent).toBe('Solo el creador del viaje puede editar sus datos')
     expect(screen.queryByLabelText('Nombre del viaje')).toBeNull()
     unmount()
 
-    simularBackend({ estado: 'archivado' })
+    simularBackend({ estado: 'finalizado' })
     renderizar()
     expect((await screen.findByRole('alert')).textContent).toBe('El viaje está finalizado y ya no se puede modificar')
   })

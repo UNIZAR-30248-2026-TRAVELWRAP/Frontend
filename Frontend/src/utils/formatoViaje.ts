@@ -98,11 +98,12 @@ export const formatearImporte = (cantidad: number, moneda = "EUR") => {
 }
 
 // Miembro del viaje → avatar con su inicial y un color según su posición
-export const aMiembro = (nombre: string | null, indice: number): Miembro => {
+export const aMiembro = (nombre: string | null, indice: number, avatarUrl?: string | null): Miembro => {
   const texto = nombre?.trim() || "?"
   return {
     name: texto,
     initial: texto.charAt(0).toUpperCase(),
     color: COLORES_MIEMBROS[indice % COLORES_MIEMBROS.length],
+    imageUrl: avatarUrl ?? null,
   }
 }

@@ -59,7 +59,7 @@ When('abro las votaciones del viaje {string}', async (nombre: string) => {
 });
 
 When('elijo el tipo de votación {string}', async (tipo: string) => {
-  await paginaActual().getByRole('radio', { name: tipo }).click();
+  await paginaActual().getByLabel('Tipo de votación').selectOption({ label: tipo });
 });
 
 When('escribo la pregunta {string}', async (pregunta: string) => {

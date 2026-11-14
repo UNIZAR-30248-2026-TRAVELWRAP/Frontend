@@ -17,7 +17,6 @@ Característica: Reordenar las actividades del día arrastrándolas (PB-45)
     Entonces puedo mover la actividad "Paseo"
     Y puedo mover la actividad "Compras"
     Y no puedo mover la actividad "Desayuno"
-    Y veo el texto "Las actividades sin hora se pueden colocar donde quieras arrastrando el asa; las que empiezan a la misma hora, entre sí."
 
   Escenario: Arrastrar una actividad sin hora cambia el orden de la agenda
     Dado que el servidor devuelve en "Roma 2027" la actividad "Desayuno" el "2027-05-12" a las "08:30"

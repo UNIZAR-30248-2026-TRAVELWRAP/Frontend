@@ -458,8 +458,8 @@ describe('Itinerario · mapa', () => {
     expect(screen.queryByText(/Ruta a pie por calles/)).toBeNull()
   })
 
-  it('en un viaje archivado el mapa también se ve', async () => {
-    simularBackend([conUbicacion('a1', 'Coliseo')], { estado: 'archivado' })
+  it('en un viaje finalizado el mapa también se ve', async () => {
+    simularBackend([conUbicacion('a1', 'Coliseo')], { estado: 'finalizado' })
     renderizar()
 
     expect((await screen.findByTestId('mapa')).textContent).toBe('Coliseo')

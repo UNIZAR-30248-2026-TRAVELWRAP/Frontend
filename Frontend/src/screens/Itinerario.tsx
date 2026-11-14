@@ -536,11 +536,6 @@ export default function Itinerario({
                     {errorOrden}
                   </div>
                 )}
-                {hayQueOrdenar && (
-                    <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, padding: "0 4px 10px", lineHeight: 1.4 }}>
-                      Las actividades sin hora se pueden colocar donde quieras arrastrando el asa; las que empiezan a la misma hora, entre sí.
-                    </div>
-                  )}
                   <div role="list" aria-label="Agenda del día" style={{ position: "relative", paddingBottom: 28 }}>
                     <div
                       style={{
@@ -641,6 +636,7 @@ export default function Itinerario({
                                       member={aMiembro(
                                         viaje.miembros[indiceDeMiembro(actividad.creado_por)].nombre,
                                         indiceDeMiembro(actividad.creado_por),
+                                        viaje.miembros[indiceDeMiembro(actividad.creado_por)].avatar_url,
                                       )}
                                       size={26}
                                       showBorder={false}

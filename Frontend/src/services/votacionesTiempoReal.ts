@@ -10,7 +10,7 @@ const URL_SOCKET = new URL(API_URL).origin
 export type CambioVotacion =
   | {
       viaje_id: string
-      motivo: "creada" | "opcion" | "voto" | "cerrada"
+      motivo: "creada" | "opcion" | "voto" | "cerrada" | "tipo"
       votacion_id: string
       // Solo al cerrar la votación de destino: el destino fijado en el viaje
       destino?: string | null

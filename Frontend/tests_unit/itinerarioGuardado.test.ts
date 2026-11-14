@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { borrarItinerarios, guardarItinerario, leerItinerario } from '../src/services/itinerarioGuardado'
+import { borrarItinerario, borrarItinerarios, guardarItinerario, leerItinerario } from '../src/services/itinerarioGuardado'
 import { borrarSesion, guardarSesion, leerSesion } from '../src/services/sesionStorage'
 
 // Itinerario completo, como lo devuelve la API
@@ -17,6 +17,7 @@ const itinerario = (id: string) => ({
     creado_en: '2026-10-12T10:00:00Z',
     pendiente_destino: false,
     rol: 'miembro' as const,
+    archivado: false,
     miembros: [{ usuario_id: 'u1', nombre: 'Berta', avatar_url: null, rol: 'creador' as const }],
   },
   actividades: [
@@ -80,6 +81,45 @@ describe('itinerarioGuardado', () => {
     expect(leerItinerario('lisboa')).toBeNull()
   })
 
+  it('guarda si el usuario tiene el viaje archivado', () => {
+    const archivado = itinerario('roma')
+    archivado.viaje.archivado = true
+
+    guardarItinerario('roma', archivado)
+
+    expect(leerItinerario('roma')?.viaje.archivado).toBe(true)
+  })
+
+  it('una copia guardada antes de MEJ-12, sin archivado, se sigue leyendo como no archivada', () => {
+    const { archivado: _archivado, ...viajeAntiguo } = itinerario('roma').viaje
+    localStorage.setItem(
+      'travelwrap.itinerario.roma',
+      JSON.stringify({ ...itinerario('roma'), viaje: viajeAntiguo }),
+    )
+
+    const copia = leerItinerario('roma')
+
+    expect(copia?.viaje.archivado).toBe(false)
+    expect(copia?.viaje.nombre).toBe('Roma 2027')
+  })
+
+  it('borra solo la copia del viaje indicado', () => {
+    guardarItinerario('roma', itinerario('roma'))
+    guardarItinerario('lisboa', itinerario('lisboa'))
+    localStorage.setItem('otra.clave', 'valor')
+
+    borrarItinerario('roma')
+
+    expect(leerItinerario('roma')).toBeNull()
+    expect(leerItinerario('lisboa')?.viaje.id).toBe('lisboa')
+    expect(localStorage.getItem('otra.clave')).toBe('valor')
+  })
+
+  it('borrar la copia de un viaje que no existe o con un identificador no válido no falla', () => {
+    expect(() => borrarItinerario('roma')).not.toThrow()
+    expect(() => borrarItinerario('')).not.toThrow()
+  })
+
   it('borra todos los itinerarios sin tocar el resto del almacenamiento', () => {
     guardarItinerario('roma', itinerario('roma'))
     guardarItinerario('lisboa', itinerario('lisboa'))
@@ -127,6 +167,8 @@ describe('itinerarioGuardado', () => {
 
   it.each([
     ['un estado del viaje que no existe', (d: ReturnType<typeof itinerario>) => Object.assign(d.viaje, { estado: 'borrado' })],
+    ['el estado archivado, que ya no existe', (d: ReturnType<typeof itinerario>) => Object.assign(d.viaje, { estado: 'archivado' })],
+    ['un archivado que no es booleano', (d: ReturnType<typeof itinerario>) => Object.assign(d.viaje, { archivado: 'si' })],
     ['una fecha con otro formato', (d: ReturnType<typeof itinerario>) => Object.assign(d.actividades[0], { fecha: '12/05/2027' })],
     ['una categoría que no existe', (d: ReturnType<typeof itinerario>) => Object.assign(d.actividades[0], { categoria: 'fiesta' })],
     ['un miembro sin identificador', (d: ReturnType<typeof itinerario>) => Object.assign(d.viaje.miembros[0], { usuario_id: '' })],

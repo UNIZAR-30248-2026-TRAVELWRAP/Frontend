@@ -103,8 +103,8 @@ describe('Itinerario · editar y eliminar actividades', () => {
     expect(screen.getByRole('button', { name: 'Eliminar Paseo sin hora' })).toBeTruthy()
   })
 
-  it('en un viaje archivado no se puede editar ni eliminar', async () => {
-    simularBackend({ estado: 'archivado' })
+  it('en un viaje finalizado no se puede editar ni eliminar', async () => {
+    simularBackend({ estado: 'finalizado' })
     renderizar()
 
     await screen.findByText('Visita al Coliseo')

@@ -345,9 +345,9 @@ test.describe('Control de Gastos', () => {
     await expect(historial(page)).toHaveCount(1);
   });
 
-  test('en un viaje archivado se consultan los gastos pero no se pueden añadir', async ({ page }) => {
+  test('en un viaje finalizado se consultan los gastos pero no se pueden añadir', async ({ page }) => {
     await entrarConSesion(page);
-    await simularHistorial(page, [{ id: 'g1' }], { estado: 'archivado' });
+    await simularHistorial(page, [{ id: 'g1' }], { estado: 'finalizado' });
 
     await page.goto(rutaControl);
 
