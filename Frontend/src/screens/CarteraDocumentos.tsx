@@ -4,6 +4,7 @@ import BotonVolver from "../components/BotonVolver"
 import DialogoConfirmacion from "../components/DialogoConfirmacion"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
+import ListaTareas from "../components/ListaTareas"
 import VistaPreviaDocumento from "../components/VistaPreviaDocumento"
 import SectionLabel from "../components/SectionLabel"
 import { ApiError } from "../services/authApi"
@@ -30,15 +31,34 @@ import {
 
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
 
-// Pantalla: Cartera de Documentos (billetes, reservas, seguros... compartidos por los miembros del viaje)
+type Pestana = "cartera" | "tareas"
+
+const PESTANAS: { id: Pestana; texto: string; icono: string }[] = [
+  { id: "cartera", texto: "Cartera", icono: "folder" },
+  { id: "tareas", texto: "Lista de tareas", icono: "task" },
+]
+
+// Pantalla: Cartera de Documentos (billetes, reservas, seguros... compartidos por los miembros del viaje) y, en su
+// otra pestaña, la lista de tareas del viaje
 type CarteraDocumentosProps = {
   viajeId: string
   tokenSesion: string
+  // Para proponerle las tareas nuevas a quien las crea
+  usuarioId?: string
+  pestanaInicial?: Pestana
   onVolver?: () => void
   onCambiarSeccion?: (seccion: SeccionViaje) => void
 }
 
-export default function CarteraDocumentos({ viajeId, tokenSesion, onVolver, onCambiarSeccion }: CarteraDocumentosProps) {
+export default function CarteraDocumentos({
+  viajeId,
+  tokenSesion,
+  usuarioId,
+  pestanaInicial = "cartera",
+  onVolver,
+  onCambiarSeccion,
+}: CarteraDocumentosProps) {
+  const [pestana, setPestana] = useState<Pestana>(pestanaInicial)
   const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
   const [documentos, setDocumentos] = useState<Documento[]>([])
   const [cargando, setCargando] = useState(true)
@@ -175,9 +195,46 @@ export default function CarteraDocumentos({ viajeId, tokenSesion, onVolver, onCa
                 </SectionLabel>
               )}
               <Heading size={22} color="white">
-                Cartera de Documentos
+                {pestana === "tareas" ? "Lista de Tareas" : "Cartera de Documentos"}
               </Heading>
             </div>
+          </div>
+          <div
+            role="tablist"
+            aria-label="Secciones de la cartera"
+            style={{ display: "flex", gap: 4, marginTop: 16, padding: 4, borderRadius: RADIUS.md, background: "rgba(255,255,255,0.14)" }}
+          >
+            {PESTANAS.map(({ id, texto, icono }) => {
+              const seleccionada = pestana === id
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={seleccionada}
+                  onClick={() => setPestana(id)}
+                  style={{
+                    flex: 1,
+                    minHeight: 40,
+                    borderRadius: RADIUS.sm,
+                    border: "none",
+                    background: seleccionada ? "white" : "transparent",
+                    color: seleccionada ? C.blue : "rgba(255,255,255,0.8)",
+                    fontFamily: NUNITO,
+                    fontWeight: 800,
+                    fontSize: 13,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                  }}
+                >
+                  <Icon name={icono} size={15} color="currentColor" strokeWidth={2} />
+                  {texto}
+                </button>
+              )
+            })}
           </div>
         </div>
 
@@ -192,7 +249,11 @@ export default function CarteraDocumentos({ viajeId, tokenSesion, onVolver, onCa
             <p style={{ fontFamily: NUNITO, color: C.muted, fontSize: 13, textAlign: "center" }}>Cargando documentos...</p>
           )}
 
-          {viaje && (
+          {viaje && pestana === "tareas" && (
+            <ListaTareas viajeId={viajeId} tokenSesion={tokenSesion} viaje={viaje} usuarioId={usuarioId} />
+          )}
+
+          {viaje && pestana === "cartera" && (
             <>
               {/* Solo se suben documentos mientras el viaje está activo */}
               {activo ? (
