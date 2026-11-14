@@ -336,6 +336,11 @@ When('confirmo la eliminación', async () => {
   await paginaActual().getByRole('button', { name: 'Eliminar gasto' }).click();
 });
 
+Then('estoy en el detalle del gasto', async () => {
+  await expect(paginaActual()).toHaveURL(/\/viajes\/viaje-\d+\/gastos\/gasto-\d+$/);
+  await expect(paginaActual().getByRole('region', { name: 'Datos del gasto' })).toBeVisible();
+});
+
 Then('en el detalle veo el importe {string}', async (importe: string) => {
   await expect(paginaActual().getByRole('region', { name: 'Datos del gasto' })).toContainText(importe);
 });

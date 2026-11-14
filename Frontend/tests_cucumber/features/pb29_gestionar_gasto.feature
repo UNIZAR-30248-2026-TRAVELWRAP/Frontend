@@ -23,7 +23,7 @@ Característica: Gestionar un gasto compartido (PB-29)
     Y pulso el botón "Modificar"
     Y cambio el importe a "40"
     Y pulso el botón "Guardar cambios"
-    Entonces estoy en el control de gastos del viaje
+    Entonces estoy en el detalle del gasto
     Y el servidor ha guardado la edición del gasto "Cena en el Trastevere" con importe 40 entre "Berta, Adriana"
 
   Escenario: Eliminar un gasto tras confirmarlo
