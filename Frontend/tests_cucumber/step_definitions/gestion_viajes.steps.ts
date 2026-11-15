@@ -242,8 +242,14 @@ When('abro el inicio del viaje {string}', async (nombre: string) => {
 When('llego al balance final del resumen del viaje {string}', async (nombre: string) => {
   await irA(`/viajes/${idDelViaje(nombre)}/resumen`);
   await expect(paginaActual().getByText('TravelWrap · Resumen')).toBeVisible();
-  await avanzarDiapositivas(6);
-  await expect(paginaActual().getByText('Balance final', { exact: true })).toBeVisible();
+  const balance = paginaActual().getByText('Balance final', { exact: true });
+  // Las pulsaciones pueden perderse si el listener aún no está registrado (CI lenta):
+  // se avanza de una en una hasta que la diapositiva final sea visible.
+  for (let i = 0; i < 12 && !(await balance.isVisible()); i++) {
+    await paginaActual().keyboard.press('ArrowRight');
+    await paginaActual().waitForTimeout(150);
+  }
+  await expect(balance).toBeVisible();
 });
 
 When('cambio el nombre a {string} y el presupuesto a {string}', async (nombre: string, presupuesto: string) => {
