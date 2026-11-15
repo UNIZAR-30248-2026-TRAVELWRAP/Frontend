@@ -65,12 +65,15 @@ const simularBackend = async (page: Page, inicial: Partial<Usuario> = {}, respue
   await page.route('**/api/perfil**', (route) => {
     const peticion = route.request();
     const ruta = new URL(peticion.url()).pathname.replace(/^.*\/api/, '');
-    recibidas.push({
-      metodo: peticion.method(),
-      autorizacion: peticion.headers()['authorization'],
-      tipo: peticion.headers()['content-type'],
-      cuerpo: peticion.postData() ?? '',
-    });
+    // Solo se guardan los cambios que envía la pantalla; las lecturas de la carga no cuentan
+    if (peticion.method() !== 'GET') {
+      recibidas.push({
+        metodo: peticion.method(),
+        autorizacion: peticion.headers()['authorization'],
+        tipo: peticion.headers()['content-type'],
+        cuerpo: peticion.postData() ?? '',
+      });
+    }
 
     if (ruta === '/perfil' && peticion.method() === 'PATCH') {
       const { nombre } = JSON.parse(peticion.postData() ?? '{}');
