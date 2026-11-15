@@ -6,9 +6,11 @@ import DialogoConfirmacion from "../components/DialogoConfirmacion"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import { ApiError } from "../services/authApi"
-import { finalizarViaje, obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
+import { abandonarViaje, finalizarViaje, obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
+import { obtenerBalance } from "../services/gastosApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro, formatearFechasActivo, formatearImporte } from "../utils/formatoViaje"
+import { conEuros } from "../utils/gastos"
 
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
 
@@ -63,6 +65,10 @@ type InicioViajeProps = {
   // Tras finalizar el viaje (queda finalizado, en «Viajes anteriores»)
   onFinalizado?: (viaje: ViajeDelUsuario) => void
   onCambiarSeccion?: (seccion: SeccionViaje) => void
+  // Usuario de la sesión: su saldo decide si puede abandonar el viaje
+  usuarioId: string
+  // Tras abandonar el viaje (ya no es miembro) se vuelve a Mis Viajes
+  onAbandonado?: () => void
 }
 
 export default function InicioViaje({
@@ -76,12 +82,19 @@ export default function InicioViaje({
   onPendienteDestino,
   onFinalizado,
   onCambiarSeccion,
+  usuarioId,
+  onAbandonado,
 }: InicioViajeProps) {
   const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
   const [error, setError] = useState("")
   const [confirmandoFinalizar, setConfirmandoFinalizar] = useState(false)
   const [cerrando, setCerrando] = useState(false)
   const [errorFinalizar, setErrorFinalizar] = useState("")
+  const [dialogoAbandono, setDialogoAbandono] = useState<"cerrado" | "saldo" | "confirmar">("cerrado")
+  const [saldoAbandono, setSaldoAbandono] = useState(0)
+  const [comprobandoSaldo, setComprobandoSaldo] = useState(false)
+  const [abandonando, setAbandonando] = useState(false)
+  const [errorAbandonar, setErrorAbandonar] = useState("")
 
   useEffect(() => {
     let vigente = true
@@ -115,6 +128,36 @@ export default function InicioViaje({
       setErrorFinalizar(mensajeDeError(e))
     } finally {
       setCerrando(false)
+    }
+  }
+
+  // Antes de abandonar se mira el saldo de quien lo pide: solo puede dejar el viaje con el saldo a cero
+  const handlePedirAbandonar = async () => {
+    setComprobandoSaldo(true)
+    setErrorAbandonar("")
+    try {
+      const balance = await obtenerBalance(viajeId, tokenSesion)
+      const saldo = balance.saldos.find((s) => s.usuario_id === usuarioId)?.saldo ?? 0
+      setSaldoAbandono(saldo)
+      setDialogoAbandono(Math.abs(saldo) < 0.005 ? "confirmar" : "saldo")
+    } catch (e) {
+      setErrorAbandonar(`No se ha podido comprobar tu saldo: ${mensajeDeError(e)}`)
+    } finally {
+      setComprobandoSaldo(false)
+    }
+  }
+
+  const handleAbandonar = async () => {
+    setAbandonando(true)
+    setErrorAbandonar("")
+    try {
+      await abandonarViaje(viajeId, tokenSesion)
+      setDialogoAbandono("cerrado")
+      onAbandonado?.()
+    } catch (e) {
+      setErrorAbandonar(mensajeDeError(e))
+    } finally {
+      setAbandonando(false)
     }
   }
 
@@ -403,6 +446,45 @@ export default function InicioViaje({
             </button>
           )}
 
+          {viaje && activo && !esCreador && (
+            <button
+              type="button"
+              onClick={handlePedirAbandonar}
+              disabled={comprobandoSaldo}
+              style={{
+                width: "100%",
+                background: "white",
+                color: C.red,
+                border: `1.5px solid ${C.red}55`,
+                borderRadius: RADIUS.md,
+                padding: 13,
+                fontFamily: NUNITO,
+                fontWeight: 800,
+                fontSize: 14,
+                cursor: comprobandoSaldo ? "wait" : "pointer",
+              }}
+            >
+              {comprobandoSaldo ? "Comprobando tu saldo..." : "Abandonar viaje"}
+            </button>
+          )}
+          {errorAbandonar && dialogoAbandono === "cerrado" && (
+            <div
+              role="alert"
+              style={{
+                background: C.redBg,
+                border: `1.5px solid ${C.red}55`,
+                borderRadius: 12,
+                padding: "10px 14px",
+                color: C.red,
+                fontFamily: NUNITO,
+                fontSize: 13,
+                fontWeight: 700,
+              }}
+            >
+              {errorAbandonar}
+            </div>
+          )}
+
         </div>
       </div>
 
@@ -424,6 +506,44 @@ export default function InicioViaje({
           El viaje pasará a «Viajes anteriores» en Mis viajes y quedará de solo lectura: ya no se podrán editar sus datos ni añadir
           actividades o gastos.
           <strong style={{ display: "block", color: C.red, marginTop: 6 }}>Esta acción no se puede deshacer.</strong>
+        </DialogoConfirmacion>
+      )}
+
+      {dialogoAbandono === "saldo" && (
+        <DialogoConfirmacion
+          titulo="Tienes cuentas pendientes"
+          icono="euro"
+          color={C.blue}
+          colorFondo={C.lightBlue}
+          textoConfirmar="Ir a Control de Gastos"
+          textoConfirmando="Abriendo Control de Gastos..."
+          ocupado={false}
+          onConfirmar={() => {
+            setDialogoAbandono("cerrado")
+            onCambiarSeccion?.("gastos")
+          }}
+          onCancelar={() => setDialogoAbandono("cerrado")}
+        >
+          {saldoAbandono < 0 ? `Debes ${conEuros(-saldoAbandono)} en este viaje.` : `Te deben ${conEuros(saldoAbandono)} en este viaje.`}{" "}
+          Para abandonarlo, tu saldo tiene que estar a cero: salda tus cuentas en Control de Gastos y vuelve a intentarlo.
+        </DialogoConfirmacion>
+      )}
+
+      {dialogoAbandono === "confirmar" && (
+        <DialogoConfirmacion
+          titulo="¿Abandonar este viaje?"
+          icono="logout"
+          color={C.red}
+          colorFondo={C.redBg}
+          textoConfirmar="Abandonar viaje"
+          textoConfirmando="Abandonando viaje..."
+          ocupado={abandonando}
+          error={errorAbandonar}
+          onConfirmar={handleAbandonar}
+          onCancelar={() => setDialogoAbandono("cerrado")}
+        >
+          Dejarás de ver este viaje en Mis viajes. Tus gastos se conservan y apareces como «Antiguo miembro». Para volver,
+          tendrás que entrar de nuevo con un enlace de invitación.
         </DialogoConfirmacion>
       )}
     </div>

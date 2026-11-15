@@ -85,6 +85,14 @@ export const finalizarViaje = (viajeId: string, tokenSesion: string) =>
     token: tokenSesion,
   })
 
+// Abandona el viaje para quien lo pide: deja de ser miembro y sus gastos se conservan. Solo lo puede hacer quien
+// no es el creador, con el viaje activo y con su saldo a cero (el backend lo comprueba y responde 409 si no)
+export const abandonarViaje = (viajeId: string, tokenSesion: string) =>
+  peticion<null>(`/viajes/${encodeURIComponent(viajeId)}/abandonar`, {
+    metodo: "POST",
+    token: tokenSesion,
+  })
+
 // Archiva el viaje solo para el usuario: pasa a su «Viajes archivados» (cualquier miembro, con el viaje finalizado)
 export const archivarViaje = (viajeId: string, tokenSesion: string) =>
   peticion<ViajeDelUsuario>(`/viajes/${encodeURIComponent(viajeId)}/archivar`, {

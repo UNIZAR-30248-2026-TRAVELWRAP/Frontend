@@ -108,6 +108,8 @@ function RutaInicioViaje({ sesion }: { sesion: Sesion }) {
       onCambiarSeccion={(seccion) => navigate(rutaDeSeccion(viajeId, seccion))}
       onPendienteDestino={() => navigate(`/viajes/${viajeId}/destino`, { replace: true })}
       onFinalizado={() => navigate("/", { replace: true })}
+      usuarioId={sesion.usuario.id}
+      onAbandonado={() => navigate("/", { replace: true })}
     />
   );
 }
