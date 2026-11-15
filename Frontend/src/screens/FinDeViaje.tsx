@@ -3,10 +3,13 @@ import Avatar from "../components/Avatar"
 import AvatarStack from "../components/AvatarStack"
 import BotonVolver from "../components/BotonVolver"
 import Icon from "../components/Icon"
+import Sello from "../components/Sello"
+import SelectorSello from "../components/SelectorSello"
 import { ApiError } from "../services/authApi"
 import { listarFotos, type Foto } from "../services/fotosApi"
 import { obtenerBalance, type SaldoMiembro } from "../services/gastosApi"
 import { obtenerResumenDelViaje, type ResumenDelViaje } from "../services/resumenApi"
+import { elegirSello, obtenerSello, quitarSello, type DisenoSello, type Sello as SelloDelViaje } from "../services/sellosApi"
 import { archivarViaje, obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import DialogoConfirmacion from "../components/DialogoConfirmacion"
 import { estiloAlerta } from "../styles/formulario"
@@ -97,6 +100,8 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
   const [confirmandoArchivar, setConfirmandoArchivar] = useState(false)
   const [archivando, setArchivando] = useState(false)
   const [errorArchivar, setErrorArchivar] = useState("")
+  const [sello, setSello] = useState<SelloDelViaje | null>(null)
+  const [eligiendoSello, setEligiendoSello] = useState(false)
   const [resumen, setResumen] = useState<ResumenDelViaje | null>(null)
   const [fotos, setFotos] = useState<Foto[]>([])
   const [saldos, setSaldos] = useState<SaldoMiembro[]>([])
@@ -121,13 +126,15 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
       obtenerResumenDelViaje(viajeId, tokenSesion),
       listarFotos(viajeId, tokenSesion).catch(() => null),
       obtenerBalance(viajeId, tokenSesion).catch(() => null),
+      obtenerSello(viajeId, tokenSesion).catch(() => null),
     ])
-      .then(([datosViaje, datosResumen, listaFotos, balance]) => {
+      .then(([datosViaje, datosResumen, listaFotos, balance, datosSello]) => {
         if (!vigente) return
         setViaje(datosViaje)
         setResumen(datosResumen)
         setFotos((listaFotos?.fotos ?? []).filter((foto) => foto.url !== null))
         setSaldos(balance?.saldos ?? [])
+        setSello(datosSello?.sello ?? null)
       })
       .catch((e) => {
         if (vigente) setError(`No se ha podido preparar el resumen: ${mensajeDeError(e)}`)
@@ -151,6 +158,18 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
     }
   }
 
+  // Elige, cambia o quita (null) el sello. Si falla, el error lo muestra el selector
+  const handleGuardarSello = async (diseno: DisenoSello | null) => {
+    if (diseno === null) {
+      await quitarSello(viajeId, tokenSesion)
+      setSello(null)
+      return
+    }
+    const respuesta = await elegirSello(viajeId, diseno, tokenSesion)
+    setSello(respuesta.sello)
+  }
+
+  const puedeSellar = viaje?.estado === "finalizado"
   const puedeArchivar = viaje?.estado === "finalizado" && !viaje.archivado
   const miembros = (viaje?.miembros ?? []).map((m, indice) => aMiembro(m.nombre, indice))
   const nombres = miembros.map((m) => m.name)
@@ -587,7 +606,21 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
 
         {total > 0 && !haySiguiente && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "12px 20px 20px" }}>
-            {/* Aquí irá «Sellar» (PB-44), encima de «Archivar viaje» */}
+            {puedeSellar && sello && (
+              <div style={{ width: 130, alignSelf: "center", marginBottom: 4 }}>
+                <Sello diseno={sello.diseno} destino={sello.destino} anio={sello.anio} compacto />
+              </div>
+            )}
+            {puedeSellar && (
+              <button
+                type="button"
+                onClick={() => setEligiendoSello(true)}
+                style={{ ...estiloBotonControl(true), flex: "none", background: "white", border: "none", color: C.navy }}
+              >
+                <Icon name="medal" size={18} color={C.navy} strokeWidth={2} />
+                Sellar
+              </button>
+            )}
             {puedeArchivar && (
               <button
                 type="button"
@@ -606,6 +639,15 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
               Ir a Mis viajes
             </button>
           </div>
+        )}
+        {eligiendoSello && (
+          <SelectorSello
+            destino={lugar}
+            anio={anio || null}
+            actual={sello?.diseno ?? null}
+            onGuardar={handleGuardarSello}
+            onCerrar={() => setEligiendoSello(false)}
+          />
         )}
         {confirmandoArchivar && (
           <DialogoConfirmacion

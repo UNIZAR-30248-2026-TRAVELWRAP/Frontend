@@ -51,10 +51,19 @@ const simularBackend = ({
   falla = false,
   datosViaje = {} as Record<string, unknown>,
   archivar = () => json(200, { ...viaje, estado: 'finalizado', archivado: true }),
+  sello = null as unknown,
 } = {}) =>
   vi.stubGlobal(
     'fetch',
     vi.fn((url: string, opciones?: RequestInit) => {
+      if (url.endsWith('/sello')) {
+        if (opciones?.method === 'PUT') {
+          const { diseno } = JSON.parse(String(opciones.body))
+          return json(200, { sello: { id: 's1', viaje_id: VIAJE_ID, diseno, destino: 'Roma', anio: 2027, elegido_en: '2027-05-20T10:00:00Z' } })
+        }
+        if (opciones?.method === 'DELETE') return Promise.resolve(new Response(null, { status: 204 }))
+        return json(200, { sello })
+      }
       if (opciones?.method === 'POST' && url.endsWith('/archivar')) return archivar()
       if (url.endsWith('/resumen')) return falla ? json(502, { error: { codigo: 'error_resumen', mensaje: 'No se ha podido calcular el resumen del viaje' } }) : json(200, resumen)
       if (url.endsWith('/fotos')) return json(200, { fotos })
@@ -82,6 +91,87 @@ const siguiente = async (veces = 1) => {
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
+})
+
+const SELLO_MAPA = { id: 's1', viaje_id: VIAJE_ID, diseno: 'mapa', destino: 'Roma', anio: 2027, elegido_en: '2027-05-20T10:00:00Z' }
+
+const abrirBalance = async (opciones = {}) => {
+  simularBackend(opciones)
+  await abrir()
+  await siguiente(6)
+}
+
+const llamadasA = (fin: string, metodo: string) =>
+  vi.mocked(fetch).mock.calls.filter(([url, op]) => String(url).endsWith(fin) && (op?.method ?? 'GET') === metodo)
+
+describe('FinDeViaje: sello', () => {
+  it('«Sellar» aparece en un viaje finalizado, archivado o no, también para quien no es el creador', async () => {
+    for (const datosViaje of [{ archivado: false }, { archivado: true }, { archivado: false, rol: 'miembro' }]) {
+      await abrirBalance({ datosViaje })
+      expect(screen.getByRole('button', { name: 'Sellar' })).toBeTruthy()
+      cleanup()
+    }
+  })
+
+  it('no aparece en un viaje activo', async () => {
+    await abrirBalance({ datosViaje: { estado: 'activo' } })
+    expect(screen.queryByRole('button', { name: 'Sellar' })).toBeNull()
+  })
+
+  it('sin sello previo el selector abre sin ninguno marcado y se llama siempre «Sellar»', async () => {
+    await abrirBalance()
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Sellar' }))
+
+    const dialogo = await screen.findByRole('dialog')
+    expect(within(dialogo).getByText('Ningún sello seleccionado')).toBeTruthy()
+    expect(within(dialogo).queryAllByRole('button', { pressed: true })).toHaveLength(0)
+  })
+
+  it('con sello previo el selector abre con ese diseño marcado y el botón sigue llamándose «Sellar»', async () => {
+    await abrirBalance({ sello: SELLO_MAPA })
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Sellar' }))
+
+    const dialogo = await screen.findByRole('dialog')
+    expect(within(dialogo).getByRole('button', { name: 'Sello 2: Mapa' }).getAttribute('aria-pressed')).toBe('true')
+    expect(within(dialogo).getByRole('button', { name: 'Sello 1: Chincheta' }).getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('elegir un diseño lo guarda con PUT', async () => {
+    await abrirBalance()
+    const usuario = userEvent.setup()
+    await usuario.click(screen.getByRole('button', { name: 'Sellar' }))
+    const dialogo = await screen.findByRole('dialog')
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Sello 3: Ruta' }))
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Elegir' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    const [, opciones] = llamadasA('/sello', 'PUT')[0]
+    expect(JSON.parse(String(opciones?.body))).toEqual({ diseno: 'ruta' })
+  })
+
+  it('deseleccionar y elegir quita el sello con DELETE', async () => {
+    await abrirBalance({ sello: SELLO_MAPA })
+    const usuario = userEvent.setup()
+    await usuario.click(screen.getByRole('button', { name: 'Sellar' }))
+    const dialogo = await screen.findByRole('dialog')
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Deseleccionar todos' }))
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Elegir' }))
+
+    await waitFor(() => expect(llamadasA('/sello', 'DELETE')).toHaveLength(1))
+  })
+
+  it('cancelar no llama a la API', async () => {
+    await abrirBalance({ sello: SELLO_MAPA })
+    const usuario = userEvent.setup()
+    await usuario.click(screen.getByRole('button', { name: 'Sellar' }))
+    const dialogo = await screen.findByRole('dialog')
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Sello 4: Avión' }))
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Cancelar' }))
+
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(llamadasA('/sello', 'PUT')).toHaveLength(0)
+    expect(llamadasA('/sello', 'DELETE')).toHaveLength(0)
+  })
 })
 
 describe('FinDeViaje: diapositivas', () => {

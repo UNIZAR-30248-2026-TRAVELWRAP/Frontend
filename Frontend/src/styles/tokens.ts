@@ -13,6 +13,8 @@ export const C = {
   redBg: "#FFF5F5",
   lightBlue: "#EBF8FF",
   lightAccent: "#FFFAF0",
+  purple: "#6B46C1",
+  purpleBg: "#FAF5FF",
 }
 
 export const NUNITO = "'Nunito', sans-serif"

@@ -40,6 +40,7 @@ const simularBackend = ({
 } = {}) => {
   const fetchMock = vi.fn((url: string, opciones?: RequestInit) => {
     if (url.endsWith('/documentos')) return opciones?.method === 'POST' ? subida() : lista()
+    if (url.endsWith('/tareas')) return json(200, { tareas: [] })
     return viaje()
   })
   vi.stubGlobal('fetch', fetchMock)
@@ -62,6 +63,50 @@ const usuario = () => userEvent.setup({ applyAccept: false })
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
+})
+
+describe('CarteraDocumentos: pestañas', () => {
+  it('muestra las pestañas «Cartera» y «Lista de tareas», con la cartera seleccionada', async () => {
+    simularBackend()
+    await abrir()
+
+    expect(screen.getByRole('tablist')).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Cartera' }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('tab', { name: 'Lista de tareas' }).getAttribute('aria-selected')).toBe('false')
+    expect(screen.getByText('Cartera de Documentos')).toBeTruthy()
+  })
+
+  it('al cambiar a «Lista de tareas» cambia el título y se muestran las tareas en lugar de los documentos', async () => {
+    simularBackend()
+    await abrir()
+
+    await userEvent.setup().click(screen.getByRole('tab', { name: 'Lista de tareas' }))
+
+    expect(await screen.findByText('Aún no hay tareas.')).toBeTruthy()
+    expect(screen.getByText('Lista de Tareas')).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Lista de tareas' }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.queryByText('Documentos del viaje')).toBeNull()
+  })
+
+  it('al volver a «Cartera» reaparecen los documentos', async () => {
+    simularBackend()
+    await abrir()
+    const usuario = userEvent.setup()
+
+    await usuario.click(screen.getByRole('tab', { name: 'Lista de tareas' }))
+    await screen.findByText('Aún no hay tareas.')
+    await usuario.click(screen.getByRole('tab', { name: 'Cartera' }))
+
+    expect(await screen.findByText('Documentos del viaje')).toBeTruthy()
+  })
+
+  it('puede abrirse directamente en «Lista de tareas»', async () => {
+    simularBackend()
+    render(<CarteraDocumentos viajeId={VIAJE_ID} tokenSesion="token-acceso" pestanaInicial="tareas" />)
+
+    expect(await screen.findByText('Aún no hay tareas.')).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Lista de tareas' }).getAttribute('aria-selected')).toBe('true')
+  })
 })
 
 describe('CarteraDocumentos: listado', () => {

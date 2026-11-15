@@ -326,12 +326,15 @@ function RutaEditarGasto({ sesion }: { sesion: Sesion }) {
 // Cartera de documentos del viaje. Al volver se va al inicio del viaje
 function RutaCarteraDocumentos({ sesion }: { sesion: Sesion }) {
   const { viajeId = "" } = useParams();
+  const [parametros] = useSearchParams();
   const navigate = useNavigate();
   return (
     <CarteraDocumentos
       key={viajeId}
       viajeId={viajeId}
       tokenSesion={sesion.token}
+      usuarioId={sesion.usuario.id}
+      pestanaInicial={parametros.get("pestana") === "tareas" ? "tareas" : "cartera"}
       onVolver={() => navigate(`/viajes/${viajeId}`)}
       onCambiarSeccion={(seccion) => navigate(rutaDeSeccion(viajeId, seccion))}
     />
