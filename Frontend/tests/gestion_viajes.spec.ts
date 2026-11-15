@@ -102,6 +102,11 @@ const simularBackendViajes = async (page: Page, iniciales: ViajeSimulado[]) => {
       actual.archivado = false;
       return json(route, 200, actual);
     }
+    if (accion === 'abandonar' && metodo === 'POST') {
+      // Al abandonar deja de ser miembro: ya no le aparece el viaje
+      eliminados.add(actual.id);
+      return route.fulfill({ status: 204 });
+    }
     if (!accion && metodo === 'PATCH') {
       Object.assign(actual, peticion.postDataJSON());
       return json(route, 200, actual);
@@ -297,5 +302,30 @@ test.describe('Inicio del viaje y su gestión', () => {
     await page.goto('/viajes/roma');
 
     await expect(page).toHaveURL(/\/login$/);
+  });
+});
+
+test.describe('PB-32 · Abandonar un viaje', () => {
+  test('un miembro que no es el creador abandona el viaje sin deudas y deja de verlo en Mis viajes', async ({ page }) => {
+    await entrarConSesion(page);
+    const { peticiones } = await simularBackendViajes(page, [
+      viaje('roma', { nombre: 'Roma 2027', rol: 'miembro' }),
+      viaje('lisboa', { nombre: 'Lisboa 2023', estado: 'finalizado' }),
+    ]);
+    await page.route('**/api/viajes/roma/gastos/balance', (route) =>
+      json(route, 200, { saldos: [{ usuario_id: USUARIO_ID, nombre: 'Adriana', pagado: 0, parte: 0, saldo: 0 }] }),
+    );
+
+    await page.goto('/viajes/roma');
+    await page.getByRole('button', { name: 'Abandonar viaje' }).click();
+    const dialogo = page.getByRole('dialog');
+    await expect(dialogo).toContainText('¿Abandonar este viaje?');
+    await dialogo.getByRole('button', { name: 'Abandonar viaje' }).click();
+
+    await expect(page).toHaveURL(/\/$/);
+    // Espera a que la lista de Mis viajes cargue antes de comprobar que el abandonado ya no sale
+    await expect(page.getByRole('button', { name: /Lisboa 2023/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Roma 2027/ })).toHaveCount(0);
+    expect(peticiones.some((p) => p.metodo === 'POST' && p.ruta === '/viajes/roma/abandonar')).toBe(true);
   });
 });

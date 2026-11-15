@@ -43,7 +43,7 @@ const simularBackend = (datos: Record<string, unknown> = {}, finalizar = () => r
 }
 
 const renderizar = (props: Partial<Parameters<typeof InicioViaje>[0]> = {}) =>
-  render(<InicioViaje viajeId={VIAJE_ID} tokenSesion="token-acceso" {...props} />)
+  render(<InicioViaje viajeId={VIAJE_ID} tokenSesion="token-acceso" usuarioId="u1" {...props} />)
 
 const dialogo = () => screen.queryByRole('dialog')
 
@@ -210,5 +210,116 @@ describe('InicioViaje · finalizar viaje con confirmación', () => {
 
     expect((await within(dialogo()!).findByRole('alert')).textContent).toBe('Solo el creador del viaje puede hacerlo')
     expect(onFinalizado).not.toHaveBeenCalled()
+  })
+})
+
+// Abandonar: el saldo de quien usa la app viene de GET /gastos/balance; POST /abandonar responde lo indicado
+const simularAbandono = ({
+  rol = 'miembro',
+  saldo = 0,
+  abandonar = () => Promise.resolve(new Response(null, { status: 204 })),
+  balance = () => respuesta(200, { saldos: [{ usuario_id: 'u1', nombre: 'Adriana', pagado: 0, parte: 0, saldo }] }),
+}: {
+  rol?: string
+  saldo?: number
+  abandonar?: () => Promise<Response>
+  balance?: () => Promise<Response>
+} = {}) => {
+  const fetchMock = vi.fn((url: string, opciones?: RequestInit) => {
+    if (opciones?.method === 'POST' && url.endsWith('/abandonar')) return abandonar()
+    if (url.endsWith('/gastos/balance')) return balance()
+    return respuesta(200, viaje({ rol }))
+  })
+  vi.stubGlobal('fetch', fetchMock)
+  return fetchMock
+}
+
+describe('InicioViaje · abandonar el viaje', () => {
+  it('el creador no ve «Abandonar viaje»', async () => {
+    simularAbandono({ rol: 'creador' })
+    renderizar()
+
+    await screen.findByRole('button', { name: 'Editar viaje' })
+    expect(screen.queryByRole('button', { name: 'Abandonar viaje' })).toBeNull()
+  })
+
+  it('a un miembro que no es el creador le aparece «Abandonar viaje»', async () => {
+    simularAbandono()
+    renderizar()
+
+    expect(await screen.findByRole('button', { name: 'Abandonar viaje' })).toBeTruthy()
+  })
+
+  it('con el saldo a cero pide confirmación y, al confirmar, abandona y avisa a la pantalla', async () => {
+    const fetchMock = simularAbandono({ saldo: 0 })
+    const onAbandonado = vi.fn()
+    renderizar({ onAbandonado })
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Abandonar viaje' }))
+    expect(screen.getByRole('dialog').textContent).toContain('¿Abandonar este viaje?')
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Abandonar viaje' }))
+
+    await vi.waitFor(() => expect(onAbandonado).toHaveBeenCalledTimes(1))
+    const [url] = fetchMock.mock.calls.find(([, opciones]) => opciones?.method === 'POST') as unknown as [string]
+    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/abandonar$`))
+  })
+
+  it('cancelar la confirmación no abandona el viaje', async () => {
+    const fetchMock = simularAbandono({ saldo: 0 })
+    renderizar()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Abandonar viaje' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+
+    expect(dialogo()).toBeNull()
+    expect(fetchMock.mock.calls.some(([, opciones]) => opciones?.method === 'POST')).toBe(false)
+  })
+
+  it('con deudas avisa de lo que debe y no abandona; el botón lleva a Control de Gastos', async () => {
+    const fetchMock = simularAbandono({ saldo: -30 })
+    const onCambiarSeccion = vi.fn()
+    renderizar({ onCambiarSeccion })
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Abandonar viaje' }))
+    expect(screen.getByRole('dialog').textContent).toContain('Debes 30,00 € en este viaje.')
+    await userEvent.click(screen.getByRole('button', { name: 'Ir a Control de Gastos' }))
+
+    expect(onCambiarSeccion).toHaveBeenCalledWith('gastos')
+    expect(fetchMock.mock.calls.some(([, opciones]) => opciones?.method === 'POST')).toBe(false)
+  })
+
+  it('si le deben dinero, el aviso lo dice', async () => {
+    simularAbandono({ saldo: 12.5 })
+    renderizar()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Abandonar viaje' }))
+    expect(screen.getByRole('dialog').textContent).toContain('Te deben 12,50 € en este viaje.')
+  })
+
+  it('si el backend rechaza el abandono, el motivo sale en el diálogo y el viaje sigue', async () => {
+    const onAbandonado = vi.fn()
+    simularAbandono({
+      saldo: 0,
+      abandonar: () => respuesta(409, { error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está finalizado y ya no se puede modificar' } }),
+    })
+    renderizar({ onAbandonado })
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Abandonar viaje' }))
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Abandonar viaje' }))
+
+    expect((await within(screen.getByRole('dialog')).findByRole('alert')).textContent).toBe(
+      'El viaje está finalizado y ya no se puede modificar',
+    )
+    expect(onAbandonado).not.toHaveBeenCalled()
+  })
+
+  it('si no se puede comprobar el saldo lo explica y no abre ningún diálogo', async () => {
+    simularAbandono({ balance: () => respuesta(502, { error: { codigo: 'error_gastos', mensaje: 'Fallo' } }) })
+    renderizar()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Abandonar viaje' }))
+
+    expect((await screen.findByRole('alert')).textContent).toBe('No se ha podido comprobar tu saldo: Fallo')
+    expect(dialogo()).toBeNull()
   })
 })

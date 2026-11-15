@@ -17,6 +17,9 @@ let desarchivados = 0;
 let fallaDesarchivar = false;
 let eliminados: string[] = [];
 let fallaEliminar = false;
+// Saldo de cada viaje (por nombre) y los viajes de los que el usuario ha abandonado
+let saldos = new Map<string, number>();
+let abandonados: string[] = [];
 let rutaRegistrada = false;
 
 Before(() => {
@@ -27,6 +30,8 @@ Before(() => {
   fallaDesarchivar = false;
   eliminados = [];
   fallaEliminar = false;
+  saldos = new Map();
+  abandonados = [];
   rutaRegistrada = false;
 });
 
@@ -61,10 +66,15 @@ const DATOS_DEL_RESUMEN: Record<string, unknown> = {
   balance: { saldos: [] },
 };
 
+// Pasa de diapositiva con la flecha y espera a que el resumen muestre la siguiente («2 de 7», «3 de 7»...).
+// Así no se pulsa mientras los datos cargan ni se desfasa con el avance automático de cada diapositiva
 const avanzarDiapositivas = async (veces: number): Promise<void> => {
-  if (veces === 0) return;
-  await paginaActual().keyboard.press('ArrowRight');
-  await avanzarDiapositivas(veces - 1);
+  const resumen = paginaActual().getByRole('region', { name: /Resumen del viaje, \d+ de \d+/ });
+  await expect(resumen).toHaveAccessibleName(/Resumen del viaje, 1 de \d+/);
+  for (let diapositiva = 2; diapositiva <= veces + 1; diapositiva++) {
+    await paginaActual().keyboard.press('ArrowRight');
+    await expect(resumen).toHaveAccessibleName(new RegExp(`Resumen del viaje, ${diapositiva} de \\d+`));
+  }
 };
 
 const simularBackend = async () => {
@@ -92,6 +102,24 @@ const simularBackend = async () => {
       );
     }
     if (accion && accion in DATOS_DEL_RESUMEN) return route.fulfill(responder(DATOS_DEL_RESUMEN[accion]));
+    if (accion === 'gastos' && ruta.endsWith('/balance')) {
+      const saldo = saldos.get(viaje.nombre) ?? 0;
+      return route.fulfill(responder({ saldos: [{ usuario_id: USUARIO_ID, nombre: 'Adriana', pagado: 0, parte: 0, saldo }] }));
+    }
+    if (accion === 'abandonar' && metodo === 'POST') {
+      const saldo = saldos.get(viaje.nombre) ?? 0;
+      if (saldo !== 0) {
+        return route.fulfill(
+          responder(
+            { error: { codigo: 'saldo_pendiente', mensaje: `Solo puedes abandonar el viaje con el saldo a cero. Tu saldo es de ${Math.abs(saldo).toFixed(2)} €` } },
+            409,
+          ),
+        );
+      }
+      abandonados.push(viaje.nombre);
+      viajes = viajes.filter((v) => v !== viaje);
+      return route.fulfill({ status: 204 });
+    }
     if (accion === 'finalizar' && metodo === 'POST') {
       finalizados += 1;
       viaje.estado = 'finalizado';
@@ -278,4 +306,17 @@ Then('el servidor ha desarchivado {int} viaje', (cantidad: number) => {
 
 Then('el servidor ha eliminado el viaje {string}', (nombre: string) => {
   expect(eliminados).toEqual([nombre]);
+});
+
+// Abandonar un viaje (PB-32)
+Given('que mi saldo en el viaje {string} es {string}', (nombre: string, saldo: string) => {
+  saldos.set(nombre, Number(saldo));
+});
+
+Then('el servidor ha registrado que abandono el viaje {string}', (nombre: string) => {
+  expect(abandonados).toEqual([nombre]);
+});
+
+Then('el servidor no registra ningún abandono', () => {
+  expect(abandonados).toEqual([]);
 });

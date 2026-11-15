@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../src/services/authApi'
-import { archivarViaje, desarchivarViaje, editarViaje, eliminarViaje, finalizarViaje } from '../src/services/viajesApi'
+import { abandonarViaje, archivarViaje, desarchivarViaje, editarViaje, eliminarViaje, finalizarViaje } from '../src/services/viajesApi'
 
 const VIAJE_ID = '123e4567-e89b-12d3-a456-426614174000'
 
@@ -96,5 +96,31 @@ describe('viajesApi · editar, archivar y eliminar', () => {
     expect(error.estado).toBe(409)
     expect(error.codigo).toBe('viaje_no_archivado')
     expect(error.message).toBe('Solo se pueden eliminar viajes archivados')
+  })
+})
+
+describe('viajesApi · abandonar', () => {
+  it('abandona el viaje con POST a /abandonar y acepta la respuesta 204 sin cuerpo', async () => {
+    const fetchMock = vi.fn(() => respuesta(204))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(abandonarViaje(VIAJE_ID, 'token-acceso')).resolves.toBeNull()
+
+    const [url, opciones] = llamada(fetchMock)
+    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/abandonar$`))
+    expect(opciones.method).toBe('POST')
+    expect(new Headers(opciones.headers).get('Authorization')).toBe('Bearer token-acceso')
+  })
+
+  it('con saldo pendiente el backend responde 409 y el mensaje llega tal cual', async () => {
+    vi.stubGlobal('fetch', vi.fn(() =>
+      respuesta(409, { error: { codigo: 'saldo_pendiente', mensaje: 'Solo puedes abandonar el viaje con el saldo a cero. Tu saldo es de 30.00 €' } }),
+    ))
+
+    const error = await abandonarViaje(VIAJE_ID, 'token-acceso').catch((e) => e)
+
+    expect(error).toBeInstanceOf(ApiError)
+    expect(error.codigo).toBe('saldo_pendiente')
+    expect(error.message).toBe('Solo puedes abandonar el viaje con el saldo a cero. Tu saldo es de 30.00 €')
   })
 })
