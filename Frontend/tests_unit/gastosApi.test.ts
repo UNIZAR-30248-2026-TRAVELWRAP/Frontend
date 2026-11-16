@@ -9,6 +9,8 @@ import {
   obtenerBalance,
   obtenerGasto,
   obtenerLiquidacion,
+  marcarDeudaSaldada,
+  deshacerDeudaSaldada,
   type NuevoGasto,
 } from '../src/services/gastosApi'
 
@@ -221,5 +223,31 @@ describe('gastosApi · detalle, edición y borrado', () => {
       estado: 404,
       codigo: 'gasto_no_encontrado',
     })
+  })
+})
+
+describe('gastosApi · deudas saldadas', () => {
+  it('marca la deuda con POST a /gastos/saldadas con el deudor y el importe', async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(new Response(null, { status: 204 })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(marcarDeudaSaldada(VIAJE_ID, BERTA, 30, 'token-acceso')).resolves.toBeNull()
+
+    const [url, opciones] = llamada(fetchMock)
+    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/gastos/saldadas$`))
+    expect(opciones.method).toBe('POST')
+    expect(JSON.parse(opciones.body as unknown as string)).toEqual({ de_usuario_id: BERTA, importe: 30 })
+    expect(new Headers(opciones.headers).get('Authorization')).toBe('Bearer token-acceso')
+  })
+
+  it('deshace la marca con DELETE a /gastos/saldadas/:deudorId', async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(new Response(null, { status: 204 })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(deshacerDeudaSaldada(VIAJE_ID, BERTA, 'token-acceso')).resolves.toBeNull()
+
+    const [url, opciones] = llamada(fetchMock)
+    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/gastos/saldadas/${BERTA}$`))
+    expect(opciones.method).toBe('DELETE')
   })
 })

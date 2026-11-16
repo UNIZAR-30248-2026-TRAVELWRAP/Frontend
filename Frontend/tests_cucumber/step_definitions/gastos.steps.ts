@@ -28,6 +28,8 @@ let rechazaPorViajeCerrado = false;
 // Gastos que el escenario ha editado o borrado, tal como los ha recibido el backend simulado
 let editados: GastoRecibido[] = [];
 let borrados: string[] = [];
+// Deudas que quien usa la app (Adriana) ha marcado como saldadas: de quién, importe
+let marcadas: { de: string; importe: number }[] = [];
 
 Before(() => {
   gastos = [];
@@ -35,6 +37,7 @@ Before(() => {
   rechazaPorViajeCerrado = false;
   editados = [];
   borrados = [];
+  marcadas = [];
 });
 
 // Fecha de los gastos registrados en el escenario: posterior a la de los previos, así que salen primero
@@ -82,6 +85,11 @@ const balance = () => {
       cuentas.get(id)!.parte += base + (i < centimos % gasto.participantes.length ? 1 : 0);
     });
   }
+  // Una deuda marcada cuenta como un pago de quien debe y como una parte de quien recibe, como en el backend
+  for (const { de, importe } of marcadas) {
+    cuentas.get(de)!.pagado += Math.round(importe * 100);
+    cuentas.get(ID_DE['Adriana'])!.parte += Math.round(importe * 100);
+  }
   const saldos = [...cuentas].map(([id, { nombre, pagado, parte }]) => ({
     usuario_id: id,
     nombre,
@@ -111,7 +119,14 @@ const liquidacion = () => {
       acreedor.centimos -= centimos;
     }
   }
-  return { transferencias };
+  const saldadas = marcadas.map(({ de, importe }) => ({
+    de,
+    de_nombre: NOMBRE_DE[de],
+    a: ID_DE['Adriana'],
+    a_nombre: 'Adriana',
+    importe,
+  }));
+  return { transferencias, saldadas };
 };
 
 // Se registra después de la ruta de viajes, así que tiene prioridad para /viajes/:id/gastos
@@ -145,11 +160,36 @@ const simularGastos = async () => {
     });
   });
 
+  // Deshacer la marca de una deuda: DELETE /gastos/saldadas/:deudorId (dos segmentos, no lo cubre la ruta de abajo)
+  await paginaActual().route('**/api/viajes/*/gastos/saldadas/*', (route) => {
+    const deudor = new URL(route.request().url()).pathname.split('/').pop();
+    marcadas = marcadas.filter((m) => m.de !== deudor);
+    return route.fulfill({ status: 204, body: '' });
+  });
+
   // Detalle, edición y borrado de un gasto del historial. Se registra el último, así que tiene prioridad
   await paginaActual().route('**/api/viajes/*/gastos/*', (route) => {
     const peticion = route.request();
     const ultimo = new URL(peticion.url()).pathname.split('/').pop();
     if (ultimo === 'balance' || ultimo === 'liquidacion') return route.fallback();
+    // Marcar una deuda: solo si coincide con la transferencia que se debe ahora (si no, 409 como el backend)
+    if (peticion.method() === 'POST' && ultimo === 'saldadas') {
+      const { de_usuario_id: deudor, importe } = peticion.postDataJSON() as { de_usuario_id: string; importe: number };
+      const pendiente = (liquidacion().transferencias as { de: string; a: string; importe: number }[]).find(
+        (t) => t.de === deudor && t.a === ID_DE['Adriana'],
+      );
+      if (!pendiente || Math.round(pendiente.importe * 100) !== Math.round(importe * 100)) {
+        return route.fulfill({
+          status: 409,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: { codigo: 'deuda_cambiada', mensaje: 'La deuda ha cambiado: actualiza la liquidación antes de marcarla' } }),
+        });
+      }
+      const existente = marcadas.find((m) => m.de === deudor);
+      if (existente) existente.importe += importe;
+      else marcadas.push({ de: deudor, importe });
+      return route.fulfill({ status: 204, body: '' });
+    }
 
     const gasto = historial().gastos.find((g) => g.id === ultimo);
     if (!gasto) {
@@ -375,4 +415,13 @@ Then('el servidor ha borrado el gasto {string}', (concepto: string) => {
 
 Then('el servidor no ha borrado ningún gasto', () => {
   expect(borrados).toEqual([]);
+});
+
+// Deudas saldadas (PB-28): quien recibe el dinero la marca o la deshace
+Then('en las deudas saldadas veo {string}', async (texto: string) => {
+  await expect(paginaActual().getByRole('region', { name: 'Deudas saldadas' })).toContainText(texto);
+});
+
+Then('no veo las deudas saldadas', async () => {
+  await expect(paginaActual().getByRole('region', { name: 'Deudas saldadas' })).toHaveCount(0);
 });

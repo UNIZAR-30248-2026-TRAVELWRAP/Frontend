@@ -78,9 +78,20 @@ export type Transferencia = {
   importe: number
 }
 
+// Deuda marcada como saldada por quien recibe el dinero: el importe ya cuenta como pagado
+export type DeudaSaldada = {
+  de: string
+  de_nombre: string | null
+  a: string
+  a_nombre: string | null
+  importe: number
+}
+
 export type Liquidacion = {
   // Lista vacía si todos los saldos están a 0
   transferencias: Transferencia[]
+  // Deudas ya saldadas, para que quien recibe el dinero pueda deshacer la marca
+  saldadas: DeudaSaldada[]
 }
 
 const rutaGastos = (viajeId: string) => `/viajes/${encodeURIComponent(viajeId)}/gastos`
@@ -96,6 +107,21 @@ export const obtenerBalance = (viajeId: string, tokenSesion: string) =>
 // Transferencias propuestas para saldar las cuentas del viaje
 export const obtenerLiquidacion = (viajeId: string, tokenSesion: string) =>
   peticion<Liquidacion>(`${rutaGastos(viajeId)}/liquidacion`, { token: tokenSesion })
+
+// Marca como saldada la deuda de deudorId con quien usa la app, por el importe que todavía debe (solo quien recibe)
+export const marcarDeudaSaldada = (viajeId: string, deudorId: string, importe: number, tokenSesion: string) =>
+  peticion<null>(`${rutaGastos(viajeId)}/saldadas`, {
+    metodo: "POST",
+    cuerpo: { de_usuario_id: deudorId, importe },
+    token: tokenSesion,
+  })
+
+// Deshace la marca de saldado de la deuda de deudorId (solo quien la marcó)
+export const deshacerDeudaSaldada = (viajeId: string, deudorId: string, tokenSesion: string) =>
+  peticion<null>(`${rutaGastos(viajeId)}/saldadas/${encodeURIComponent(deudorId)}`, {
+    metodo: "DELETE",
+    token: tokenSesion,
+  })
 
 // Detalle de un gasto: su importe, quién pagó y la parte de cada miembro
 export const obtenerGasto = (viajeId: string, gastoId: string, tokenSesion: string) =>

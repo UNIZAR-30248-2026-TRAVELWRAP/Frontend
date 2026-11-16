@@ -9,6 +9,9 @@ import {
   listarGastos,
   obtenerBalance,
   obtenerLiquidacion,
+  marcarDeudaSaldada,
+  deshacerDeudaSaldada,
+  type DeudaSaldada,
   type Gasto,
   type SaldoMiembro,
   type Transferencia,
@@ -60,6 +63,10 @@ export default function ControlGastos({
   const [total, setTotal] = useState(0)
   const [saldos, setSaldos] = useState<SaldoMiembro[]>([])
   const [transferencias, setTransferencias] = useState<Transferencia[]>([])
+  const [saldadas, setSaldadas] = useState<DeudaSaldada[]>([])
+  // Clave de la deuda que se está marcando o deshaciendo, y el error de esa acción
+  const [accionDeuda, setAccionDeuda] = useState("")
+  const [errorDeuda, setErrorDeuda] = useState("")
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState("")
 
@@ -79,6 +86,7 @@ export default function ControlGastos({
         setTotal(lista.total)
         setSaldos(balance.saldos)
         setTransferencias(liquidacion.transferencias)
+        setSaldadas(liquidacion.saldadas)
       })
       .catch((e) => {
         if (vigente) setError(`No se han podido cargar los gastos: ${mensajeDeError(e)}`)
@@ -90,6 +98,31 @@ export default function ControlGastos({
       vigente = false
     }
   }, [viajeId, tokenSesion])
+
+  // Tras marcar o deshacer una deuda se vuelve a pedir el balance y la liquidación
+  const recargarLiquidacion = async () => {
+    const [balance, liquidacion] = await Promise.all([
+      obtenerBalance(viajeId, tokenSesion),
+      obtenerLiquidacion(viajeId, tokenSesion),
+    ])
+    setSaldos(balance.saldos)
+    setTransferencias(liquidacion.transferencias)
+    setSaldadas(liquidacion.saldadas)
+  }
+
+  // Marcar o deshacer una deuda: mientras se hace, su botón queda ocupado y el error se muestra en la liquidación
+  const accionSobreDeuda = async (clave: string, accion: () => Promise<unknown>) => {
+    setAccionDeuda(clave)
+    setErrorDeuda("")
+    try {
+      await accion()
+      await recargarLiquidacion()
+    } catch (e) {
+      setErrorDeuda(mensajeDeError(e))
+    } finally {
+      setAccionDeuda("")
+    }
+  }
 
   const miembros = viaje?.miembros ?? []
   // Nombre y color de quien pagó, con el mismo color que su avatar en el resto de pantallas
@@ -322,6 +355,11 @@ export default function ControlGastos({
                 }}
               >
                 <SectionLabel>Liquidación pendiente</SectionLabel>
+                {errorDeuda && (
+                  <div role="alert" style={{ ...estiloAlerta, marginBottom: 12 }}>
+                    {errorDeuda}
+                  </div>
+                )}
                 {transferencias.length === 0 ? (
                   <p style={{ fontFamily: NUNITO, color: C.green, fontSize: 13, fontWeight: 700, margin: 0 }}>
                     Cuentas saldadas
@@ -367,12 +405,99 @@ export default function ControlGastos({
                           <span style={{ fontFamily: NUNITO, fontSize: 13, fontWeight: 900, color: C.navy, whiteSpace: "nowrap" }}>
                             {conEuros(t.importe)}
                           </span>
+                          {tePagan && activo && (
+                            <button
+                              type="button"
+                              aria-label={`Marcar como saldada la deuda de ${nombreOAntiguo(t.de_nombre)}`}
+                              disabled={accionDeuda !== ""}
+                              onClick={() => accionSobreDeuda(`${t.de}-${t.a}`, () => marcarDeudaSaldada(viajeId, t.de, t.importe, tokenSesion))}
+                              style={{
+                                background: C.green,
+                                color: "white",
+                                border: "none",
+                                borderRadius: RADIUS.md,
+                                padding: "7px 10px",
+                                fontFamily: NUNITO,
+                                fontWeight: 800,
+                                fontSize: 12,
+                                cursor: accionDeuda !== "" ? "wait" : "pointer",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {accionDeuda === `${t.de}-${t.a}` ? "Guardando..." : "Marcar como saldada"}
+                            </button>
+                          )}
                         </li>
                       )
                     })}
                   </ul>
                 )}
               </section>
+
+              {/* Deudas ya saldadas: quien recibe el dinero puede deshacer la marca */}
+              {saldadas.length > 0 && (
+                <section
+                  aria-label="Deudas saldadas"
+                  style={{
+                    background: "white",
+                    borderRadius: RADIUS.xl,
+                    padding: 20,
+                    marginBottom: 16,
+                    boxShadow: SHADOWS.card,
+                    border: `1.5px solid ${C.border}`,
+                  }}
+                >
+                  <SectionLabel>Saldadas</SectionLabel>
+                  <ul
+                    aria-label="Deudas marcadas como saldadas"
+                    style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 }}
+                  >
+                    {saldadas.map((d) => {
+                      const clave = `${d.de}-${d.a}-saldada`
+                      return (
+                        <li
+                          key={clave}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 12,
+                            padding: "10px 12px",
+                            borderRadius: RADIUS.md,
+                            background: C.bg,
+                          }}
+                        >
+                          <span style={{ fontFamily: NUNITO, fontSize: 13, fontWeight: 600, color: C.navy, minWidth: 0 }}>
+                            {`${nombreOAntiguo(d.de_nombre)} pagó ${conEuros(d.importe)} a ${nombreOAntiguo(d.a_nombre)}`}
+                          </span>
+                          {d.a === usuarioId && activo && (
+                            <button
+                              type="button"
+                              aria-label={`Deshacer la marca de saldada de la deuda de ${nombreOAntiguo(d.de_nombre)}`}
+                              disabled={accionDeuda !== ""}
+                              onClick={() => accionSobreDeuda(clave, () => deshacerDeudaSaldada(viajeId, d.de, tokenSesion))}
+                              style={{
+                                background: "white",
+                                color: C.red,
+                                border: `1.5px solid ${C.red}55`,
+                                borderRadius: RADIUS.md,
+                                padding: "7px 10px",
+                                fontFamily: NUNITO,
+                                fontWeight: 800,
+                                fontSize: 12,
+                                cursor: accionDeuda !== "" ? "wait" : "pointer",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {accionDeuda === clave ? "Deshaciendo..." : "Deshacer"}
+                            </button>
+                          )}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </section>
+              )}
 
               {/* Solo se añaden gastos mientras el viaje está activo */}
               {activo ? (

@@ -42,7 +42,7 @@ const simularBackend = ({
   viaje = (): Promise<Response> => json(200, { id: VIAJE_ID, nombre: 'Roma 2027', estado: 'activo', miembros }),
   historial = (): Promise<Response> => json(200, { gastos: HISTORIAL, total: 95.5 }),
   balance = (): Promise<Response> => json(200, { saldos: [] }),
-  liquidacion = (): Promise<Response> => json(200, { transferencias: [] }),
+  liquidacion = (): Promise<Response> => json(200, { transferencias: [], saldadas: [] }),
 } = {}) => {
   const fetchMock = vi.fn((url: string) => {
     if (url.endsWith('/gastos/balance')) return balance()
@@ -308,7 +308,7 @@ describe('ControlGastos · liquidación', () => {
     importe,
   })
   const conTransferencias = (transferencias: unknown[]) =>
-    simularBackend({ liquidacion: () => json(200, { transferencias }) })
+    simularBackend({ liquidacion: () => json(200, { transferencias, saldadas: [] }) })
 
   const seccion = () => screen.getByRole('region', { name: 'Liquidación pendiente' })
   const filasLiquidacion = () =>
@@ -375,5 +375,103 @@ describe('ControlGastos · liquidación', () => {
     expect((await screen.findByRole('alert')).textContent).toBe(
       'No se han podido cargar los gastos: No se ha podido calcular la liquidación',
     )
+  })
+})
+
+// Deudas saldadas: quien recibe el dinero la marca o la deshace. El backend simulado cambia la liquidación con cada acción
+describe('ControlGastos · deudas saldadas', () => {
+  const sinContenido = () => Promise.resolve(new Response(null, { status: 204 }))
+  const DEUDA_DE_BERTA = { de: BERTA, de_nombre: 'Berta', a: ADRIANA, a_nombre: 'Adriana', importe: 30 }
+  const SALDADA_DE_BERTA = { ...DEUDA_DE_BERTA }
+
+  const simularSaldadas = ({
+    viajeEstado = 'activo',
+    marcar = null as null | (() => Promise<Response>),
+  } = {}) => {
+    // Lo que devuelve la liquidación: cambia cuando se marca o se deshace la deuda de Berta
+    let liquidacion = { transferencias: [DEUDA_DE_BERTA], saldadas: [] as typeof SALDADA_DE_BERTA[] }
+    const fetchMock = vi.fn((url: string, opciones?: RequestInit) => {
+      if (opciones?.method === 'POST' && url.endsWith('/gastos/saldadas')) {
+        if (marcar) return marcar()
+        liquidacion = { transferencias: [], saldadas: [SALDADA_DE_BERTA] }
+        return sinContenido()
+      }
+      if (opciones?.method === 'DELETE' && url.includes('/gastos/saldadas/')) {
+        liquidacion = { transferencias: [DEUDA_DE_BERTA], saldadas: [] }
+        return sinContenido()
+      }
+      if (url.endsWith('/gastos/balance')) return json(200, { saldos: [] })
+      if (url.endsWith('/gastos/liquidacion')) return json(200, liquidacion)
+      if (url.endsWith('/gastos')) return json(200, { gastos: [], total: 0 })
+      return json(200, { id: VIAJE_ID, nombre: 'Roma 2027', estado: viajeEstado, miembros })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    return fetchMock
+  }
+
+  const abrirComo = async (usuarioId: string) => {
+    render(<ControlGastos viajeId={VIAJE_ID} tokenSesion="token-acceso" usuarioId={usuarioId} />)
+    await screen.findByRole('region', { name: 'Total gastado' })
+  }
+
+  it('quien recibe el dinero ve «Marcar como saldada» en la transferencia que le deben', async () => {
+    simularSaldadas()
+    await abrirComo(ADRIANA)
+
+    expect(await screen.findByRole('button', { name: 'Marcar como saldada la deuda de Berta' })).toBeTruthy()
+  })
+
+  it('quien debe el dinero no ve el botón', async () => {
+    simularSaldadas()
+    await abrirComo(BERTA)
+
+    await screen.findByRole('list', { name: 'Transferencias pendientes' })
+    expect(screen.queryByRole('button', { name: /Marcar como saldada/ })).toBeNull()
+  })
+
+  it('con el viaje finalizado no se puede marcar', async () => {
+    simularSaldadas({ viajeEstado: 'finalizado' })
+    await abrirComo(ADRIANA)
+
+    await screen.findByRole('list', { name: 'Transferencias pendientes' })
+    expect(screen.queryByRole('button', { name: /Marcar como saldada/ })).toBeNull()
+  })
+
+  it('al marcarla envía el deudor y el importe, y la deuda pasa a Deudas saldadas', async () => {
+    const fetchMock = simularSaldadas()
+    await abrirComo(ADRIANA)
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Marcar como saldada la deuda de Berta' }))
+
+    await vi.waitFor(() => expect(screen.getByRole('region', { name: 'Deudas saldadas' })).toBeTruthy())
+    const [, opciones] = fetchMock.mock.calls.find(([, o]) => o?.method === 'POST') as unknown as [string, RequestInit]
+    expect(JSON.parse(opciones.body as string)).toEqual({ de_usuario_id: BERTA, importe: 30 })
+    expect(screen.getByRole('region', { name: 'Deudas saldadas' }).textContent).toContain('Berta pagó 30,00 € a Adriana')
+    expect(screen.getByRole('region', { name: 'Liquidación pendiente' }).textContent).toContain('Cuentas saldadas')
+  })
+
+  it('quien la marcó puede deshacerla y la deuda vuelve a estar pendiente', async () => {
+    const fetchMock = simularSaldadas()
+    await abrirComo(ADRIANA)
+    await userEvent.click(await screen.findByRole('button', { name: 'Marcar como saldada la deuda de Berta' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Deshacer la marca de saldada de la deuda de Berta' }))
+
+    await vi.waitFor(() => expect(screen.queryByRole('region', { name: 'Deudas saldadas' })).toBeNull())
+    const [url] = fetchMock.mock.calls.find(([, o]) => o?.method === 'DELETE') as unknown as [string]
+    expect(url).toMatch(new RegExp(`/gastos/saldadas/${BERTA}$`))
+    expect(screen.getByRole('list', { name: 'Transferencias pendientes' }).textContent).toContain('Berta te paga a ti')
+  })
+
+  it('si el backend rechaza la marca (la deuda ha cambiado) lo dice y no cambia nada', async () => {
+    simularSaldadas({
+      marcar: () => json(409, { error: { codigo: 'deuda_cambiada', mensaje: 'La deuda ha cambiado: actualiza la liquidación antes de marcarla' } }),
+    })
+    await abrirComo(ADRIANA)
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Marcar como saldada la deuda de Berta' }))
+
+    expect((await screen.findByRole('alert')).textContent).toBe('La deuda ha cambiado: actualiza la liquidación antes de marcarla')
+    expect(screen.queryByRole('region', { name: 'Deudas saldadas' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Marcar como saldada la deuda de Berta' })).toBeTruthy()
   })
 })

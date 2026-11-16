@@ -80,7 +80,7 @@ const simularBackend = async (
       return json(route, 200, { saldos: [] });
     }
     if (ruta === `/viajes/${VIAJE_ID}/gastos/liquidacion`) {
-      return json(route, 200, { transferencias: [] });
+      return json(route, 200, { transferencias: [], saldadas: [] });
     }
     if (ruta === `/viajes/${VIAJE_ID}/gastos` && peticion.method() === 'GET') {
       return json(route, 200, { gastos: [], total: 0 });
@@ -272,7 +272,7 @@ const simularHistorial = async (page: Page, iniciales: Record<string, unknown>[]
     const peticion = route.request();
     const ruta = new URL(peticion.url()).pathname.replace(/^.*\/api/, '');
     if (ruta === `/viajes/${VIAJE_ID}/gastos/balance`) return json(route, 200, { saldos: [] });
-    if (ruta === `/viajes/${VIAJE_ID}/gastos/liquidacion`) return json(route, 200, { transferencias: [] });
+    if (ruta === `/viajes/${VIAJE_ID}/gastos/liquidacion`) return json(route, 200, { transferencias: [], saldadas: [] });
     if (ruta !== `/viajes/${VIAJE_ID}/gastos`) return json(route, 200, { ...viaje, ...datosViaje });
     if (peticion.method() === 'POST') {
       gastos.unshift(gastoGuardado({ id: `g${gastos.length + 1}`, ...peticion.postDataJSON() }));
@@ -444,7 +444,9 @@ test.describe('Balance de cada miembro', () => {
 
 // Liquidación pendiente: transferencias que devuelve GET /gastos/liquidacion (con prioridad, como el balance)
 const simularLiquidacion = async (page: Page, transferencias: Record<string, unknown>[]) => {
-  await page.route(`**/api/viajes/${VIAJE_ID}/gastos/liquidacion`, (route) => json(route, 200, { transferencias }));
+  await page.route(`**/api/viajes/${VIAJE_ID}/gastos/liquidacion`, (route) =>
+    json(route, 200, { transferencias, saldadas: [] }),
+  );
 };
 
 const transferencia = (de: string, deNombre: string, a: string, aNombre: string, importe: number) => ({
@@ -585,7 +587,7 @@ const simularGastoEnViaje = async (page: Page) => {
       return gasto ? json(route, 200, conNombre(gasto)) : json(route, 404, { error: { codigo: 'gasto_no_encontrado', mensaje: 'El gasto no existe o no pertenece a este viaje' } });
     }
     if (ruta === `/viajes/${VIAJE_ID}/gastos/balance`) return json(route, 200, { saldos: [] });
-    if (ruta === `/viajes/${VIAJE_ID}/gastos/liquidacion`) return json(route, 200, { transferencias: [] });
+    if (ruta === `/viajes/${VIAJE_ID}/gastos/liquidacion`) return json(route, 200, { transferencias: [], saldadas: [] });
     if (ruta === `/viajes/${VIAJE_ID}/gastos`) return json(route, 200, { gastos, total: total() });
     return json(route, 200, viaje);
   });
