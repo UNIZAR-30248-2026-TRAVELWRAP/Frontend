@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react"
 import BarraInferior, { ALTO_BARRA_INFERIOR, type SeccionViaje } from "../components/BarraInferior"
 import Heading from "../components/Heading"
+import Icon from "../components/Icon"
 import { ApiError } from "../services/authApi"
 import { enviarMensaje, listarMensajes, type Mensaje } from "../services/chatApi"
 import { escucharMensajes } from "../services/chatTiempoReal"
@@ -11,6 +12,12 @@ import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 // Mismo tamaño que la API devuelve de una vez y el límite de un mensaje
 const MENSAJES_POR_PAGINA = 50
 const MAX_TEXTO = 1000
+
+// Mismas pestañas que la pantalla de Galería, para que el selector sea igual en las dos
+const PESTANAS = [
+  { id: "chat", icono: "chat", texto: "Chat" },
+  { id: "galeria", icono: "gallery", texto: "Galería" },
+] as const
 
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
 
@@ -118,24 +125,46 @@ export default function Chat({ viajeId, tokenSesion, usuarioId, onVolver, onAbri
           <Heading size={22} color="white">
             Chat del grupo
           </Heading>
-          <div role="tablist" aria-label="Chat y galería" style={{ display: "flex", gap: 8, marginTop: 12 }}>
-            <button
-              type="button"
-              role="tab"
-              aria-selected="true"
-              style={{ background: "white", color: C.navy, border: "none", borderRadius: RADIUS.md, padding: "7px 14px", fontFamily: NUNITO, fontWeight: 800, fontSize: 12, cursor: "default" }}
-            >
-              Chat
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected="false"
-              onClick={onAbrirGaleria}
-              style={{ background: "rgba(255,255,255,0.15)", color: "white", border: "none", borderRadius: RADIUS.md, padding: "7px 14px", fontFamily: NUNITO, fontWeight: 800, fontSize: 12, cursor: "pointer" }}
-            >
-              Galería
-            </button>
+          <div
+            role="tablist"
+            aria-label="Chat y Galería"
+            style={{ display: "flex", background: "rgba(255,255,255,0.14)", borderRadius: 12, padding: 4, gap: 3 }}
+          >
+            {/* Mismo selector que en Galería: la pestaña activa va en blanco */}
+            {PESTANAS.map(({ id, icono, texto }) => {
+              const seleccionada = id === "chat"
+              return (
+                <button
+                  type="button"
+                  role="tab"
+                  key={id}
+                  aria-selected={seleccionada}
+                  onClick={() => {
+                    if (id === "galeria") onAbrirGaleria?.()
+                  }}
+                  style={{
+                    flex: 1,
+                    minHeight: 44,
+                    background: seleccionada ? "white" : "transparent",
+                    color: seleccionada ? C.blue : "rgba(255,255,255,0.75)",
+                    border: "none",
+                    borderRadius: 9,
+                    padding: "8px 4px",
+                    fontFamily: NUNITO,
+                    fontWeight: 800,
+                    fontSize: 13,
+                    cursor: seleccionada ? "default" : "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 5,
+                  }}
+                >
+                  <Icon name={icono} size={14} color={seleccionada ? C.blue : "rgba(255,255,255,0.75)"} strokeWidth={2} />
+                  {texto}
+                </button>
+              )
+            })}
           </div>
         </div>
 
