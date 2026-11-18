@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from "react"
 import BarraInferior, { ALTO_BARRA_INFERIOR, type SeccionViaje } from "../components/BarraInferior"
+import BotonVolver from "../components/BotonVolver"
 import Heading from "../components/Heading"
+import SectionLabel from "../components/SectionLabel"
 import Icon from "../components/Icon"
 import { ApiError } from "../services/authApi"
 import { enviarMensaje, listarMensajes, type Mensaje } from "../services/chatApi"
@@ -113,18 +115,30 @@ export default function Chat({ viajeId, tokenSesion, usuarioId, onVolver, onAbri
     <div style={{ background: C.bg, minHeight: "100vh" }}>
       <div style={{ maxWidth: 480, margin: "0 auto", paddingBottom: ALTO_BARRA_INFERIOR + 88 }}>
         {/* Cabecera y pestañas: Chat (esta pantalla) y Galería */}
-        <div style={{ background: GRADIENTS.header, padding: "20px 20px 16px", borderRadius: RADIUS.header }}>
-          <button
-            type="button"
-            onClick={onVolver}
-            aria-label="Volver al viaje"
-            style={{ background: "none", border: "none", cursor: "pointer", padding: 0, color: "rgba(255,255,255,0.6)", fontFamily: NUNITO, fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}
-          >
-            ← Viaje
-          </button>
-          <Heading size={22} color="white">
-            Chat del grupo
-          </Heading>
+        <div style={{ background: GRADIENTS.header, padding: "20px 20px 20px", borderRadius: RADIUS.header }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+            <BotonVolver onClick={onVolver} />
+            <div style={{ minWidth: 0 }}>
+              {viaje && (
+                <SectionLabel>
+                  <span
+                    style={{
+                      color: "rgba(255,255,255,0.55)",
+                      display: "block",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {viaje.nombre}
+                  </span>
+                </SectionLabel>
+              )}
+              <Heading size={22} color="white">
+                Chat y Galería
+              </Heading>
+            </div>
+          </div>
           <div
             role="tablist"
             aria-label="Chat y Galería"
