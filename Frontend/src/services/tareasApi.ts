@@ -14,13 +14,15 @@ export type Tarea = {
   // Cuándo se marcó como hecha; null mientras está pendiente
   hecha_en: string | null
   creado_en: string
-  responsable: ResponsableTarea
+  // null si la tarea está sin asignar
+  responsable: ResponsableTarea | null
 }
 
 // Campos que se pueden cambiar de una tarea; basta con enviar los que cambian
 export type CambiosTarea = {
   texto?: string
-  responsable_id?: string
+  // null deja la tarea sin asignar
+  responsable_id?: string | null
   hecha?: boolean
 }
 
@@ -32,8 +34,8 @@ const rutaTareas = (viajeId: string) => `/viajes/${encodeURIComponent(viajeId)}/
 export const listarTareas = (viajeId: string, tokenSesion: string) =>
   peticion<{ tareas: Tarea[] }>(rutaTareas(viajeId), { token: tokenSesion })
 
-// Cualquier miembro añade tareas mientras el viaje está activo
-export const crearTarea = (viajeId: string, tarea: { texto: string; responsable_id: string }, tokenSesion: string) =>
+// Cualquier miembro añade tareas mientras el viaje está activo; con responsable_id null se crea sin asignar
+export const crearTarea = (viajeId: string, tarea: { texto: string; responsable_id: string | null }, tokenSesion: string) =>
   peticion<Tarea>(rutaTareas(viajeId), { metodo: "POST", cuerpo: tarea, token: tokenSesion })
 
 // Edita el texto o el responsable de una tarea, o la marca (hecha: true) y desmarca (hecha: false)
