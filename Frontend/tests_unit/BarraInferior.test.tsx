@@ -2,6 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import BarraInferior from '../src/components/BarraInferior'
+import { useMensajesNoLeidos } from '../src/services/chatLeidos'
+
+vi.mock('../src/services/chatLeidos', () => ({ useMensajesNoLeidos: vi.fn(() => 0) }))
 
 afterEach(() => {
   cleanup()
@@ -79,5 +82,32 @@ describe('BarraInferior', () => {
     await user.click(screen.getByRole('button', { name: 'Inicio' }))
 
     expect(onCambiar).not.toHaveBeenCalled()
+  })
+})
+
+describe('BarraInferior · mensajes nuevos del chat', () => {
+  afterEach(() => {
+    vi.mocked(useMensajesNoLeidos).mockReturnValue(0)
+  })
+
+  it('muestra en la pestaña Chat cuántos mensajes nuevos hay', () => {
+    vi.mocked(useMensajesNoLeidos).mockReturnValue(3)
+    render(<BarraInferior activa="inicio" />)
+
+    const barra = screen.getByRole('navigation', { name: 'Secciones del viaje' })
+    expect(within(barra).getByRole('button', { name: 'Chat' }).textContent).toContain('3')
+  })
+
+  it('a partir de 9 mensajes muestra 9+', () => {
+    vi.mocked(useMensajesNoLeidos).mockReturnValue(12)
+    render(<BarraInferior activa="inicio" />)
+
+    expect(screen.getByRole('navigation', { name: 'Secciones del viaje' }).textContent).toContain('9+')
+  })
+
+  it('sin mensajes nuevos no muestra ningún contador', () => {
+    render(<BarraInferior activa="inicio" />)
+
+    expect(screen.getByRole('navigation', { name: 'Secciones del viaje' }).textContent).not.toMatch(/\d/)
   })
 })
