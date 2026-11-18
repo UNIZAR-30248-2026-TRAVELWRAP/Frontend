@@ -43,12 +43,12 @@ const estiloBotonIcono = {
 
 type FormularioTareaProps = {
   viaje: ViajeDelUsuario
-  // Datos de partida: vacíos al crear, los de la tarea al editarla
+  // Datos de partida: vacíos al crear, los de la tarea al editarla. Un responsable vacío es «Sin asignar»
   textoInicial: string
   responsableInicial: string
   textoGuardar: string
   textoGuardando: string
-  onGuardar: (datos: { texto: string; responsable_id: string }) => Promise<void>
+  onGuardar: (datos: { texto: string; responsable_id: string | null }) => Promise<void>
   onCancelar: () => void
 }
 
@@ -74,7 +74,7 @@ function FormularioTarea({
     setEnviando(true)
     setError("")
     try {
-      await onGuardar({ texto: texto.trim(), responsable_id: responsable })
+      await onGuardar({ texto: texto.trim(), responsable_id: responsable || null })
     } catch (e) {
       setError(mensajeAlCambiar(e, sufijo === "añadir" ? "añadir la tarea" : "guardar la tarea"))
       setEnviando(false)
@@ -119,6 +119,7 @@ function FormularioTarea({
           onChange={(e) => setResponsable(e.target.value)}
           style={estiloDesplegable}
         >
+          <option value="">Sin asignar</option>
           {viaje.miembros.map((miembro) => (
             <option key={miembro.usuario_id} value={miembro.usuario_id}>
               {miembro.nombre ?? "Sin nombre"}
@@ -222,9 +223,11 @@ export default function ListaTareas({ viajeId, tokenSesion, viaje, usuarioId }: 
 
   // Avatar del responsable, con el mismo color que en el resto de pantallas
   const miembroDe = (tarea: Tarea): Miembro => {
-    const indice = miembros.findIndex((m) => m.usuario_id === tarea.responsable.usuario_id)
+    const responsable = tarea.responsable
+    if (!responsable) return { name: "Sin asignar", initial: "?", color: C.muted, imageUrl: null }
+    const indice = miembros.findIndex((m) => m.usuario_id === responsable.usuario_id)
     if (indice === -1) return { name: "Un antiguo miembro", initial: "?", color: C.muted, imageUrl: null }
-    return aMiembro(tarea.responsable.nombre, indice, tarea.responsable.avatar_url)
+    return aMiembro(responsable.nombre, indice, responsable.avatar_url)
   }
 
   const abrirCrear = () => {
@@ -256,7 +259,7 @@ export default function ListaTareas({ viajeId, tokenSesion, viaje, usuarioId }: 
     }
   }
 
-  const handleCrear = async (datos: { texto: string; responsable_id: string }) => {
+  const handleCrear = async (datos: { texto: string; responsable_id: string | null }) => {
     const nueva = await crearTarea(viajeId, datos, tokenSesion)
     setTareas((anteriores) => [...anteriores, nueva])
     setCreando(false)
@@ -264,7 +267,7 @@ export default function ListaTareas({ viajeId, tokenSesion, viaje, usuarioId }: 
     setAviso(`«${nueva.texto}» se ha añadido a la lista`)
   }
 
-  const handleEditar = async (tarea: Tarea, datos: { texto: string; responsable_id: string }) => {
+  const handleEditar = async (tarea: Tarea, datos: { texto: string; responsable_id: string | null }) => {
     sustituir(await editarTarea(viajeId, tarea.id, datos, tokenSesion))
     setEditando(null)
     setErrorAccion("")
@@ -499,13 +502,14 @@ export default function ListaTareas({ viajeId, tokenSesion, viaje, usuarioId }: 
         >
           {tareas.map((tarea) => {
             if (editando === tarea.id) {
-              const sigueSiendoMiembro = miembros.some((m) => m.usuario_id === tarea.responsable.usuario_id)
+              const responsableId = tarea.responsable?.usuario_id ?? ""
+              const sigueSiendoMiembro = miembros.some((m) => m.usuario_id === responsableId)
               return (
                 <li key={tarea.id}>
                   <FormularioTarea
                     viaje={viaje}
                     textoInicial={tarea.texto}
-                    responsableInicial={sigueSiendoMiembro ? tarea.responsable.usuario_id : responsablePorDefecto}
+                    responsableInicial={sigueSiendoMiembro ? responsableId : ""}
                     textoGuardar="Guardar"
                     textoGuardando="Guardando..."
                     onGuardar={(datos) => handleEditar(tarea, datos)}
@@ -561,9 +565,12 @@ export default function ListaTareas({ viajeId, tokenSesion, viaje, usuarioId }: 
                 >
                   {tarea.texto}
                 </div>
-                <div role="img" aria-label={`Responsable: ${responsable.name}`} title={responsable.name}>
-                  <Avatar member={responsable} size={24} showBorder={false} />
-                </div>
+                {/* Sin responsable no se muestra ningún avatar */}
+                {tarea.responsable && (
+                  <div role="img" aria-label={`Responsable: ${responsable.name}`} title={responsable.name}>
+                    <Avatar member={responsable} size={24} showBorder={false} />
+                  </div>
+                )}
                 {activo && (
                   <>
                     <button
