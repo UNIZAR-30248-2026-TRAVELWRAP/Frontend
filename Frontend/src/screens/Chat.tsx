@@ -6,6 +6,7 @@ import SectionLabel from "../components/SectionLabel"
 import Icon from "../components/Icon"
 import { ApiError } from "../services/authApi"
 import { enviarMensaje, listarMensajes, type Mensaje } from "../services/chatApi"
+import { marcarChatLeido } from "../services/chatLeidos"
 import { escucharMensajes } from "../services/chatTiempoReal"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { estiloAlerta } from "../styles/formulario"
@@ -56,6 +57,7 @@ export default function Chat({ viajeId, tokenSesion, usuarioId, onVolver, onAbri
         setViaje(datosViaje)
         setMensajes(lista.mensajes)
         setHayAnteriores(lista.mensajes.length === MENSAJES_POR_PAGINA)
+        marcarChatLeido(viajeId)
       })
       .catch((e) => {
         if (vigente) setError(`No se han podido cargar los mensajes: ${mensajeDeError(e)}`)
@@ -203,7 +205,7 @@ export default function Chat({ viajeId, tokenSesion, usuarioId, onVolver, onAbri
               onClick={cargarAnteriores}
               style={{ alignSelf: "center", background: "white", border: `1.5px solid ${C.border}`, borderRadius: RADIUS.md, padding: "6px 12px", fontFamily: NUNITO, fontWeight: 700, fontSize: 12, color: C.navy, cursor: "pointer" }}
             >
-              Cargar mensajes anteriores
+              Ver mensajes anteriores
             </button>
           )}
 

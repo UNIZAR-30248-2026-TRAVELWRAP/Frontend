@@ -1,4 +1,7 @@
+import { useParams } from "react-router-dom"
 import Icon from "./Icon"
+import { useMensajesNoLeidos } from "../services/chatLeidos"
+import { leerSesion } from "../services/sesionStorage"
 import { C, NUNITO } from "../styles/tokens"
 
 export type SeccionViaje = "gastos" | "itinerario" | "inicio" | "agenda" | "mas"
@@ -22,6 +25,11 @@ type BarraInferiorProps = {
 
 // Barra de navegación inferior dentro de un viaje
 export default function BarraInferior({ activa, onCambiar }: BarraInferiorProps) {
+  // Dentro de un viaje, la pestaña Chat cuenta los mensajes nuevos
+  const { viajeId } = useParams();
+  const sesion = leerSesion();
+  const noLeidos = useMensajesNoLeidos(viajeId, sesion?.token, sesion?.usuario.id);
+
   return (
     <nav
       aria-label="Secciones del viaje"
@@ -93,6 +101,30 @@ export default function BarraInferior({ activa, onCambiar }: BarraInferiorProps)
                 color={esActiva ? C.blue : C.muted}
                 strokeWidth={esActiva ? 2.2 : 1.6}
               />
+              {id === "mas" && noLeidos > 0 && (
+                <span
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    top: 4,
+                    left: "calc(50% + 8px)",
+                    minWidth: 18,
+                    height: 18,
+                    padding: "0 5px",
+                    borderRadius: 9,
+                    background: C.red,
+                    color: "white",
+                    fontFamily: NUNITO,
+                    fontSize: 10,
+                    fontWeight: 800,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {noLeidos > 9 ? "9+" : noLeidos}
+                </span>
+              )}
               <span
                 style={{
                   fontFamily: NUNITO,
