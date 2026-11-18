@@ -13,7 +13,7 @@ describe('BarraInferior', () => {
 
     const barra = screen.getByRole('navigation', { name: 'Secciones del viaje' })
     const textos = within(barra).getAllByRole('button').map((b) => b.textContent)
-    expect(textos).toEqual(['Gastos', 'Itinerario', 'Inicio', 'Agenda', 'Más'])
+    expect(textos).toEqual(['Gastos', 'Itinerario', 'Inicio', 'Agenda', 'Chat'])
   })
 
   it('marca la sección activa', () => {
@@ -23,12 +23,12 @@ describe('BarraInferior', () => {
     expect(screen.getByRole('button', { name: 'Gastos' }).getAttribute('aria-current')).toBeNull()
   })
 
-  it('deja activa la sección Más (chat y galería) y avisa al pulsarla', async () => {
+  it('deja activa la sección Chat (chat y galería) y avisa al pulsarla', async () => {
     const user = userEvent.setup()
     const onCambiar = vi.fn()
     render(<BarraInferior activa="inicio" onCambiar={onCambiar} />)
 
-    const boton = screen.getByRole('button', { name: 'Más' })
+    const boton = screen.getByRole('button', { name: 'Chat' })
     expect(boton).toHaveProperty('disabled', false)
     await user.click(boton)
 

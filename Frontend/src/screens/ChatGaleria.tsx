@@ -23,7 +23,7 @@ type FotoVisible = Foto & { url: string }
 const conUrl = (foto: Foto): foto is FotoVisible => foto.url !== null
 
 const PESTANAS: { id: Pestana; icono: string; texto: string; disponible: boolean }[] = [
-  { id: "chat", icono: "chat", texto: "Chat", disponible: false },
+  { id: "chat", icono: "chat", texto: "Chat", disponible: true },
   { id: "galeria", icono: "gallery", texto: "Galería", disponible: true },
 ]
 
@@ -32,9 +32,11 @@ type ChatGaleriaProps = {
   tokenSesion: string
   onVolver?: () => void
   onCambiarSeccion?: (seccion: SeccionViaje) => void
+  // Pestaña Chat: abre la pantalla de chat del grupo
+  onAbrirChat?: () => void
 }
 
-export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarSeccion }: ChatGaleriaProps) {
+export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarSeccion, onAbrirChat }: ChatGaleriaProps) {
   const [pestana, setPestana] = useState<Pestana>("galeria")
   const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
   const [cargando, setCargando] = useState(true)
@@ -158,7 +160,7 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
                   aria-selected={seleccionada}
                   disabled={!disponible}
                   title={disponible ? undefined : "Disponible próximamente"}
-                  onClick={() => setPestana(id)}
+                  onClick={() => (id === "chat" ? onAbrirChat?.() : setPestana(id))}
                   style={{
                     flex: 1,
                     minHeight: 44,

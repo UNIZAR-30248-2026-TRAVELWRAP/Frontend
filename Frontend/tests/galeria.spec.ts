@@ -101,6 +101,10 @@ const simularBackend = async (
     const peticion = route.request();
     const ruta = new URL(peticion.url()).pathname.replace(/^.*\/api/, '');
 
+    // El chat (pestaña hermana) pide sus mensajes al abrirse: sin mensajes en este escenario
+    if (ruta === `/viajes/${VIAJE_ID}/mensajes` && peticion.method() === 'GET') {
+      return json(route, 200, { mensajes: [] });
+    }
     if (ruta === `/viajes/${VIAJE_ID}/fotos` && peticion.method() === 'GET') {
       return json(route, 200, { fotos: [...subidas, ...fotos] });
     }
@@ -132,7 +136,7 @@ test.describe('Galería de fotos', () => {
 
     await expect(page.getByText('Chat y Galería', { exact: true })).toBeVisible();
     await expect(page.getByRole('tab', { name: 'Galería' })).toHaveAttribute('aria-selected', 'true');
-    await expect(page.getByRole('tab', { name: 'Chat' })).toBeDisabled();
+    await expect(page.getByRole('tab', { name: 'Chat' })).toBeEnabled();
     await expect(miniaturas(page)).toHaveCount(3);
     await expect(miniaturas(page).first().getByRole('button')).toHaveAccessibleName('Ampliar plaza.jpg');
     await expect(page.getByText('3 fotos · 2 miembros')).toBeVisible();
@@ -254,16 +258,18 @@ test.describe('Galería de fotos', () => {
     await expect(page.getByRole('alert')).toContainText('No se ha podido cargar la galería: No se han podido obtener las fotos');
   });
 
-  test('desde la barra inferior se llega a la galería con «Más»', async ({ page }) => {
+  test('desde la barra inferior se llega al chat y de ahí a la galería', async ({ page }) => {
     await entrarConSesion(page);
     await simularBackend(page);
 
     await page.goto(`/viajes/${VIAJE_ID}/documentos`);
-    await page.getByRole('navigation', { name: 'Secciones del viaje' }).getByRole('button', { name: 'Más' }).click();
+    await page.getByRole('navigation', { name: 'Secciones del viaje' }).getByRole('button', { name: 'Chat' }).click();
+    await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}/chat$`));
+    await expect(page.getByRole('navigation', { name: 'Secciones del viaje' }).getByRole('button', { name: 'Chat' })).toHaveAttribute('aria-current', 'page');
 
+    await page.getByRole('tab', { name: 'Galería' }).click();
     await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}/galeria$`));
     await expect(miniaturas(page)).toHaveCount(3);
-    await expect(page.getByRole('button', { name: 'Más' })).toHaveAttribute('aria-current', 'page');
   });
 
   test('sin sesión lleva al login', async ({ page }) => {

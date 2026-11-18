@@ -23,6 +23,7 @@ import { obtenerGasto, type DetalleGasto as DetalleGastoDelApi } from "../servic
 import Itinerario from "../screens/Itinerario";
 import CarteraDocumentos from "../screens/CarteraDocumentos";
 import ChatGaleria from "../screens/ChatGaleria";
+import Chat from "../screens/Chat";
 import FinDeViaje from "../screens/FinDeViaje";
 import { buscarDirecciones } from "../services/actividadesApi";
 import type { SeccionViaje } from "../components/BarraInferior";
@@ -85,7 +86,7 @@ const RUTAS_DE_SECCION: Partial<Record<SeccionViaje, string>> = {
   itinerario: "itinerario",
   gastos: "gastos",
   agenda: "documentos",
-  mas: "galeria",
+  mas: "chat",
 };
 
 const rutaDeSeccion = (viajeId: string, seccion: SeccionViaje) =>
@@ -371,6 +372,23 @@ function RutaChatGaleria({ sesion }: { sesion: Sesion }) {
       tokenSesion={sesion.token}
       onVolver={() => navigate(`/viajes/${viajeId}`)}
       onCambiarSeccion={(seccion) => navigate(rutaDeSeccion(viajeId, seccion))}
+      onAbrirChat={() => navigate(`/viajes/${viajeId}/chat`)}
+    />
+  );
+}
+
+function RutaChat({ sesion }: { sesion: Sesion }) {
+  const { viajeId = "" } = useParams();
+  const navigate = useNavigate();
+  return (
+    <Chat
+      key={viajeId}
+      viajeId={viajeId}
+      tokenSesion={sesion.token}
+      usuarioId={sesion.usuario.id}
+      onVolver={() => navigate(`/viajes/${viajeId}`)}
+      onAbrirGaleria={() => navigate(`/viajes/${viajeId}/galeria`)}
+      onCambiarSeccion={(seccion) => navigate(rutaDeSeccion(viajeId, seccion))}
     />
   );
 }
@@ -565,6 +583,11 @@ export default function AppRouter({
         <Route
           path="/viajes/:viajeId/resumen"
           element={session ? <RutaFinDeViaje sesion={session} /> : <Navigate to="/login" replace />}
+        />
+
+        <Route
+          path="/viajes/:viajeId/chat"
+          element={session ? <RutaChat sesion={session} /> : <Navigate to="/login" replace />}
         />
 
         <Route

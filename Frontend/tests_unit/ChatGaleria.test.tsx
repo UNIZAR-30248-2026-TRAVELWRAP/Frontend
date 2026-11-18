@@ -72,22 +72,25 @@ describe('ChatGaleria: cabecera y pestañas', () => {
     expect(screen.getByRole('tab', { name: 'Galería' }).getAttribute('aria-selected')).toBe('true')
   })
 
-  it('deja la pestaña Chat desactivada y avisa de que llegará más adelante', async () => {
+  it('la pestaña Chat abre la pantalla de chat', async () => {
+    const user = userEvent.setup()
+    const onAbrirChat = vi.fn()
     simularBackend()
-    await abrir()
+    await abrir({ onAbrirChat })
 
     const chat = screen.getByRole('tab', { name: 'Chat' })
-    expect(chat).toHaveProperty('disabled', true)
-    expect(chat.getAttribute('title')).toBe('Disponible próximamente')
+    expect(chat).toHaveProperty('disabled', false)
     expect(chat.getAttribute('aria-selected')).toBe('false')
+    await user.click(chat)
+    expect(onAbrirChat).toHaveBeenCalledTimes(1)
   })
 
-  it('marca «Más» como sección activa y cambia de sección desde la barra inferior', async () => {
+  it('marca «Chat» como sección activa y cambia de sección desde la barra inferior', async () => {
     const onCambiarSeccion = vi.fn()
     simularBackend()
     await abrir({ onCambiarSeccion })
 
-    expect(screen.getByRole('button', { name: 'Más' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Chat' }).getAttribute('aria-current')).toBe('page')
     await usuario().click(screen.getByRole('button', { name: 'Inicio' }))
     expect(onCambiarSeccion).toHaveBeenCalledWith('inicio')
   })
