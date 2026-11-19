@@ -398,6 +398,7 @@ export default function ControlGastos({
                               fontWeight: destacada ? 800 : 600,
                               color: pagas ? C.accent : tePagan ? C.green : C.navy,
                               minWidth: 0,
+                              flex: 1,
                             }}
                           >
                             {texto}
@@ -424,7 +425,7 @@ export default function ControlGastos({
                                 whiteSpace: "nowrap",
                               }}
                             >
-                              {accionDeuda === `${t.de}-${t.a}` ? "Guardando..." : "Marcar como saldada"}
+                              {accionDeuda === `${t.de}-${t.a}` ? "Guardando..." : "Saldar"}
                             </button>
                           )}
                         </li>
