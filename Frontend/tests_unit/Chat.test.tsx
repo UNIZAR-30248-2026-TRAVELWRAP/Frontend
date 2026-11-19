@@ -81,6 +81,14 @@ describe('Chat · conversación', () => {
     expect(within(lista()).queryByText('Adriana')).toBeNull()
   })
 
+  it('los mensajes de los demás llevan la inicial de su avatar, y los propios no', async () => {
+    simularBackend({ historial: [mensaje('m1', 'Hola a todos'), mensaje('m2', 'Llego mañana', ADRIANA, 'Adriana')] })
+    await abrir()
+
+    expect(await within(lista()).findByText('B')).toBeTruthy()
+    expect(within(lista()).queryByText('A')).toBeNull()
+  })
+
   it('al abrir el chat lo marca como leído en este dispositivo', async () => {
     simularBackend()
     await abrir()

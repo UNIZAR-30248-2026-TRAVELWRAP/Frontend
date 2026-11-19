@@ -270,6 +270,29 @@ export default function InicioViaje({
                 Finalizar viaje
               </button>
             )}
+            {viaje && activo && !esCreador && (
+              <button
+                type="button"
+                onClick={handlePedirAbandonar}
+                disabled={comprobandoSaldo}
+                style={{
+                  background: "rgba(220,38,38,0.15)",
+                  border: "1px solid rgba(220,38,38,0.3)",
+                  borderRadius: 10,
+                  padding: "8px 12px",
+                  cursor: comprobandoSaldo ? "wait" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  flexShrink: 0,
+                }}
+              >
+                <Icon name="trash" size={13} color="#FEB2B2" strokeWidth={2.5} />
+                <span style={{ color: "#FEB2B2", fontSize: 11, fontFamily: NUNITO, fontWeight: 700 }}>
+                  {comprobandoSaldo ? "Comprobando..." : "Abandonar"}
+                </span>
+              </button>
+            )}
             {viaje && !activo && (
               <Badge bg="rgba(255,255,255,0.2)" color="white">
                 Finalizado
@@ -446,27 +469,6 @@ export default function InicioViaje({
             </button>
           )}
 
-          {viaje && activo && !esCreador && (
-            <button
-              type="button"
-              onClick={handlePedirAbandonar}
-              disabled={comprobandoSaldo}
-              style={{
-                width: "100%",
-                background: "white",
-                color: C.red,
-                border: `1.5px solid ${C.red}55`,
-                borderRadius: RADIUS.md,
-                padding: 13,
-                fontFamily: NUNITO,
-                fontWeight: 800,
-                fontSize: 14,
-                cursor: comprobandoSaldo ? "wait" : "pointer",
-              }}
-            >
-              {comprobandoSaldo ? "Comprobando tu saldo..." : "Abandonar viaje"}
-            </button>
-          )}
           {errorAbandonar && dialogoAbandono === "cerrado" && (
             <div
               role="alert"

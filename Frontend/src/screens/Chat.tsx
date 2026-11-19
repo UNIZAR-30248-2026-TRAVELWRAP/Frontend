@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react"
 import BarraInferior, { ALTO_BARRA_INFERIOR, type SeccionViaje } from "../components/BarraInferior"
+import Avatar, { type Miembro } from "../components/Avatar"
 import BotonVolver from "../components/BotonVolver"
 import Heading from "../components/Heading"
 import SectionLabel from "../components/SectionLabel"
@@ -10,6 +11,7 @@ import { marcarChatLeido } from "../services/chatLeidos"
 import { escucharMensajes } from "../services/chatTiempoReal"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { estiloAlerta } from "../styles/formulario"
+import { aMiembro } from "../utils/formatoViaje"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 
 // Mismo tamaño que la API devuelve de una vez y el límite de un mensaje
@@ -23,6 +25,9 @@ const PESTANAS = [
 ] as const
 
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
+
+// Autor que ya no está en el viaje: se muestra sin nombre
+const AUTOR_ABANDONADO: Miembro = { name: "Antiguo miembro", initial: "?", color: C.muted }
 
 const hora = (fecha: string) => new Date(fecha).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })
 
@@ -94,6 +99,7 @@ export default function Chat({ viajeId, tokenSesion, usuarioId, onVolver, onAbri
     }
   }
 
+  const miembros = viaje?.miembros ?? []
   const activo = viaje?.estado === "activo"
 
   const handleEnviar = async (evento: FormEvent<HTMLFormElement>) => {
@@ -218,31 +224,50 @@ export default function Chat({ viajeId, tokenSesion, usuarioId, onVolver, onAbri
           <ul aria-label="Mensajes" style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
             {mensajes.map((mensaje) => {
               const propio = mensaje.autor.usuario_id === usuarioId
+              const indice = miembros.findIndex((m) => m.usuario_id === mensaje.autor.usuario_id)
+              const autor = indice === -1 ? AUTOR_ABANDONADO : aMiembro(mensaje.autor.nombre, indice, mensaje.autor.avatar_url)
               return (
-                <li key={mensaje.id} style={{ display: "flex", flexDirection: "column", alignItems: propio ? "flex-end" : "flex-start", gap: 2 }}>
-                  {!propio && (
-                    <span style={{ fontFamily: NUNITO, fontSize: 11, fontWeight: 700, color: C.muted }}>
-                      {mensaje.autor.nombre ?? "Antiguo miembro"}
-                    </span>
-                  )}
-                  <div
-                    style={{
-                      maxWidth: "80%",
-                      padding: "8px 12px",
-                      borderRadius: 14,
-                      background: propio ? C.blue : "white",
-                      color: propio ? "white" : C.navy,
-                      border: propio ? "none" : `1.5px solid ${C.border}`,
-                      fontFamily: NUNITO,
-                      fontSize: 14,
-                      lineHeight: 1.4,
-                      whiteSpace: "pre-wrap",
-                      overflowWrap: "anywhere",
-                    }}
-                  >
-                    {mensaje.texto}
+                <li
+                  key={mensaje.id}
+                  style={{ display: "flex", flexDirection: propio ? "row-reverse" : "row", alignItems: "flex-end", gap: 8 }}
+                >
+                  {!propio && <Avatar member={autor} size={28} showBorder={false} />}
+                  <div style={{ maxWidth: "72%" }}>
+                    {!propio && (
+                      <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 10, fontWeight: 700, marginBottom: 4, marginLeft: 4 }}>
+                        {autor.name}
+                      </div>
+                    )}
+                    <div
+                      style={{
+                        background: propio ? C.blue : "white",
+                        color: propio ? "white" : C.navy,
+                        borderRadius: propio ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
+                        padding: "10px 14px",
+                        fontFamily: NUNITO,
+                        fontSize: 13,
+                        lineHeight: 1.5,
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                        whiteSpace: "pre-wrap",
+                        overflowWrap: "anywhere",
+                      }}
+                    >
+                      {mensaje.texto}
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: NUNITO,
+                        color: C.muted,
+                        fontSize: 10,
+                        marginTop: 4,
+                        textAlign: propio ? "right" : "left",
+                        marginRight: propio ? 4 : 0,
+                        marginLeft: propio ? 0 : 4,
+                      }}
+                    >
+                      {hora(mensaje.creado_en)}
+                    </div>
                   </div>
-                  <span style={{ fontFamily: NUNITO, fontSize: 10, color: C.muted }}>{hora(mensaje.creado_en)}</span>
                 </li>
               )
             })}

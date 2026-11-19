@@ -240,14 +240,14 @@ describe('InicioViaje · abandonar el viaje', () => {
     renderizar()
 
     await screen.findByRole('button', { name: 'Editar viaje' })
-    expect(screen.queryByRole('button', { name: 'Abandonar viaje' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Abandonar' })).toBeNull()
   })
 
-  it('a un miembro que no es el creador le aparece «Abandonar viaje»', async () => {
+  it('a un miembro que no es el creador le aparece «Abandonar» en la cabecera', async () => {
     simularAbandono()
     renderizar()
 
-    expect(await screen.findByRole('button', { name: 'Abandonar viaje' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Abandonar' })).toBeTruthy()
   })
 
   it('con el saldo a cero pide confirmación y, al confirmar, abandona y avisa a la pantalla', async () => {
@@ -255,7 +255,7 @@ describe('InicioViaje · abandonar el viaje', () => {
     const onAbandonado = vi.fn()
     renderizar({ onAbandonado })
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Abandonar viaje' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Abandonar' }))
     expect(screen.getByRole('dialog').textContent).toContain('¿Abandonar este viaje?')
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Abandonar viaje' }))
 
@@ -268,7 +268,7 @@ describe('InicioViaje · abandonar el viaje', () => {
     const fetchMock = simularAbandono({ saldo: 0 })
     renderizar()
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Abandonar viaje' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Abandonar' }))
     await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
 
     expect(dialogo()).toBeNull()
@@ -280,7 +280,7 @@ describe('InicioViaje · abandonar el viaje', () => {
     const onCambiarSeccion = vi.fn()
     renderizar({ onCambiarSeccion })
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Abandonar viaje' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Abandonar' }))
     expect(screen.getByRole('dialog').textContent).toContain('Debes 30,00 € en este viaje.')
     await userEvent.click(screen.getByRole('button', { name: 'Ir a Control de Gastos' }))
 
@@ -292,7 +292,7 @@ describe('InicioViaje · abandonar el viaje', () => {
     simularAbandono({ saldo: 12.5 })
     renderizar()
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Abandonar viaje' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Abandonar' }))
     expect(screen.getByRole('dialog').textContent).toContain('Te deben 12,50 € en este viaje.')
   })
 
@@ -304,7 +304,7 @@ describe('InicioViaje · abandonar el viaje', () => {
     })
     renderizar({ onAbandonado })
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Abandonar viaje' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Abandonar' }))
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Abandonar viaje' }))
 
     expect((await within(screen.getByRole('dialog')).findByRole('alert')).textContent).toBe(
@@ -317,7 +317,7 @@ describe('InicioViaje · abandonar el viaje', () => {
     simularAbandono({ balance: () => respuesta(502, { error: { codigo: 'error_gastos', mensaje: 'Fallo' } }) })
     renderizar()
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Abandonar viaje' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Abandonar' }))
 
     expect((await screen.findByRole('alert')).textContent).toBe('No se ha podido comprobar tu saldo: Fallo')
     expect(dialogo()).toBeNull()

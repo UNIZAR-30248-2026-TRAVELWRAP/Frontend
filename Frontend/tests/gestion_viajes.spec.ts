@@ -317,7 +317,7 @@ test.describe('PB-32 · Abandonar un viaje', () => {
     );
 
     await page.goto('/viajes/roma');
-    await page.getByRole('button', { name: 'Abandonar viaje' }).click();
+    await page.getByRole('button', { name: 'Abandonar', exact: true }).click();
     const dialogo = page.getByRole('dialog');
     await expect(dialogo).toContainText('¿Abandonar este viaje?');
     await dialogo.getByRole('button', { name: 'Abandonar viaje' }).click();

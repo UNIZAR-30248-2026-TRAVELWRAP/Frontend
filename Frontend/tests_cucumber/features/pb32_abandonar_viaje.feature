@@ -12,7 +12,7 @@ Característica: Abandonar un viaje (PB-32)
     Dado que soy miembro, pero no creador, del viaje activo "Roma 2027"
     Y que mi saldo en el viaje "Roma 2027" es "0"
     Cuando abro el inicio del viaje "Roma 2027"
-    Y pulso el botón "Abandonar viaje"
+    Y pulso el botón "Abandonar"
     Entonces veo el diálogo de confirmación "¿Abandonar este viaje?"
     Cuando confirmo en el diálogo "Abandonar viaje"
     Entonces estoy en mis viajes
@@ -23,7 +23,7 @@ Característica: Abandonar un viaje (PB-32)
     Dado que soy miembro, pero no creador, del viaje activo "Roma 2027"
     Y que mi saldo en el viaje "Roma 2027" es "-30"
     Cuando abro el inicio del viaje "Roma 2027"
-    Y pulso el botón "Abandonar viaje"
+    Y pulso el botón "Abandonar"
     Entonces veo el diálogo de confirmación "Tienes cuentas pendientes"
     Y veo el texto "Debes 30,00 € en este viaje."
     Y veo el botón "Ir a Control de Gastos"
