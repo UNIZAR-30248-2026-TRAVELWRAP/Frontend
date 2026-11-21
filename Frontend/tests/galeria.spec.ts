@@ -85,14 +85,17 @@ const simularBackend = async (
     estado = 'activo',
     fotos = FOTOS,
     respuestaSubida,
+    respuestaBorrado,
   }: {
     estado?: string;
     fotos?: unknown[];
     respuestaSubida?: (nombre: string) => { status: number; cuerpo: unknown };
+    respuestaBorrado?: { status: number; cuerpo: unknown };
   } = {},
 ) => {
   const recibidas: Subida[] = [];
   const subidas: unknown[] = [];
+  const borradas: string[] = [];
   const respuesta =
     respuestaSubida ??
     ((nombre: string) => ({ status: 201, cuerpo: fotoDe('f4', nombre, { subido_por: USUARIO_ID }) }));
@@ -106,7 +109,14 @@ const simularBackend = async (
       return json(route, 200, { mensajes: [] });
     }
     if (ruta === `/viajes/${VIAJE_ID}/fotos` && peticion.method() === 'GET') {
-      return json(route, 200, { fotos: [...subidas, ...fotos] });
+      const vigentes = [...subidas, ...fotos].filter((f) => !borradas.includes((f as { id: string }).id)) as { tamano_bytes: number }[];
+      const usado = vigentes.reduce((total, f) => total + f.tamano_bytes, 0);
+      return json(route, 200, { fotos: vigentes, almacenamiento: { usado_bytes: usado, limite_bytes: 200_000_000 } });
+    }
+    if (ruta.startsWith(`/viajes/${VIAJE_ID}/fotos/`) && peticion.method() === 'DELETE') {
+      if (respuestaBorrado) return json(route, respuestaBorrado.status, respuestaBorrado.cuerpo);
+      borradas.push(ruta.split('/').pop() ?? '');
+      return route.fulfill({ status: 204 });
     }
     if (ruta === `/viajes/${VIAJE_ID}/fotos` && peticion.method() === 'POST') {
       const cuerpo = peticion.postData() ?? '';
@@ -120,7 +130,7 @@ const simularBackend = async (
     return json(route, 200, { ...viaje, estado });
   });
 
-  return { recibidas };
+  return { recibidas, borradas };
 };
 
 const rutaGaleria = `/viajes/${VIAJE_ID}/galeria`;
@@ -275,6 +285,99 @@ test.describe('Galería de fotos', () => {
   test('sin sesión lleva al login', async ({ page }) => {
     await page.goto(rutaGaleria);
     await expect(page).toHaveURL(/\/login$/);
+  });
+});
+
+const VIDEO = fotoDe('v1', 'paseo.mp4', { tipo_mime: 'video/mp4', tamano_bytes: 5_000_000 });
+const visorAbierto = (page: Page) => page.getByRole('dialog');
+const dialogoBorrar = (page: Page, titulo: string) => page.getByRole('dialog', { name: titulo });
+
+test.describe('Galería de fotos · vídeos, borrar y espacio', () => {
+  test('un vídeo sale en la rejilla, se cuenta aparte y se reproduce en el visor', async ({ page }) => {
+    await entrarConSesion(page);
+    await page.route('https://storage.test/paseo.mp4', (route) => route.fulfill({ status: 200, contentType: 'video/mp4', body: Buffer.alloc(10) }));
+    await simularBackend(page, { fotos: [VIDEO, ...FOTOS] });
+
+    await page.goto(rutaGaleria);
+
+    await expect(page.getByText('3 fotos · 1 vídeo · 2 miembros')).toBeVisible();
+    await page.getByRole('button', { name: 'Reproducir paseo.mp4' }).click();
+    await expect(visorAbierto(page)).toHaveAccessibleName('Vídeo 1 de 4: paseo.mp4');
+    await expect(visorAbierto(page).locator('video[controls]')).toBeVisible();
+  });
+
+  test('se sube un vídeo y el recuento y el espacio usado lo reflejan', async ({ page }) => {
+    await entrarConSesion(page);
+    const { recibidas } = await simularBackend(page, {
+      respuestaSubida: (nombre) => ({ status: 201, cuerpo: fotoDe('v2', nombre, { tipo_mime: 'video/mp4', tamano_bytes: 5_000_000, subido_por: USUARIO_ID }) }),
+    });
+    await page.goto(rutaGaleria);
+    await expect(page.getByText('0,7 MB de 200 MB usados')).toBeVisible();
+
+    await selector(page).setInputFiles({ name: 'clip.mp4', mimeType: 'video/mp4', buffer: Buffer.from([0, 0, 0, 0x18, 0x66, 0x74, 0x79, 0x70]) });
+
+    await expect(page.getByRole('button', { name: 'Reproducir clip.mp4' })).toBeVisible();
+    await expect(page.getByText('3 fotos · 1 vídeo · 2 miembros')).toBeVisible();
+    await expect(page.getByText('5,7 MB de 200 MB usados')).toBeVisible();
+    expect(recibidas).toHaveLength(1);
+  });
+
+  test('se borra una foto desde el visor tras confirmar: el visor pasa a la siguiente y el espacio baja', async ({ page }) => {
+    await entrarConSesion(page);
+    const { borradas } = await simularBackend(page);
+    await page.goto(rutaGaleria);
+    await page.getByRole('button', { name: 'Ampliar trevi.jpg' }).click();
+
+    await visorAbierto(page).getByRole('button', { name: 'Borrar foto' }).click();
+    await expect(dialogoBorrar(page, '¿Borrar esta foto?')).toContainText('trevi.jpg');
+    await dialogoBorrar(page, '¿Borrar esta foto?').getByRole('button', { name: 'Borrar foto' }).click();
+
+    await expect(dialogoBorrar(page, '¿Borrar esta foto?')).toHaveCount(0);
+    expect(borradas).toEqual(['f2']);
+    await expect(visorAbierto(page)).toHaveAccessibleName('Foto 2 de 2: coliseo.jpg');
+    await page.getByRole('button', { name: 'Cerrar foto' }).click();
+    await expect(miniaturas(page)).toHaveCount(2);
+    await expect(page.getByText('2 fotos · 2 miembros')).toBeVisible();
+  });
+
+  test('cancelar el borrado no borra nada', async ({ page }) => {
+    await entrarConSesion(page);
+    const { borradas } = await simularBackend(page);
+    await page.goto(rutaGaleria);
+    await page.getByRole('button', { name: 'Ampliar trevi.jpg' }).click();
+    await visorAbierto(page).getByRole('button', { name: 'Borrar foto' }).click();
+
+    await dialogoBorrar(page, '¿Borrar esta foto?').getByRole('button', { name: 'Cancelar' }).click();
+
+    await expect(dialogoBorrar(page, '¿Borrar esta foto?')).toHaveCount(0);
+    expect(borradas).toEqual([]);
+    await expect(visorAbierto(page)).toHaveAccessibleName('Foto 2 de 3: trevi.jpg');
+  });
+
+  test('si el servidor rechaza el borrado se avisa en el diálogo y la foto sigue', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularBackend(page, {
+      respuestaBorrado: { status: 404, cuerpo: { error: { codigo: 'foto_no_encontrada', mensaje: 'La foto no existe en este viaje' } } },
+    });
+    await page.goto(rutaGaleria);
+    await page.getByRole('button', { name: 'Ampliar trevi.jpg' }).click();
+    await visorAbierto(page).getByRole('button', { name: 'Borrar foto' }).click();
+
+    await dialogoBorrar(page, '¿Borrar esta foto?').getByRole('button', { name: 'Borrar foto' }).click();
+
+    await expect(dialogoBorrar(page, '¿Borrar esta foto?').getByRole('alert')).toContainText('No se ha podido borrar: La foto no existe en este viaje');
+    await expect(page.getByText('3 fotos · 2 miembros')).toBeVisible();
+  });
+
+  test('en un viaje archivado el visor no ofrece borrar', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularBackend(page, { estado: 'archivado' });
+    await page.goto(rutaGaleria);
+
+    await page.getByRole('button', { name: 'Ampliar trevi.jpg' }).click();
+
+    await expect(visorAbierto(page)).toHaveAccessibleName('Foto 2 de 3: trevi.jpg');
+    await expect(visorAbierto(page).getByRole('button', { name: 'Borrar foto' })).toHaveCount(0);
   });
 });
 

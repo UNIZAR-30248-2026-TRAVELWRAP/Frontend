@@ -25,11 +25,13 @@ const PNG_1X1 = Buffer.from(
 let fotos: FotoGuardada[] = [];
 let subidas: { nombre: string; cabecera: string | undefined }[] = [];
 let rechazaPorContenido = false;
+let borradas: string[] = [];
 
 Before(() => {
   fotos = [];
   subidas = [];
   rechazaPorContenido = false;
+  borradas = [];
 });
 
 const json = (status: number, cuerpo: unknown) => ({ status, contentType: 'application/json', body: JSON.stringify(cuerpo) });
@@ -43,7 +45,9 @@ const simularFotos = async () => {
     const viajeId = new URL(peticion.url()).pathname.split('/').at(-2) ?? '';
 
     if (peticion.method() === 'GET') {
-      return route.fulfill(json(200, { fotos: fotos.filter((f) => f.viaje_id === viajeId) }));
+      const delViaje = fotos.filter((f) => f.viaje_id === viajeId);
+      const usado = delViaje.reduce((total, f) => total + f.tamano_bytes, 0);
+      return route.fulfill(json(200, { fotos: delViaje, almacenamiento: { usado_bytes: usado, limite_bytes: 200_000_000 } }));
     }
     if (rechazaPorContenido) {
       return route.fulfill(
@@ -57,7 +61,7 @@ const simularFotos = async () => {
       id: `foto-${fotos.length + 1}`,
       viaje_id: viajeId,
       nombre,
-      tipo_mime: 'image/jpeg',
+      tipo_mime: /\.mp4$/i.test(nombre) ? 'video/mp4' : 'image/jpeg',
       tamano_bytes: cuerpo.length,
       subido_por: YO,
       creado_en: '2027-05-13T12:00:00Z',
@@ -65,6 +69,13 @@ const simularFotos = async () => {
     };
     fotos.unshift(nueva);
     return route.fulfill(json(201, nueva));
+  });
+  await paginaActual().route('**/api/viajes/*/fotos/*', (route) => {
+    if (route.request().method() !== 'DELETE') return route.fallback();
+    const fotoId = new URL(route.request().url()).pathname.split('/').at(-1) ?? '';
+    fotos = fotos.filter((f) => f.id !== fotoId);
+    borradas.push(fotoId);
+    return route.fulfill({ status: 204 });
   });
 };
 
@@ -84,6 +95,19 @@ Given('que en la galería del viaje {string} está la foto {string}', (viaje: st
     nombre,
     tipo_mime: 'image/jpeg',
     tamano_bytes: 248731,
+    subido_por: BERTA,
+    creado_en: '2027-05-12T10:00:00Z',
+    url: `https://storage.test/${nombre}`,
+  });
+});
+
+Given('que en la galería del viaje {string} está el vídeo {string}', (viaje: string, nombre: string) => {
+  fotos.unshift({
+    id: `video-${fotos.length + 1}`,
+    viaje_id: idDe(viaje),
+    nombre,
+    tipo_mime: 'video/mp4',
+    tamano_bytes: 5_000_000,
     subido_por: BERTA,
     creado_en: '2027-05-12T10:00:00Z',
     url: `https://storage.test/${nombre}`,
@@ -119,6 +143,24 @@ When('amplío la foto {string}', async (nombre: string) => {
   await paginaActual().getByRole('button', { name: `Ampliar ${nombre}` }).click();
 });
 
+When('abro el vídeo {string}', async (nombre: string) => {
+  await paginaActual().getByRole('button', { name: `Reproducir ${nombre}` }).click();
+});
+
+When('pulso borrar en el archivo ampliado', async () => {
+  await paginaActual().getByRole('button', { name: /^Borrar (foto|vídeo)$/ }).click();
+});
+
+When('confirmo el borrado del archivo', async () => {
+  const dialogo = paginaActual().getByRole('dialog', { name: /^¿Borrar (esta foto|este vídeo)\?$/ });
+  await dialogo.getByRole('button', { name: /^Borrar (foto|vídeo)$/ }).click();
+});
+
+When('cancelo el borrado del archivo', async () => {
+  const dialogo = paginaActual().getByRole('dialog', { name: /^¿Borrar (esta foto|este vídeo)\?$/ });
+  await dialogo.getByRole('button', { name: 'Cancelar' }).click();
+});
+
 When('paso a la foto siguiente', async () => {
   await paginaActual().getByRole('button', { name: 'Foto siguiente' }).click();
 });
@@ -141,7 +183,15 @@ Then('la galería está vacía', async () => {
 });
 
 Then('veo la foto ampliada {string}', async (descripcion: string) => {
-  await expect(paginaActual().getByRole('dialog')).toHaveAccessibleName(descripcion);
+  await expect(paginaActual().getByRole('dialog', { name: descripcion, exact: true })).toBeVisible();
+});
+
+Then('veo el reproductor del vídeo ampliado', async () => {
+  await expect(paginaActual().getByRole('dialog').locator('video[controls]')).toBeVisible();
+});
+
+Then('el servidor ha borrado {int} archivo(s)', (cantidad: number) => {
+  expect(borradas).toHaveLength(cantidad);
 });
 
 Then('ya no veo la foto ampliada', async () => {

@@ -35,8 +35,10 @@ const simularBackend = ({
   viaje = (): Promise<Response> => json(200, { id: VIAJE_ID, nombre: 'Roma 2027', estado: 'activo', miembros }),
   lista = (): Promise<Response> => json(200, { fotos: LISTA }),
   subida = (): Promise<Response> => json(201, foto({ id: 'f3', nombre: 'plaza.webp', url: 'https://storage.test/plaza.webp' })),
+  borrado = (): Promise<Response> => Promise.resolve(new Response(null, { status: 204 })),
 } = {}) => {
   const fetchMock = vi.fn((url: string, opciones?: RequestInit) => {
+    if (opciones?.method === 'DELETE') return borrado()
     if (url.endsWith('/fotos')) return opciones?.method === 'POST' ? subida() : lista()
     return viaje()
   })
@@ -324,6 +326,172 @@ describe('ChatGaleria: subida', () => {
     await user.upload(selector(), imagen())
 
     expect(await screen.findByRole('button', { name: 'Ampliar plaza.webp' })).toBeTruthy()
+  })
+})
+
+const VIDEO = (datos: Record<string, unknown> = {}) =>
+  foto({ id: 'v1', nombre: 'paseo.mp4', tipo_mime: 'video/mp4', url: 'https://storage.test/paseo.mp4', ...datos })
+
+const clip = (nombre = 'clip.mp4', tipo = 'video/mp4', bytes = 10) => new File([new Uint8Array(bytes).fill(1)], nombre, { type: tipo })
+
+describe('ChatGaleria: vídeos', () => {
+  it('los vídeos salen con «Reproducir», se cuentan aparte y se abren con reproductor', async () => {
+    simularBackend({ lista: () => json(200, { fotos: [VIDEO(), ...LISTA] }) })
+    await abrir()
+
+    expect(screen.getByText('2 fotos · 1 vídeo · 2 miembros')).toBeTruthy()
+    await usuario().click(screen.getByRole('button', { name: 'Reproducir paseo.mp4' }))
+
+    expect(screen.getByRole('dialog').getAttribute('aria-label')).toBe('Vídeo 1 de 3: paseo.mp4')
+    expect(document.querySelector('video[controls]')?.getAttribute('src')).toBe('https://storage.test/paseo.mp4')
+  })
+
+  it('el selector admite vídeos y se sube uno', async () => {
+    const fetchMock = simularBackend({ subida: () => json(201, VIDEO({ id: 'v2', nombre: 'clip.mp4' })) })
+    await abrir()
+    expect(selector().getAttribute('accept')).toContain('video/mp4')
+
+    await usuario().upload(selector(), clip())
+
+    expect(await screen.findByRole('button', { name: 'Reproducir clip.mp4' })).toBeTruthy()
+    expect(subidas(fetchMock)).toHaveLength(1)
+    expect(screen.getByText('2 fotos · 1 vídeo · 2 miembros')).toBeTruthy()
+  })
+
+  it('un vídeo de más de 50 MB se rechaza sin llamar al servidor y un fallo del servidor dice «el vídeo»', async () => {
+    const fetchMock = simularBackend({
+      subida: () => json(413, { error: { codigo: 'almacenamiento_lleno', mensaje: 'El viaje ha alcanzado su límite de almacenamiento' } }),
+    })
+    await abrir()
+    const user = usuario()
+
+    await user.upload(selector(), clip('enorme.mp4', 'video/mp4', 50_000_001))
+    expect((await screen.findByRole('alert')).textContent).toBe('El vídeo no puede ocupar más de 50 MB')
+    expect(subidas(fetchMock)).toHaveLength(0)
+
+    await user.upload(selector(), clip())
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toBe('No se ha podido subir el vídeo: El viaje ha alcanzado su límite de almacenamiento'),
+    )
+  })
+})
+
+describe('ChatGaleria: borrar', () => {
+  const abrirVisor = async (nombre = 'Ampliar trevi.png') => {
+    const user = usuario()
+    await user.click(screen.getByRole('button', { name: nombre }))
+    return user
+  }
+  const borrados = (fetchMock: ReturnType<typeof simularBackend>) => fetchMock.mock.calls.filter(([, opciones]) => opciones?.method === 'DELETE')
+
+  it('pide confirmar, borra para el grupo y el visor pasa a la foto que queda', async () => {
+    const fetchMock = simularBackend()
+    await abrir()
+    const user = await abrirVisor()
+
+    await user.click(screen.getByRole('button', { name: 'Borrar foto' }))
+    const dialogo = screen.getByRole('dialog', { name: '¿Borrar esta foto?' })
+    expect(within(dialogo).getByText('trevi.png')).toBeTruthy()
+    expect(borrados(fetchMock)).toHaveLength(0)
+    await user.click(within(dialogo).getByRole('button', { name: 'Borrar foto' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '¿Borrar esta foto?' })).toBeNull())
+    const [[url, opciones]] = borrados(fetchMock) as [string, RequestInit][]
+    expect(url).toContain(`/viajes/${VIAJE_ID}/fotos/f2`)
+    expect(JSON.stringify(opciones.headers)).toContain('token-acceso')
+    expect(screen.getByRole('dialog').getAttribute('aria-label')).toBe('Foto 1 de 1: coliseo.jpg')
+    expect(screen.getByText('1 foto · 2 miembros')).toBeTruthy()
+  })
+
+  it('cancelar no borra nada', async () => {
+    const fetchMock = simularBackend()
+    await abrir()
+    const user = await abrirVisor()
+    await user.click(screen.getByRole('button', { name: 'Borrar foto' }))
+
+    await user.click(within(screen.getByRole('dialog', { name: '¿Borrar esta foto?' })).getByRole('button', { name: 'Cancelar' }))
+
+    expect(screen.queryByRole('dialog', { name: '¿Borrar esta foto?' })).toBeNull()
+    expect(borrados(fetchMock)).toHaveLength(0)
+    expect(screen.getByRole('dialog').getAttribute('aria-label')).toBe('Foto 1 de 2: trevi.png')
+  })
+
+  it('si el servidor falla, lo dice en el diálogo y la foto sigue', async () => {
+    simularBackend({
+      borrado: () => json(409, { error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está finalizado y ya no se puede modificar' } }),
+    })
+    await abrir()
+    const user = await abrirVisor()
+    await user.click(screen.getByRole('button', { name: 'Borrar foto' }))
+
+    await user.click(within(screen.getByRole('dialog', { name: '¿Borrar esta foto?' })).getByRole('button', { name: 'Borrar foto' }))
+
+    expect((await screen.findByRole('alert')).textContent).toBe('No se ha podido borrar: El viaje está finalizado y ya no se puede modificar')
+    expect(screen.getByText('2 fotos · 2 miembros')).toBeTruthy()
+  })
+
+  it('al borrar la última foto se cierra el visor y vuelve el aviso de galería vacía', async () => {
+    simularBackend({ lista: () => json(200, { fotos: [foto()] }) })
+    await abrir()
+    const user = await abrirVisor('Ampliar coliseo.jpg')
+    await user.click(screen.getByRole('button', { name: 'Borrar foto' }))
+
+    await user.click(within(screen.getByRole('dialog', { name: '¿Borrar esta foto?' })).getByRole('button', { name: 'Borrar foto' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(screen.getByText('Aún no hay fotos en la galería del viaje.')).toBeTruthy()
+  })
+
+  it('borrar un vídeo lo dice en el diálogo', async () => {
+    const fetchMock = simularBackend({ lista: () => json(200, { fotos: [VIDEO(), ...LISTA] }) })
+    await abrir()
+    const user = await abrirVisor('Reproducir paseo.mp4')
+    await user.click(screen.getByRole('button', { name: 'Borrar vídeo' }))
+
+    const dialogo = screen.getByRole('dialog', { name: '¿Borrar este vídeo?' })
+    await user.click(within(dialogo).getByRole('button', { name: 'Borrar vídeo' }))
+
+    await waitFor(() => expect(borrados(fetchMock)).toHaveLength(1))
+    expect(screen.getByText('2 fotos · 2 miembros')).toBeTruthy()
+  })
+
+  it('en un viaje finalizado no hay botón de borrar', async () => {
+    simularBackend({ viaje: () => json(200, { id: VIAJE_ID, nombre: 'Roma 2026', estado: 'finalizado', miembros }) })
+    await abrir()
+    await abrirVisor()
+
+    expect(screen.queryByRole('button', { name: 'Borrar foto' })).toBeNull()
+    expect(screen.getByText(/ya no se pueden subir ni borrar/)).toBeTruthy()
+  })
+})
+
+describe('ChatGaleria: espacio de almacenamiento', () => {
+  const almacenamiento = (usado: number) => ({ usado_bytes: usado, limite_bytes: 200_000_000 })
+
+  it('indica el espacio usado y lo actualiza al subir y al borrar', async () => {
+    simularBackend({ lista: () => json(200, { fotos: LISTA, almacenamiento: almacenamiento(3_000_000) }) })
+    await abrir()
+    expect(screen.getByText('3 MB de 200 MB usados')).toBeTruthy()
+
+    const user = usuario()
+    await user.upload(selector(), imagen())
+    expect(await screen.findByText('3,2 MB de 200 MB usados')).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: 'Ampliar trevi.png' }))
+    await user.click(screen.getByRole('button', { name: 'Borrar foto' }))
+    await user.click(within(screen.getByRole('dialog', { name: '¿Borrar esta foto?' })).getByRole('button', { name: 'Borrar foto' }))
+    expect(await screen.findByText('3 MB de 200 MB usados')).toBeTruthy()
+  })
+
+  it('con el almacenamiento lleno lo avisa y sin datos del servidor no muestra nada', async () => {
+    simularBackend({ lista: () => json(200, { fotos: LISTA, almacenamiento: almacenamiento(200_000_000) }) })
+    await abrir()
+    expect(screen.getByText('Almacenamiento lleno: 200 MB de 200 MB')).toBeTruthy()
+
+    cleanup()
+    simularBackend()
+    await abrir()
+    expect(screen.queryByText(/MB de/)).toBeNull()
   })
 })
 
