@@ -119,3 +119,17 @@ Then('el mapa vuelve a su tamaño normal', async () => {
 When('pulso la tecla Escape', async () => {
   await paginaActual().keyboard.press('Escape');
 });
+
+Then('el enlace {string} abre en una pestaña nueva la ruta a pie de {string} a {string}', async (nombre: string, origen: string, destino: string) => {
+  const enlace = paginaActual().getByRole('link', { name: nombre });
+  await expect(enlace).toBeVisible();
+  await expect(enlace).toHaveAttribute('target', '_blank');
+  const datos = new URL((await enlace.getAttribute('href')) ?? '').searchParams;
+  expect(datos.get('origin')).toBe(origen);
+  expect(datos.get('destination')).toBe(destino);
+  expect(datos.get('travelmode')).toBe('walking');
+});
+
+Then('no veo el enlace {string}', async (nombre: string) => {
+  await expect(paginaActual().getByRole('link', { name: nombre })).toHaveCount(0);
+});

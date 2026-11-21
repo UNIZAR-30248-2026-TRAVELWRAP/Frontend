@@ -247,8 +247,30 @@ test.describe('Itinerario · mapa de las actividades', () => {
 
     await expect(page.getByText(/Orden más corto/)).toBeVisible();
     await expect(page.getByText(/Ruta a pie por calles/)).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Abrir en Google Maps' })).toBeInViewport();
     const [ancho, visible] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
     expect(ancho).toBeLessThanOrEqual(visible);
+  });
+
+  test('con dos ubicaciones se ofrece abrir la ruta en Google Maps, también con el mapa ampliado, y con una no', async ({ page }) => {
+    await preparar(page);
+    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
+
+    const enlace = page.getByRole('link', { name: 'Abrir en Google Maps' });
+    await expect(enlace).toBeVisible();
+    await expect(enlace).toHaveAttribute('target', '_blank');
+    const datos = new URL((await enlace.getAttribute('href')) ?? '').searchParams;
+    expect(datos.get('origin')).toBe('41.890214,12.492231');
+    expect(datos.get('destination')).toBe('41.892462,12.485325');
+    expect(datos.get('travelmode')).toBe('walking');
+
+    await page.getByRole('button', { name: 'Ampliar mapa' }).click();
+    await expect(enlace).toBeInViewport();
+    await page.getByRole('button', { name: 'Reducir mapa' }).click();
+
+    await page.getByRole('button', { name: 'Día 2 · 13 may' }).click();
+    await expect(marcadores(page)).toHaveCount(1);
+    await expect(enlace).toHaveCount(0);
   });
 
   test('el botón de ampliar lleva el mapa a casi toda la pantalla y el de reducir lo devuelve', async ({ page }) => {

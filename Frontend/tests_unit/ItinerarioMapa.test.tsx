@@ -141,6 +141,68 @@ describe('Itinerario · mapa', () => {
     expect((await screen.findByTestId('mapa')).textContent).toBe('Desayuno|Coliseo')
   })
 
+  describe('enlace a Google Maps', () => {
+    const enlace = () => screen.queryByRole('link', { name: 'Abrir en Google Maps' }) as HTMLAnchorElement | null
+
+    it('con dos actividades con ubicación ofrece abrir la ruta a pie en Google Maps con las paradas en orden', async () => {
+      simularBackend([
+        conUbicacion('a1', 'Coliseo', { hora_inicio: '10:00:00', latitud: 41.890214, longitud: 12.492231 }),
+        conUbicacion('a2', 'Foro', { hora_inicio: '12:00:00', latitud: 41.892462, longitud: 12.485325 }),
+      ])
+      renderizar()
+      await screen.findByTestId('mapa')
+
+      const boton = await screen.findByRole('link', { name: 'Abrir en Google Maps' })
+      const datos = new URL((boton as HTMLAnchorElement).href).searchParams
+      expect(datos.get('origin')).toBe('41.890214,12.492231')
+      expect(datos.get('destination')).toBe('41.892462,12.485325')
+      expect(datos.get('travelmode')).toBe('walking')
+      expect(boton.getAttribute('target')).toBe('_blank')
+      expect(boton.getAttribute('rel')).toContain('noopener')
+    })
+
+    it('se ofrece también si no se ha podido calcular la ruta por calles', async () => {
+      simularBackend([conUbicacion('a1', 'Coliseo'), conUbicacion('a2', 'Foro', { latitud: 41.9 })])
+      renderizar()
+
+      expect(await screen.findByRole('link', { name: 'Abrir en Google Maps' })).toBeTruthy()
+      expect(await screen.findByText(/No se ha podido calcular la ruta por calles/)).toBeTruthy()
+    })
+
+    it('no se ofrece con una sola actividad con ubicación ni sin ninguna', async () => {
+      simularBackend([conUbicacion('a1', 'Coliseo'), actividad('a2', { titulo: 'Paseo sin lugar' })])
+      renderizar()
+      await screen.findByText('1 de 2 actividades con ubicación en el mapa')
+      expect(enlace()).toBeNull()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Día 3 · 14 may' }))
+      expect(enlace()).toBeNull()
+    })
+
+    it('con más de 11 paradas abre las 11 primeras y lo avisa', async () => {
+      simularBackend(
+        Array.from({ length: 12 }, (_, i) =>
+          conUbicacion(`a${i}`, `Parada ${i}`, { hora_inicio: `${String(8 + i).padStart(2, '0')}:00:00`, latitud: 41 + i / 100 }),
+        ),
+      )
+      renderizar()
+
+      const boton = await screen.findByRole('link', { name: 'Abrir en Google Maps' })
+      const datos = new URL((boton as HTMLAnchorElement).href).searchParams
+      expect(datos.get('waypoints')?.split('|')).toHaveLength(9)
+      expect(datos.get('destination')).toBe('41.1,12.49')
+      expect(screen.getByText('Google Maps admite hasta 11 paradas: se abren las 11 primeras.')).toBeTruthy()
+    })
+
+    it('sigue visible con el mapa ampliado', async () => {
+      simularBackend([conUbicacion('a1', 'Coliseo'), conUbicacion('a2', 'Foro', { latitud: 41.9 })])
+      renderizar()
+      await userEvent.click(await screen.findByRole('button', { name: 'Ampliar mapa' }))
+
+      expect(enlace()).not.toBeNull()
+    })
+  })
+
   it('indica cuántas actividades del día están en el mapa', async () => {
     simularBackend([conUbicacion('a1', 'Coliseo'), actividad('a2', { titulo: 'Paseo sin lugar' })])
     renderizar()
