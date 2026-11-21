@@ -26,6 +26,7 @@ import {
 } from "../services/actividadesApi"
 import { ApiError } from "../services/authApi"
 import { obtenerRutaDelDia, type RutaDelDia } from "../services/rutasApi"
+import { MAX_PARADAS_GOOGLE_MAPS, urlDeGoogleMaps } from "../utils/googleMaps"
 import { guardarItinerario, leerItinerario } from "../services/itinerarioGuardado"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
@@ -462,6 +463,38 @@ export default function Itinerario({
                 {rutaDelDia && rutaDelDia.datos === null && (
                   <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, padding: "0 14px 8px" }}>
                     No se ha podido calcular la ruta por calles; se muestra una línea recta.
+                  </div>
+                )}
+                {hayRutaQueCalcular && (
+                  <div style={{ padding: "0 14px 12px" }}>
+                    <a
+                      href={urlDeGoogleMaps(puntosDelMapa)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        minHeight: 44,
+                        boxSizing: "border-box",
+                        padding: "0 16px",
+                        borderRadius: 12,
+                        border: `1.5px solid ${C.blue}`,
+                        color: C.blue,
+                        background: "white",
+                        fontFamily: NUNITO,
+                        fontSize: 13,
+                        fontWeight: 800,
+                        textDecoration: "none",
+                      }}
+                    >
+                      Abrir en Google Maps
+                    </a>
+                    {puntosDelMapa.length > MAX_PARADAS_GOOGLE_MAPS && (
+                      <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, marginTop: 6 }}>
+                        Google Maps admite hasta {MAX_PARADAS_GOOGLE_MAPS} paradas: se abren las {MAX_PARADAS_GOOGLE_MAPS} primeras.
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
