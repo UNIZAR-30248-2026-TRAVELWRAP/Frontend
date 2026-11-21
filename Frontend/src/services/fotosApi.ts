@@ -11,8 +11,14 @@ export type Foto = {
   url: string | null
 }
 
+export type Almacenamiento = {
+  usado_bytes: number
+  limite_bytes: number
+}
+
 export type ListaFotos = {
   fotos: Foto[]
+  almacenamiento?: Almacenamiento
 }
 
 const rutaFotos = (viajeId: string) => `/viajes/${encodeURIComponent(viajeId)}/fotos`

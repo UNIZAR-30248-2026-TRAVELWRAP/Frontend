@@ -32,3 +32,10 @@ export const descripcionDeFoto = (subidoPor: string | null, creadoEn: string, mi
   if (dia) return `Subida el ${dia}`
   return ""
 }
+
+const megabytes = (bytes: number) => `${(bytes / 1_000_000).toLocaleString("es-ES", { maximumFractionDigits: 1 })} MB`
+
+export const textoDeEspacio = (usadoBytes: number, limiteBytes: number) =>
+  usadoBytes >= limiteBytes
+    ? `Almacenamiento lleno: ${megabytes(limiteBytes)} de ${megabytes(limiteBytes)}`
+    : `${megabytes(usadoBytes)} de ${megabytes(limiteBytes)} usados`

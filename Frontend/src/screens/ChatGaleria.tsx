@@ -8,12 +8,12 @@ import Icon from "../components/Icon"
 import SectionLabel from "../components/SectionLabel"
 import VisorFotos from "../components/VisorFotos"
 import { ApiError } from "../services/authApi"
-import { borrarFoto, listarFotos, subirFoto, type Foto } from "../services/fotosApi"
+import { borrarFoto, listarFotos, subirFoto, type Almacenamiento, type Foto } from "../services/fotosApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { estiloAlerta } from "../styles/formulario"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
-import { archivoEsVideo, descripcionDeFoto, esVideo, motivoParaNoSubirFoto, textoDeFotos, TIPOS_ARCHIVO } from "../utils/galeria"
+import { archivoEsVideo, descripcionDeFoto, esVideo, motivoParaNoSubirFoto, textoDeEspacio, textoDeFotos, TIPOS_ARCHIVO } from "../utils/galeria"
 
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
 
@@ -48,6 +48,7 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
   const [subiendo, setSubiendo] = useState(false)
   const [progreso, setProgreso] = useState({ hechas: 0, total: 0 })
   const [fotoAbierta, setFotoAbierta] = useState<number | null>(null)
+  const [almacenamiento, setAlmacenamiento] = useState<Almacenamiento | null>(null)
   const [aBorrar, setABorrar] = useState<FotoVisible | null>(null)
   const [borrando, setBorrando] = useState(false)
   const [errorBorrar, setErrorBorrar] = useState("")
@@ -60,6 +61,7 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
         if (!vigente) return
         setViaje(datosViaje)
         setFotos(lista.fotos.filter(conUrl))
+        setAlmacenamiento(lista.almacenamiento ?? null)
       })
       .catch((e) => {
         if (vigente) setError(`No se ha podido cargar la galería: ${mensajeDeError(e)}`)
@@ -103,6 +105,7 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
       await borrarFoto(viajeId, aBorrar.id, tokenSesion)
       const restantes = fotos.filter((foto) => foto.id !== aBorrar.id)
       setFotos(restantes)
+      setAlmacenamiento((actual) => (actual ? { ...actual, usado_bytes: Math.max(actual.usado_bytes - aBorrar.tamano_bytes, 0) } : actual))
       setFotoAbierta(restantes.length === 0 ? null : Math.min(fotoAbierta ?? 0, restantes.length - 1))
       setABorrar(null)
     } catch (e) {
@@ -130,6 +133,7 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
         try {
           const foto = await subirFoto(viajeId, archivo, tokenSesion)
           if (conUrl(foto)) setFotos((anteriores) => [foto, ...anteriores])
+          setAlmacenamiento((actual) => (actual ? { ...actual, usado_bytes: actual.usado_bytes + foto.tamano_bytes } : actual))
         } catch (e) {
           fallos.push({ nombre: archivo.name, motivo: mensajeDeError(e) })
         }
@@ -366,9 +370,10 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
               )}
 
               <div style={{ marginTop: 12, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12 }}>
-                  {textoDeFotos(fotos.length - numeroDeVideos, miembros.length, numeroDeVideos)}
-                </span>
+                <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12 }}>
+                  <div>{textoDeFotos(fotos.length - numeroDeVideos, miembros.length, numeroDeVideos)}</div>
+                  {almacenamiento && <div>{textoDeEspacio(almacenamiento.usado_bytes, almacenamiento.limite_bytes)}</div>}
+                </div>
                 <AvatarStack members={miembros} size={22} />
               </div>
             </>
