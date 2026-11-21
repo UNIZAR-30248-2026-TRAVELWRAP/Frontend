@@ -167,7 +167,7 @@ describe('ChatGaleria · ampliar una foto', () => {
   })
 
   const subir = async (user: ReturnType<typeof userEvent.setup>, nombres: string[]) => {
-    const selector = await screen.findByLabelText('Elegir la foto que se va a subir')
+    const selector = await screen.findByLabelText('Elegir las fotos o vídeos que se van a subir')
     for (const nombre of nombres) {
       await user.upload(selector, new File(['x'], nombre, { type: 'image/jpeg' }))
       await screen.findByRole('button', { name: `Ampliar ${nombre}` })

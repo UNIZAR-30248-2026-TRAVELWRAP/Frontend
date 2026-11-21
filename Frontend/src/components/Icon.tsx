@@ -213,6 +213,7 @@ export default function Icon({
         <path d="M3 21l7-7" />
       </>
     ),
+    play: <polygon points="6 3 20 12 6 21 6 3" />,
     close: (
       <>
         <line x1="18" y1="6" x2="6" y2="18" />

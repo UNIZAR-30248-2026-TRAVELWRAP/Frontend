@@ -17,6 +17,7 @@ type DialogoConfirmacionProps = {
   error?: string
   onConfirmar: () => void
   onCancelar: () => void
+  zIndex?: number
 }
 
 // Ventana para confirmar una acción que no se puede deshacer
@@ -32,13 +33,14 @@ export default function DialogoConfirmacion({
   error,
   onConfirmar,
   onCancelar,
+  zIndex = 40,
 }: DialogoConfirmacionProps) {
   return (
     <div
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 40,
+        zIndex,
         background: "rgba(13,31,60,0.72)",
         display: "flex",
         alignItems: "center",

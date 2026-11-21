@@ -125,7 +125,7 @@ const simularBackend = async (
 
 const rutaGaleria = `/viajes/${VIAJE_ID}/galeria`;
 const miniaturas = (page: Page) => page.getByRole('list', { name: 'Fotos del viaje' }).getByRole('listitem');
-const selector = (page: Page) => page.getByLabel('Elegir la foto que se va a subir');
+const selector = (page: Page) => page.getByLabel('Elegir las fotos o vídeos que se van a subir');
 
 test.describe('Galería de fotos', () => {
   test('muestra las fotos del viaje con el recuento y los miembros', async ({ page }) => {
@@ -197,7 +197,7 @@ test.describe('Galería de fotos', () => {
     await expect(miniaturas(page)).toHaveCount(3);
     await selector(page).setInputFiles({ name: 'billete.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4') });
 
-    await expect(page.getByRole('alert')).toContainText('Solo se pueden subir fotos JPEG, PNG o WebP');
+    await expect(page.getByRole('alert')).toContainText('Solo se pueden subir fotos (JPEG, PNG o WebP) o vídeos (MP4, WebM o MOV)');
     await expect(miniaturas(page)).toHaveCount(3);
     expect(recibidas).toHaveLength(0);
   });

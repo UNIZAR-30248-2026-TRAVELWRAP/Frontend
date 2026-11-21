@@ -75,7 +75,7 @@ const idDe = (viaje: string) => {
 };
 
 const filasDeLaGaleria = () => paginaActual().getByRole('list', { name: 'Fotos del viaje' }).getByRole('listitem');
-const selectorDeFoto = () => paginaActual().getByLabel('Elegir la foto que se va a subir');
+const selectorDeFoto = () => paginaActual().getByLabel('Elegir las fotos o vídeos que se van a subir');
 
 Given('que en la galería del viaje {string} está la foto {string}', (viaje: string, nombre: string) => {
   fotos.unshift({

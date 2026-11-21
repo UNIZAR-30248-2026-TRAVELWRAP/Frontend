@@ -52,7 +52,7 @@ const abrir = async (props = {}) => {
   await screen.findByText('Fotos compartidas')
 }
 
-const selector = () => screen.getByLabelText('Elegir la foto que se va a subir')
+const selector = () => screen.getByLabelText('Elegir las fotos o vídeos que se van a subir')
 const imagen = (nombre = 'plaza.webp', tipo = 'image/webp') => new File(['x'], nombre, { type: tipo })
 const usuario = () => userEvent.setup({ applyAccept: false })
 const miniaturas = () => within(screen.getByRole('list', { name: 'Fotos del viaje' })).getAllByRole('listitem')
@@ -252,7 +252,7 @@ describe('ChatGaleria: subida', () => {
 
     const alerta = await screen.findByRole('alert')
     expect(alerta.textContent).toBe(
-      'No se han podido subir 2 de 3 fotos: billete.pdf (Solo se pueden subir fotos JPEG, PNG o WebP); rota.png (No se ha podido guardar la foto)',
+      'No se han podido subir 2 de 3 fotos: billete.pdf (Solo se pueden subir fotos (JPEG, PNG o WebP) o vídeos (MP4, WebM o MOV)); rota.png (No se ha podido guardar la foto)',
     )
     expect(subidas(fetchMock)).toHaveLength(2)
     expect(miniaturas()).toHaveLength(3)
@@ -265,7 +265,7 @@ describe('ChatGaleria: subida', () => {
 
     await usuario().upload(selector(), imagen('billete.pdf', 'application/pdf'))
 
-    expect((await screen.findByRole('alert')).textContent).toBe('Solo se pueden subir fotos JPEG, PNG o WebP')
+    expect((await screen.findByRole('alert')).textContent).toBe('Solo se pueden subir fotos (JPEG, PNG o WebP) o vídeos (MP4, WebM o MOV)')
     expect(subidas(fetchMock)).toHaveLength(0)
     expect(miniaturas()).toHaveLength(2)
   })
@@ -335,6 +335,6 @@ describe('ChatGaleria: viaje finalizado', () => {
     expect(miniaturas()).toHaveLength(2)
     expect(screen.getByText(/ya no se pueden subir/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Subir' })).toBeNull()
-    expect(screen.queryByLabelText('Elegir la foto que se va a subir')).toBeNull()
+    expect(screen.queryByLabelText('Elegir las fotos o vídeos que se van a subir')).toBeNull()
   })
 })

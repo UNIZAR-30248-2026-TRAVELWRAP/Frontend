@@ -2,17 +2,18 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react"
 import AvatarStack from "../components/AvatarStack"
 import BarraInferior, { ALTO_BARRA_INFERIOR, type SeccionViaje } from "../components/BarraInferior"
 import BotonVolver from "../components/BotonVolver"
+import DialogoConfirmacion from "../components/DialogoConfirmacion"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import SectionLabel from "../components/SectionLabel"
 import VisorFotos from "../components/VisorFotos"
 import { ApiError } from "../services/authApi"
-import { listarFotos, subirFoto, type Foto } from "../services/fotosApi"
+import { borrarFoto, listarFotos, subirFoto, type Foto } from "../services/fotosApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { estiloAlerta } from "../styles/formulario"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
-import { descripcionDeFoto, motivoParaNoSubirFoto, textoDeFotos, TIPOS_FOTO } from "../utils/galeria"
+import { archivoEsVideo, descripcionDeFoto, esVideo, motivoParaNoSubirFoto, textoDeFotos, TIPOS_ARCHIVO } from "../utils/galeria"
 
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
 
@@ -47,6 +48,9 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
   const [subiendo, setSubiendo] = useState(false)
   const [progreso, setProgreso] = useState({ hechas: 0, total: 0 })
   const [fotoAbierta, setFotoAbierta] = useState<number | null>(null)
+  const [aBorrar, setABorrar] = useState<FotoVisible | null>(null)
+  const [borrando, setBorrando] = useState(false)
+  const [errorBorrar, setErrorBorrar] = useState("")
   const miniaturas = useRef<(HTMLButtonElement | null)[]>([])
 
   useEffect(() => {
@@ -75,12 +79,37 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
     url: foto.url,
     nombre: foto.nombre,
     descripcion: descripcionDeFoto(foto.subido_por, foto.creado_en, viaje?.miembros ?? []),
+    esVideo: esVideo(foto.tipo_mime),
   }))
+  const numeroDeVideos = fotos.filter((foto) => esVideo(foto.tipo_mime)).length
 
   const cerrarVisor = () => {
     const cerrada = fotoAbierta
     setFotoAbierta(null)
     if (cerrada !== null) setTimeout(() => miniaturas.current[cerrada]?.focus(), 0)
+  }
+
+  const abrirBorrado = () => {
+    if (fotoAbierta === null) return
+    setErrorBorrar("")
+    setABorrar(fotos[fotoAbierta] ?? null)
+  }
+
+  const handleBorrar = async () => {
+    if (!aBorrar) return
+    setBorrando(true)
+    setErrorBorrar("")
+    try {
+      await borrarFoto(viajeId, aBorrar.id, tokenSesion)
+      const restantes = fotos.filter((foto) => foto.id !== aBorrar.id)
+      setFotos(restantes)
+      setFotoAbierta(restantes.length === 0 ? null : Math.min(fotoAbierta ?? 0, restantes.length - 1))
+      setABorrar(null)
+    } catch (e) {
+      setErrorBorrar(`No se ha podido borrar: ${mensajeDeError(e)}`)
+    } finally {
+      setBorrando(false)
+    }
   }
 
   const handleFotoElegida = async (evento: ChangeEvent<HTMLInputElement>) => {
@@ -111,11 +140,12 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
     if (fallos.length === 0) return
     if (archivos.length === 1) {
       const [{ motivo }] = fallos
-      setErrorSubida(motivoParaNoSubirFoto(archivos[0]) ? motivo : `No se ha podido subir la foto: ${motivo}`)
+      setErrorSubida(motivoParaNoSubirFoto(archivos[0]) ? motivo : `No se ha podido subir ${archivoEsVideo(archivos[0]) ? "el vídeo" : "la foto"}: ${motivo}`)
       return
     }
     const detalle = fallos.map((fallo) => `${fallo.nombre} (${fallo.motivo})`).join("; ")
-    setErrorSubida(`No se han podido subir ${fallos.length} de ${archivos.length} fotos: ${detalle}`)
+    const nombreDelConjunto = archivos.some(archivoEsVideo) ? "archivos" : "fotos"
+    setErrorSubida(`No se han podido subir ${fallos.length} de ${archivos.length} ${nombreDelConjunto}: ${detalle}`)
   }
 
   return (
@@ -216,8 +246,8 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
                     <input
                       ref={selectorFoto}
                       type="file"
-                      accept={TIPOS_FOTO.join(",")}
-                      aria-label="Elegir la foto que se va a subir"
+                      accept={TIPOS_ARCHIVO.join(",")}
+                      aria-label="Elegir las fotos o vídeos que se van a subir"
                       multiple
                       onChange={handleFotoElegida}
                       hidden
@@ -253,7 +283,7 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
 
               {!activo && (
                 <p style={{ fontFamily: NUNITO, color: C.muted, fontSize: 13, margin: "0 0 16px" }}>
-                  El viaje está finalizado: se pueden ver las fotos, pero ya no se pueden subir.
+                  El viaje está finalizado: se pueden ver las fotos y los vídeos, pero ya no se pueden subir ni borrar.
                 </p>
               )}
 
@@ -289,14 +319,46 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
                           miniaturas.current[posicion] = el
                         }}
                         onClick={() => setFotoAbierta(posicion)}
-                        aria-label={`Ampliar ${foto.nombre}`}
-                        style={{ width: "100%", height: "100%", padding: 0, border: "none", background: "none", cursor: "zoom-in", display: "block" }}
+                        aria-label={`${esVideo(foto.tipo_mime) ? "Reproducir" : "Ampliar"} ${foto.nombre}`}
+                        style={{ width: "100%", height: "100%", padding: 0, border: "none", background: "none", cursor: "zoom-in", display: "block", position: "relative" }}
                       >
-                        <img
-                          src={foto.url}
-                          alt=""
-                          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                        />
+                        {esVideo(foto.tipo_mime) ? (
+                          <>
+                            <video
+                              src={`${foto.url}#t=0.1`}
+                              preload="metadata"
+                              muted
+                              playsInline
+                              aria-hidden="true"
+                              tabIndex={-1}
+                              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", background: "#1A202C", pointerEvents: "none" }}
+                            />
+                            <span
+                              aria-hidden="true"
+                              style={{
+                                position: "absolute",
+                                top: "50%",
+                                left: "50%",
+                                transform: "translate(-50%, -50%)",
+                                width: 34,
+                                height: 34,
+                                borderRadius: "50%",
+                                background: "rgba(13,31,60,0.62)",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                            >
+                              <Icon name="play" size={16} color="white" strokeWidth={2} />
+                            </span>
+                          </>
+                        ) : (
+                          <img
+                            src={foto.url}
+                            alt=""
+                            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                          />
+                        )}
                       </button>
                     </li>
                   ))}
@@ -305,7 +367,7 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
 
               <div style={{ marginTop: 12, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12 }}>
-                  {textoDeFotos(fotos.length, miembros.length)}
+                  {textoDeFotos(fotos.length - numeroDeVideos, miembros.length, numeroDeVideos)}
                 </span>
                 <AvatarStack members={miembros} size={22} />
               </div>
@@ -315,7 +377,32 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
       </div>
 
       {fotoAbierta !== null && (
-        <VisorFotos fotos={fotosDelVisor} indice={fotoAbierta} onCambiar={setFotoAbierta} onCerrar={cerrarVisor} />
+        <VisorFotos
+          fotos={fotosDelVisor}
+          indice={fotoAbierta}
+          onCambiar={setFotoAbierta}
+          onCerrar={cerrarVisor}
+          onBorrar={activo ? abrirBorrado : undefined}
+        />
+      )}
+
+      {aBorrar && (
+        <DialogoConfirmacion
+          titulo={esVideo(aBorrar.tipo_mime) ? "¿Borrar este vídeo?" : "¿Borrar esta foto?"}
+          icono="trash"
+          color={C.red}
+          colorFondo={C.redBg}
+          textoConfirmar={esVideo(aBorrar.tipo_mime) ? "Borrar vídeo" : "Borrar foto"}
+          textoConfirmando="Borrando..."
+          ocupado={borrando}
+          error={errorBorrar}
+          onConfirmar={handleBorrar}
+          onCancelar={() => setABorrar(null)}
+          zIndex={70}
+        >
+          Se borrará <strong style={{ color: C.navy }}>{aBorrar.nombre}</strong> de la galería para todos los viajeros.
+          Esta acción no se puede deshacer.
+        </DialogoConfirmacion>
       )}
 
       <BarraInferior activa="mas" onCambiar={onCambiarSeccion} />

@@ -22,7 +22,7 @@ describe('motivoParaNoSubirFoto', () => {
   })
 
   it.each(['application/pdf', 'text/plain', 'image/gif', 'image/svg+xml'])('rechaza el tipo %s', (tipo) => {
-    expect(motivoParaNoSubirFoto(archivo('archivo', tipo))).toBe('Solo se pueden subir fotos JPEG, PNG o WebP')
+    expect(motivoParaNoSubirFoto(archivo('archivo', tipo))).toBe('Solo se pueden subir fotos (JPEG, PNG o WebP) o vídeos (MP4, WebM o MOV)')
   })
 
   it.each(['mono.jpg', 'MONO.JPEG', 'mono.png', 'mono.webp'])('sin tipo indicado por el móvil, mira la extensión de %s', (nombre) => {
@@ -30,7 +30,7 @@ describe('motivoParaNoSubirFoto', () => {
   })
 
   it.each(['notas.txt', 'billete.pdf', 'sin_extension'])('sin tipo y con la extensión de %s lo rechaza', (nombre) => {
-    expect(motivoParaNoSubirFoto(archivo(nombre, ''))).toBe('Solo se pueden subir fotos JPEG, PNG o WebP')
+    expect(motivoParaNoSubirFoto(archivo(nombre, ''))).toBe('Solo se pueden subir fotos (JPEG, PNG o WebP) o vídeos (MP4, WebM o MOV)')
   })
 
   it('los tipos admitidos son los mismos que acepta el servidor', () => {

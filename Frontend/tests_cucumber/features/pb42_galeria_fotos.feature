@@ -42,7 +42,7 @@ Característica: Galería de fotos compartida del viaje (PB-42)
     Y que en la galería del viaje "Roma 2027" está la foto "coliseo.jpg"
     Cuando abro la galería del viaje "Roma 2027"
     Y subo la foto "billete.pdf" de tipo "application/pdf"
-    Entonces veo el mensaje de error "Solo se pueden subir fotos JPEG, PNG o WebP"
+    Entonces veo el mensaje de error "Solo se pueden subir fotos (JPEG, PNG o WebP) o vídeos (MP4, WebM o MOV)"
     Y veo en la galería, por este orden, "coliseo.jpg"
     Y el servidor ha recibido 0 fotos
 

@@ -4,7 +4,7 @@ export type Foto = {
   id: string
   viaje_id: string
   nombre: string
-  tipo_mime: "image/jpeg" | "image/png" | "image/webp"
+  tipo_mime: "image/jpeg" | "image/png" | "image/webp" | "video/mp4" | "video/webm" | "video/quicktime"
   tamano_bytes: number
   subido_por: string | null
   creado_en: string
@@ -28,3 +28,6 @@ export const subirFoto = (viajeId: string, archivo: File, tokenSesion: string) =
   formulario.append("archivo", archivo)
   return peticion<Foto>(rutaFotos(viajeId), { metodo: "POST", formulario, token: tokenSesion })
 }
+
+export const borrarFoto = (viajeId: string, fotoId: string, tokenSesion: string) =>
+  peticion<void>(`${rutaFotos(viajeId)}/${encodeURIComponent(fotoId)}`, { metodo: "DELETE", token: tokenSesion })
