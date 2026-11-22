@@ -3,14 +3,18 @@ import AvatarStack from "../components/AvatarStack"
 import BarraInferior, { ALTO_BARRA_INFERIOR, type SeccionViaje } from "../components/BarraInferior"
 import Badge from "../components/Badge"
 import DialogoConfirmacion from "../components/DialogoConfirmacion"
+import FondoPortada from "../components/FondoPortada"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import TarjetaPlaylist from "../components/TarjetaPlaylist"
+import IconoColor from "../components/IconoColor"
 import { ApiError } from "../services/authApi"
 import { abandonarViaje, finalizarViaje, obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { viajeEnCache } from "../services/viajesEnCache"
 import { obtenerBalance } from "../services/gastosApi"
+import { listarTareas } from "../services/tareasApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
+import { ESTILO_CON_PORTADA } from "../styles/portada"
 import { aMiembro, formatearFechasActivo, formatearImporte } from "../utils/formatoViaje"
 import { conEuros } from "../utils/gastos"
 
@@ -61,6 +65,8 @@ type InicioViajeProps = {
   onEditar?: () => void
   onInvitar?: () => void
   onVotaciones?: () => void
+  // Abre la «Lista de tareas» de la cartera
+  onTareas?: () => void
   onResumen?: () => void
   // Un viaje sin destino solo muestra la votación del destino
   onPendienteDestino?: () => void
@@ -80,6 +86,7 @@ export default function InicioViaje({
   onEditar,
   onInvitar,
   onVotaciones,
+  onTareas,
   onResumen,
   onPendienteDestino,
   onFinalizado,
@@ -97,6 +104,7 @@ export default function InicioViaje({
   const [comprobandoSaldo, setComprobandoSaldo] = useState(false)
   const [abandonando, setAbandonando] = useState(false)
   const [errorAbandonar, setErrorAbandonar] = useState("")
+  const [tareasPendientes, setTareasPendientes] = useState(0)
 
   useEffect(() => {
     let vigente = true
@@ -111,6 +119,21 @@ export default function InicioViaje({
       vigente = false
     }
   }, [viajeId, tokenSesion])
+
+  // Tareas pendientes asignadas al usuario; si no se pueden cargar, la tarjeta simplemente no se muestra
+  useEffect(() => {
+    let vigente = true
+    listarTareas(viajeId, tokenSesion)
+      .then(({ tareas }) => {
+        if (vigente) setTareasPendientes(tareas.filter((t) => !t.hecha && t.responsable?.usuario_id === usuarioId).length)
+      })
+      .catch(() => {
+        if (vigente) setTareasPendientes(0)
+      })
+    return () => {
+      vigente = false
+    }
+  }, [viajeId, tokenSesion, usuarioId])
 
   // Un viaje pendiente de destino solo muestra la votación del destino
   const pendiente = viaje?.pendiente_destino === true
@@ -173,7 +196,10 @@ export default function InicioViaje({
     <div style={{ background: C.bg, minHeight: "100vh" }}>
       <div style={{ maxWidth: 480, margin: "0 auto", paddingBottom: ALTO_BARRA_INFERIOR + 24 }}>
         {/* Cabecera: viaje, destino, fechas y presupuesto */}
-        <div style={{ background: GRADIENTS.hero, padding: "20px 20px 24px", borderRadius: RADIUS.header }}>
+        <div
+          style={{ ...ESTILO_CON_PORTADA, background: GRADIENTS.hero, padding: "20px 20px 24px", borderRadius: RADIUS.header }}
+        >
+          <FondoPortada url={viaje?.portada_url} />
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
             <div style={{ minWidth: 0 }}>
               <button
@@ -222,7 +248,7 @@ export default function InicioViaje({
                     {viaje.nombre}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <Icon name="pin" size={24} color={C.accent} strokeWidth={2.2} />
+                    <IconoColor name="pin" size={28} />
                     <Heading size={viaje.destino ? 32 : 24} color="white">
                       {viaje.destino ?? "Destino por decidir"}
                     </Heading>
@@ -419,19 +445,62 @@ export default function InicioViaje({
                 <div style={{ display: "flex", gap: 10, pointerEvents: "auto" }}>
                   {activo && (
                     <button type="button" onClick={onVotaciones} style={botonCuadradoStyle}>
-                      <Icon name="vote" size={26} color={C.blue} strokeWidth={1.8} />
+                      <IconoColor name="vote" size={28} />
                       <span style={{ fontFamily: NUNITO, fontWeight: 800, fontSize: 11, color: C.navy }}>Votaciones</span>
                     </button>
                   )}
-                  {activo && esCreador && (
+                  {/* El creador edita los datos del viaje; cualquier miembro puede cambiar su portada */}
+                  {activo && (
                     <button type="button" onClick={onEditar} style={botonCuadradoStyle}>
-                      <Icon name="settings" size={26} color={C.blue} strokeWidth={1.8} />
-                      <span style={{ fontFamily: NUNITO, fontWeight: 800, fontSize: 11, color: C.navy }}>Editar viaje</span>
+                      <Icon name={esCreador ? "settings" : "camera"} size={26} color={C.blue} strokeWidth={1.8} />
+                      <span style={{ fontFamily: NUNITO, fontWeight: 800, fontSize: 11, color: C.navy }}>
+                        {esCreador ? "Editar viaje" : "Cambiar portada"}
+                      </span>
                     </button>
                   )}
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Solo aparece si el usuario tiene tareas pendientes asignadas */}
+          {viaje && activo && tareasPendientes > 0 && (
+            <button
+              type="button"
+              onClick={onTareas}
+              style={{
+                ...tarjetaStyle,
+                width: "100%",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                textAlign: "left",
+              }}
+            >
+              <div
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 13,
+                  background: C.lightBlue,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <Icon name="task" size={22} color={C.blue} strokeWidth={2} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: NUNITO, fontWeight: 800, color: C.navy, fontSize: 14 }}>Tareas pendientes</div>
+                <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, marginTop: 2 }}>
+                  {tareasPendientes === 1 ? "1 tarea por completar" : `${tareasPendientes} tareas por completar`}
+                </div>
+              </div>
+              <span style={{ fontFamily: NUNITO, fontWeight: 800, color: C.blue, fontSize: 12 }}>Ver todas</span>
+              <Icon name="arrow_right" size={16} color={C.blue} strokeWidth={2} />
+            </button>
           )}
 
           {viaje && !activo && (
@@ -460,7 +529,7 @@ export default function InicioViaje({
                   flexShrink: 0,
                 }}
               >
-                <Icon name="medal" size={21} color={C.accent} strokeWidth={1.8} />
+                <IconoColor name="medal" size={25} />
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: NUNITO, fontWeight: 800, color: C.navy, fontSize: 14 }}>Resumen del viaje</div>

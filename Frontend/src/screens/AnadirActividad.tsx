@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
+import IconoColor from "../components/IconoColor"
 import SectionLabel from "../components/SectionLabel"
 import {
   CATEGORIAS,
@@ -580,7 +581,7 @@ export default function AnadirActividad({
                           gap: 6,
                         }}
                       >
-                        <Icon name={icono} size={15} color={elegida ? C.blue : C.muted} strokeWidth={2} />
+                        <IconoColor name={icono} size={18} />
                         {texto}
                       </button>
                     )

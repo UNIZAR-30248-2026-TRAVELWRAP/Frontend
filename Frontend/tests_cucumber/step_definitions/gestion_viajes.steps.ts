@@ -21,6 +21,18 @@ let fallaEliminar = false;
 let saldos = new Map<string, number>();
 let abandonados: string[] = [];
 let rutaRegistrada = false;
+// Portada (PB-53): lo que ha recibido el servidor y si falla al guardarla
+let portadasSubidas = 0;
+let portadasQuitadas = 0;
+let fallaPortada = false;
+
+// Portada que devuelve el servidor simulado: una imagen incrustada, para no depender de la red
+const PORTADA =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==';
+const PNG_1X1 = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==',
+  'base64',
+);
 
 Before(() => {
   viajes = [];
@@ -33,6 +45,9 @@ Before(() => {
   saldos = new Map();
   abandonados = [];
   rutaRegistrada = false;
+  portadasSubidas = 0;
+  portadasQuitadas = 0;
+  fallaPortada = false;
 });
 
 const nuevoViaje = (nombre: string, datos: Record<string, unknown> = {}): Viaje => ({
@@ -47,6 +62,7 @@ const nuevoViaje = (nombre: string, datos: Record<string, unknown> = {}): Viaje 
   estado: 'activo',
   creado_en: '2026-10-12T10:00:00Z',
   pendiente_destino: false,
+  portada_url: null,
   rol: 'creador',
   archivado: false,
   miembros: [{ usuario_id: USUARIO_ID, nombre: 'Adriana', avatar_url: null, rol: 'creador' }],
@@ -119,6 +135,17 @@ const simularBackend = async () => {
       abandonados.push(viaje.nombre);
       viajes = viajes.filter((v) => v !== viaje);
       return route.fulfill({ status: 204 });
+    }
+    if (accion === 'portada') {
+      if (fallaPortada) {
+        return route.fulfill(
+          responder({ error: { codigo: 'archivo_demasiado_grande', mensaje: 'La portada no puede ocupar más de 5 MB' } }, 400),
+        );
+      }
+      if (metodo === 'PUT') portadasSubidas += 1;
+      else portadasQuitadas += 1;
+      viaje.portada_url = metodo === 'PUT' ? PORTADA : null;
+      return route.fulfill(responder(viaje));
     }
     if (accion === 'finalizar' && metodo === 'POST') {
       finalizados += 1;
@@ -325,4 +352,53 @@ Then('el servidor ha registrado que abandono el viaje {string}', (nombre: string
 
 Then('el servidor no registra ningún abandono', () => {
   expect(abandonados).toEqual([]);
+});
+
+// Foto de portada del viaje (PB-53)
+Given('que el viaje {string} ya tiene una foto de portada', (nombre: string) => {
+  const viaje = viajes.find((v) => v.nombre === nombre);
+  if (!viaje) throw new Error(`No existe el viaje ${nombre}`);
+  viaje.portada_url = PORTADA;
+});
+
+Given('que el servidor rechaza las fotos de portada por grandes', () => {
+  fallaPortada = true;
+});
+
+When('elijo la foto de portada {string} de tipo {string}', async (nombre: string, tipo: string) => {
+  await paginaActual().getByLabel('Elegir foto de portada').setInputFiles({ name: nombre, mimeType: tipo, buffer: PNG_1X1 });
+});
+
+When('quito la foto de portada', async () => {
+  await paginaActual().getByRole('button', { name: 'Quitar foto' }).click();
+});
+
+When('vuelvo a Mis viajes', async () => {
+  await paginaActual().getByRole('button', { name: 'Volver a Mis Viajes' }).click();
+  await expect(paginaActual()).toHaveURL(/\/$/);
+});
+
+Then('veo la foto de portada del viaje', async () => {
+  await expect(paginaActual().getByTestId('fondo-portada')).toBeVisible();
+});
+
+Then('veo la foto de portada en la tarjeta de {string}', async (nombre: string) => {
+  const tarjeta = paginaActual().getByRole('button', { name: new RegExp(nombre) });
+  await expect(tarjeta.getByTestId('fondo-portada')).toBeVisible();
+});
+
+Then('no veo ninguna foto de portada', async () => {
+  await expect(paginaActual().getByTestId('fondo-portada')).toHaveCount(0);
+});
+
+Then('veo que el viaje no tiene portada', async () => {
+  await expect(paginaActual().getByText('Añade una foto de portada')).toBeVisible();
+});
+
+Then('el servidor ha guardado {int} foto de portada', (cantidad: number) => {
+  expect(portadasSubidas).toBe(cantidad);
+});
+
+Then('el servidor ha quitado {int} foto de portada', (cantidad: number) => {
+  expect(portadasQuitadas).toBe(cantidad);
 });

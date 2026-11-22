@@ -3,6 +3,7 @@ import Avatar from "../components/Avatar"
 import BarraInferior, { ALTO_BARRA_INFERIOR, type SeccionViaje } from "../components/BarraInferior"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
+import IconoColor from "../components/IconoColor"
 import SectionLabel from "../components/SectionLabel"
 import { ApiError } from "../services/authApi"
 import {
@@ -590,7 +591,7 @@ export default function ControlGastos({
                               flexShrink: 0,
                             }}
                           >
-                            <Icon name={iconoDeCategoriaGasto(gasto.categoria)} size={20} color={C.blue} strokeWidth={1.6} />
+                            <IconoColor name={iconoDeCategoriaGasto(gasto.categoria)} size={24} />
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div

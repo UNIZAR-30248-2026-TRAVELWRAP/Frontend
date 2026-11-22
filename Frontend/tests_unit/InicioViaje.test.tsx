@@ -28,6 +28,7 @@ const viaje = (datos: Record<string, unknown> = {}) => ({
   estado: 'activo',
   creado_en: '2026-10-12T10:00:00Z',
   pendiente_destino: false,
+  portada_url: null,
   rol: 'creador',
   miembros: [
     { usuario_id: 'u1', nombre: 'Adriana', avatar_url: null, rol: 'creador' },
@@ -41,6 +42,25 @@ const simularBackend = (datos: Record<string, unknown> = {}, finalizar = () => r
   const fetchMock = vi.fn((url: string, opciones?: RequestInit) =>
     url.endsWith('/playlist') ? respuesta(200, { playlist: null }) : opciones?.method === 'POST' && url.endsWith('/finalizar') ? finalizar() : respuesta(200, viaje(datos)),
   )
+const tarea = (id: string, responsable: string | null, hecha = false) => ({
+  id,
+  texto: `Tarea ${id}`,
+  hecha,
+  hecha_en: hecha ? '2026-11-01T10:00:00Z' : null,
+  creado_en: '2026-10-20T10:00:00Z',
+  responsable: responsable ? { usuario_id: responsable, nombre: 'Alguien', avatar_url: null } : null,
+})
+
+const simularBackend = (
+  datos: Record<string, unknown> = {},
+  finalizar = () => respuesta(200, viaje({ ...datos, estado: 'finalizado' })),
+  tareas: ReturnType<typeof tarea>[] = [],
+) => {
+  const fetchMock = vi.fn((url: string, opciones?: RequestInit) => {
+    if (opciones?.method === 'POST' && url.endsWith('/finalizar')) return finalizar()
+    if (url.endsWith('/tareas')) return respuesta(200, { tareas })
+    return respuesta(200, viaje(datos))
+  })
   vi.stubGlobal('fetch', fetchMock)
   return fetchMock
 }
@@ -65,7 +85,7 @@ describe('InicioViaje', () => {
     expect(screen.getByText('12 – 15 may · 4 días')).toBeTruthy()
     expect(screen.getByText('1.240 €')).toBeTruthy()
     expect(screen.getByRole('group', { name: '2 viajeros' })).toBeTruthy()
-    const [url, opciones] = fetchMock.mock.calls[0] as unknown as [string, RequestInit & { headers: Record<string, string> }]
+    const [url, opciones] = fetchMock.mock.calls.find(([u]) => !u.endsWith('/tareas')) as unknown as [string, RequestInit & { headers: Record<string, string> }]
     expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}$`))
     expect(opciones.headers.Authorization).toBe('Bearer token-acceso')
   })
@@ -102,12 +122,44 @@ describe('InicioViaje', () => {
     expect(onEditar).toHaveBeenCalledTimes(1)
   })
 
-  it('a un miembro que no es el creador no le deja editar el viaje', async () => {
+  it('a un miembro que no es el creador no le deja editar los datos, pero sí cambiar la portada', async () => {
+    const user = userEvent.setup()
     simularBackend({ rol: 'miembro' })
-    renderizar()
+    const onEditar = vi.fn()
+    renderizar({ onEditar })
 
     expect(await screen.findByRole('button', { name: 'Invitar' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Editar viaje/ })).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Cambiar portada' }))
+    expect(onEditar).toHaveBeenCalledTimes(1)
+  })
+
+  it('con portada la muestra de fondo de la cabecera, para el creador y para los miembros', async () => {
+    const portada = 'https://storage.test/portadas/roma.jpg?token=abc'
+    simularBackend({ portada_url: portada })
+    const { unmount } = renderizar()
+    expect((await screen.findByTestId('fondo-portada')).getAttribute('src')).toBe(portada)
+    unmount()
+
+    simularBackend({ portada_url: portada, rol: 'miembro' })
+    renderizar()
+    expect((await screen.findByTestId('fondo-portada')).getAttribute('src')).toBe(portada)
+  })
+
+  it('sin portada la cabecera se ve como siempre', async () => {
+    simularBackend()
+    renderizar()
+
+    expect(await screen.findByText('Roma')).toBeTruthy()
+    expect(screen.queryByTestId('fondo-portada')).toBeNull()
+  })
+
+  it('en un viaje finalizado nadie puede cambiar la portada', async () => {
+    simularBackend({ estado: 'finalizado', rol: 'miembro' })
+    renderizar()
+
+    expect(await screen.findByText(/Este viaje está finalizado/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Cambiar portada' })).toBeNull()
   })
 
   it('solo el creador puede finalizar el viaje', async () => {
@@ -324,5 +376,54 @@ describe('InicioViaje · abandonar el viaje', () => {
 
     expect((await screen.findByRole('alert')).textContent).toBe('No se ha podido comprobar tu saldo: Fallo')
     expect(dialogo()).toBeNull()
+  })
+})
+
+describe('InicioViaje · tareas pendientes propias', () => {
+  const tarjeta = () => screen.queryByRole('button', { name: /Tareas pendientes/ })
+
+  it('cuenta solo las pendientes asignadas al usuario, sin las hechas ni las de otros', async () => {
+    simularBackend({}, undefined, [tarea('a', 'u1'), tarea('b', 'u1'), tarea('c', 'u1', true), tarea('d', 'u2'), tarea('e', null)])
+    renderizar()
+
+    expect(await screen.findByText('2 tareas por completar')).toBeTruthy()
+  })
+
+  it('usa el singular con una sola tarea', async () => {
+    simularBackend({}, undefined, [tarea('a', 'u1')])
+    renderizar()
+
+    expect(await screen.findByText('1 tarea por completar')).toBeTruthy()
+  })
+
+  it('no muestra nada si no hay tareas pendientes propias', async () => {
+    simularBackend({}, undefined, [tarea('a', 'u2'), tarea('b', 'u1', true)])
+    renderizar()
+
+    await screen.findByText('Roma')
+    await new Promise((r) => setTimeout(r, 0))
+    expect(tarjeta()).toBeNull()
+  })
+
+  it('no muestra nada si las tareas no se pueden cargar', async () => {
+    const fetchMock = vi.fn((url: string) =>
+      url.endsWith('/tareas') ? respuesta(500, { error: 'error_tareas', mensaje: 'Fallo' }) : respuesta(200, viaje()),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    renderizar()
+
+    await screen.findByText('Roma')
+    await new Promise((r) => setTimeout(r, 0))
+    expect(tarjeta()).toBeNull()
+  })
+
+  it('al tocarla abre la lista de tareas', async () => {
+    const user = userEvent.setup()
+    const onTareas = vi.fn()
+    simularBackend({}, undefined, [tarea('a', 'u1')])
+    renderizar({ onTareas })
+
+    await user.click(await screen.findByRole('button', { name: /Tareas pendientes/ }))
+    expect(onTareas).toHaveBeenCalledTimes(1)
   })
 })

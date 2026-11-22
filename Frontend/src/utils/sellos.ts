@@ -4,7 +4,7 @@ import type { DisenoSello } from "../services/sellosApi"
 export type InfoDisenoSello = {
   id: DisenoSello
   nombre: string
-  // Nombre del icono de Icon.tsx
+  // Nombre del icono de IconoColor.tsx
   icono: string
   color: string
   fondo: string

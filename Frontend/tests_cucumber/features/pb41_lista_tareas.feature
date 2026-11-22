@@ -73,3 +73,19 @@ Característica: Lista de tareas colaborativa (PB-41)
     Y no veo ningún botón de "Editar"
     Y no veo ningún botón de "Eliminar"
     Y la casilla de la tarea "Comprar entradas" está desactivada
+
+  Escenario: El inicio del viaje cuenta las tareas pendientes propias y lleva a la lista
+    Dado que soy miembro, pero no creador, del viaje activo "Roma 2027"
+    Y que en el viaje "Roma 2027" está la tarea "Comprar entradas" para "Adriana"
+    Y que en el viaje "Roma 2027" está la tarea "Reservar la cena" para "Berta"
+    Cuando abro el inicio del viaje "Roma 2027" con sus tareas
+    Entonces veo el texto "1 tarea por completar"
+    Cuando toco la tarjeta de tareas pendientes
+    Entonces veo la lista de tareas del viaje
+
+  Escenario: Sin tareas pendientes propias el inicio del viaje no muestra la tarjeta
+    Dado que soy miembro, pero no creador, del viaje activo "Roma 2027"
+    Y que en el viaje "Roma 2027" está la tarea "Reservar la cena" para "Berta"
+    Y que en el viaje "Roma 2027" está la tarea hecha "Comprar entradas" para "Adriana"
+    Cuando abro el inicio del viaje "Roma 2027" con sus tareas
+    Entonces no veo la tarjeta de tareas pendientes

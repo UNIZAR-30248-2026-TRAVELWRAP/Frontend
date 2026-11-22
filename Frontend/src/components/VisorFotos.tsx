@@ -2,13 +2,17 @@ import { useEffect, useRef, useState, type PointerEvent } from "react"
 import Icon from "./Icon"
 import { NUNITO } from "../styles/tokens"
 
-export type FotoVisor = { id: string; url: string; nombre: string; descripcion?: string }
+export type FotoVisor = { id: string; url: string; nombre: string; descripcion?: string; esVideo?: boolean }
 
 type VisorFotosProps = {
   fotos: FotoVisor[]
   indice: number
   onCambiar: (indice: number) => void
   onCerrar: () => void
+  onBorrar?: () => void
+  onCompartir?: () => void
+  compartiendo?: boolean
+  aviso?: { tipo: "info" | "error"; texto: string } | null
 }
 
 const FRACCION_PARA_CAMBIAR = 0.2
@@ -28,7 +32,16 @@ const estiloBoton = {
   flexShrink: 0,
 } as const
 
-export default function VisorFotos({ fotos, indice, onCambiar, onCerrar }: VisorFotosProps) {
+export default function VisorFotos({
+  fotos,
+  indice,
+  onCambiar,
+  onCerrar,
+  onBorrar,
+  onCompartir,
+  compartiendo = false,
+  aviso = null,
+}: VisorFotosProps) {
   const botonCerrar = useRef<HTMLButtonElement>(null)
   const foto = fotos[indice]
   const hayAnterior = indice > 0
@@ -86,6 +99,7 @@ export default function VisorFotos({ fotos, indice, onCambiar, onCerrar }: Visor
   useEffect(() => {
     const alPulsar = (evento: KeyboardEvent) => {
       if (evento.key === "Escape") onCerrar()
+      else if (evento.target instanceof HTMLVideoElement) return
       else if (evento.key === "ArrowLeft" && hayAnterior) onCambiar(indice - 1)
       else if (evento.key === "ArrowRight" && haySiguiente) onCambiar(indice + 1)
     }
@@ -99,7 +113,7 @@ export default function VisorFotos({ fotos, indice, onCambiar, onCerrar }: Visor
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={`Foto ${indice + 1} de ${fotos.length}: ${foto.nombre}`}
+      aria-label={`${foto.esVideo ? "Vídeo" : "Foto"} ${indice + 1} de ${fotos.length}: ${foto.nombre}`}
       style={{
         position: "fixed",
         inset: 0,
@@ -124,10 +138,50 @@ export default function VisorFotos({ fotos, indice, onCambiar, onCerrar }: Visor
         >
           {indice + 1} de {fotos.length}
         </span>
-        <button ref={botonCerrar} type="button" onClick={onCerrar} aria-label="Cerrar foto" style={estiloBoton}>
-          <Icon name="close" size={20} color="white" strokeWidth={2.2} />
-        </button>
+        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+          {onCompartir && (
+            <button
+              type="button"
+              onClick={onCompartir}
+              disabled={compartiendo}
+              aria-busy={compartiendo}
+              aria-label={foto.esVideo ? "Compartir vídeo" : "Compartir foto"}
+              style={{ ...estiloBoton, opacity: compartiendo ? 0.5 : 1, cursor: compartiendo ? "default" : "pointer" }}
+            >
+              <Icon name="share" size={20} color="white" strokeWidth={2.2} />
+            </button>
+          )}
+          {onBorrar && (
+            <button type="button" onClick={onBorrar} aria-label={foto.esVideo ? "Borrar vídeo" : "Borrar foto"} style={estiloBoton}>
+              <Icon name="trash" size={20} color="white" strokeWidth={2.2} />
+            </button>
+          )}
+          <button ref={botonCerrar} type="button" onClick={onCerrar} aria-label="Cerrar foto" style={estiloBoton}>
+            <Icon name="close" size={20} color="white" strokeWidth={2.2} />
+          </button>
+        </div>
       </div>
+
+      {(compartiendo || aviso) && (
+        <div
+          role={aviso?.tipo === "error" ? "alert" : "status"}
+          style={{
+            margin: "0 16px 8px",
+            padding: "8px 12px",
+            borderRadius: 12,
+            background: aviso?.tipo === "error" ? "rgba(197,48,48,0.9)" : "rgba(255,255,255,0.16)",
+            color: "white",
+            fontFamily: NUNITO,
+            fontSize: 13,
+            fontWeight: 700,
+            lineHeight: 1.4,
+            textAlign: "center",
+            overflowWrap: "anywhere",
+          }}
+        >
+          {aviso ? aviso.texto : "Preparando el archivo..."}
+        </div>
+      )}
 
       <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "center", gap: 8, padding: "0 8px 8px" }}>
         <button
@@ -141,10 +195,10 @@ export default function VisorFotos({ fotos, indice, onCambiar, onCerrar }: Visor
         </button>
         <div
           data-testid="zona-foto"
-          onPointerDown={alPulsar}
-          onPointerMove={alMover}
-          onPointerUp={alSoltar}
-          onPointerCancel={alCancelar}
+          onPointerDown={foto.esVideo ? undefined : alPulsar}
+          onPointerMove={foto.esVideo ? undefined : alMover}
+          onPointerUp={foto.esVideo ? undefined : alSoltar}
+          onPointerCancel={foto.esVideo ? undefined : alCancelar}
           style={{
             flex: 1,
             minWidth: 0,
@@ -157,6 +211,17 @@ export default function VisorFotos({ fotos, indice, onCambiar, onCerrar }: Visor
             overflow: "hidden",
           }}
         >
+          {foto.esVideo ? (
+            <video
+              key={foto.id}
+              src={foto.url}
+              controls
+              playsInline
+              preload="metadata"
+              aria-label={foto.nombre}
+              style={{ maxWidth: "100%", maxHeight: "100%", display: "block", borderRadius: 8, background: "black" }}
+            />
+          ) : (
           <img
             src={foto.url}
             alt={foto.nombre}
@@ -171,6 +236,7 @@ export default function VisorFotos({ fotos, indice, onCambiar, onCerrar }: Visor
               transition: soltado && !sinMovimiento ? `transform ${DURACION_AJUSTE_MS}ms ease-out` : "none",
             }}
           />
+          )}
         </div>
         <button
           type="button"

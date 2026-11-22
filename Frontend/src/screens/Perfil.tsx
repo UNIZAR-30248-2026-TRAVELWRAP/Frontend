@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react"
 import Avatar from "../components/Avatar"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
+import IconoColor from "../components/IconoColor"
+import OpcionNotificaciones from "../components/OpcionNotificaciones"
 import PasaporteViajes from "../components/PasaporteViajes"
 import SectionLabel from "../components/SectionLabel"
 import type { Usuario } from "../services/authApi"
@@ -500,7 +502,7 @@ export default function Perfil({
                 flexShrink: 0,
               }}
             >
-              <Icon name="medal" size={22} color={C.accent} strokeWidth={1.8} />
+              <IconoColor name="medal" size={26} />
             </div>
             <div style={{ flex: 1, textAlign: "left", minWidth: 0 }}>
               <div style={{ fontFamily: NUNITO, fontWeight: 800, color: C.navy, fontSize: 14 }}>
@@ -527,6 +529,8 @@ export default function Perfil({
           )}
 
           <SectionLabel>Cuenta y seguridad</SectionLabel>
+
+          {token && <OpcionNotificaciones token={token} />}
 
           {error && (
             <div

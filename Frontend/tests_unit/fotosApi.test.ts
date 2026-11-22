@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../src/services/authApi'
-import { listarFotos, subirFoto } from '../src/services/fotosApi'
+import { borrarFoto, listarFotos, subirFoto } from '../src/services/fotosApi'
 
 const VIAJE_ID = '123e4567-e89b-12d3-a456-426614174000'
 
@@ -95,5 +95,33 @@ describe('fotosApi · subirFoto', () => {
     const error = await subirFoto(VIAJE_ID, new File(['x'], 'a.jpg'), 't').catch((e) => e)
     expect(error).toBeInstanceOf(ApiError)
     expect(error.codigo).toBe('viaje_no_activo')
+  })
+})
+
+describe('fotosApi · borrarFoto', () => {
+  it('borra el archivo del viaje con la sesión', async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(new Response(null, { status: 204 })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await borrarFoto(VIAJE_ID, 'f1', 'token-acceso')
+
+    const [url, init] = llamada(fetchMock)
+    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/fotos/f1$`))
+    expect(init.method).toBe('DELETE')
+    expect(init.headers.Authorization).toBe('Bearer token-acceso')
+  })
+
+  it('codifica los identificadores en la URL', async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(new Response(null, { status: 204 })))
+    vi.stubGlobal('fetch', fetchMock)
+    await borrarFoto('a/b', 'c d', 't')
+    expect(llamada(fetchMock)[0]).toMatch(/\/viajes\/a%2Fb\/fotos\/c%20d$/)
+  })
+
+  it('lanza el error del servidor con su mensaje', async () => {
+    vi.stubGlobal('fetch', vi.fn(() => respuesta(404, { error: { codigo: 'foto_no_encontrada', mensaje: 'La foto no existe en este viaje' } })))
+    const error = await borrarFoto(VIAJE_ID, 'f1', 't').catch((e) => e)
+    expect(error).toBeInstanceOf(ApiError)
+    expect(error.message).toBe('La foto no existe en este viaje')
   })
 })

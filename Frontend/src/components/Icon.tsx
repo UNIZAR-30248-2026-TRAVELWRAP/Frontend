@@ -162,6 +162,14 @@ export default function Icon({
         <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
       </>
     ),
+    share: (
+      <>
+        <circle cx="18" cy="5" r="3" />
+        <circle cx="6" cy="12" r="3" />
+        <circle cx="18" cy="19" r="3" />
+        <path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" />
+      </>
+    ),
     edit: (
       <>
         <path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
@@ -213,6 +221,7 @@ export default function Icon({
         <path d="M3 21l7-7" />
       </>
     ),
+    play: <polygon points="6 3 20 12 6 21 6 3" />,
     close: (
       <>
         <line x1="18" y1="6" x2="6" y2="18" />

@@ -1,0 +1,48 @@
+@keyframes pi-panel-sube {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes pi-panel-baja {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes pi-aparece {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pi-panel {
+  animation: pi-panel-sube 0.25s ease-out both;
+}
+
+.pi-panel-saliendo {
+  animation: pi-panel-baja 0.2s ease-in both;
+}
+
+.pi-aparece {
+  animation: pi-aparece 0.2s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pi-panel,
+  .pi-panel-saliendo,
+  .pi-aparece {
+    animation: none;
+  }
+}

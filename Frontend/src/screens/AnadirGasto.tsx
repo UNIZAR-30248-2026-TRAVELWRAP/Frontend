@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 
 import Avatar from "../components/Avatar"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
+import IconoColor from "../components/IconoColor"
 import SectionLabel from "../components/SectionLabel"
 import { ApiError } from "../services/authApi"
 import { crearGasto, editarGasto, type CategoriaGasto, type Gasto } from "../services/gastosApi"
@@ -376,7 +377,7 @@ export default function AnadirGasto({
                     transition: "all 0.2s",
                   }}
                 >
-                  <Icon name={icono} size={20} color={activa ? C.blue : C.muted} strokeWidth={1.8} />
+                  <IconoColor name={icono} size={24} />
                   <span style={{ fontFamily: NUNITO, fontSize: 11, fontWeight: 700, color: activa ? C.blue : C.muted }}>
                     {texto}
                   </span>

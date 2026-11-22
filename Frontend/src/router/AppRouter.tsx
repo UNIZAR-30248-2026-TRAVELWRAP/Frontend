@@ -33,6 +33,7 @@ import type { ResultadoEscaneo } from "../services/escaneoApi";
 // Escaneo que la cartera deja en el estado de la ruta al abrir un gasto o una actividad nuevos
 const escaneoDeLaRuta = (estado: unknown): ResultadoEscaneo | undefined =>
   (estado as { escaneo?: ResultadoEscaneo } | null)?.escaneo;
+import AvisoNotificacion from "../components/AvisoNotificacion";
 
 interface AppRouterProps {
   session: Sesion | null;
@@ -110,6 +111,7 @@ function RutaInicioViaje({ sesion }: { sesion: Sesion }) {
       onEditar={() => navigate(`/viajes/${viajeId}/editar`)}
       onInvitar={() => navigate(`/viajes/${viajeId}/invitar`)}
       onVotaciones={() => navigate(`/viajes/${viajeId}/votaciones`)}
+      onTareas={() => navigate(`/viajes/${viajeId}/documentos?pestana=tareas`)}
       onResumen={() => navigate(`/viajes/${viajeId}/resumen`)}
       onCambiarSeccion={(seccion) => navigate(rutaDeSeccion(viajeId, seccion))}
       onPendienteDestino={() => navigate(`/viajes/${viajeId}/destino`, { replace: true })}
@@ -221,6 +223,7 @@ function RutaItinerario({ sesion }: { sesion: Sesion }) {
         navigate(`/viajes/${viajeId}/actividades/${actividad.id}/editar?fecha=${actividad.fecha}`)
       }
       onCambiarSeccion={(seccion) => navigate(rutaDeSeccion(viajeId, seccion))}
+      onBuscarDirecciones={(consulta) => buscarDirecciones(consulta, sesion.token).then((resultado) => resultado.direcciones)}
     />
   );
 }
@@ -467,6 +470,7 @@ export default function AppRouter({
 }: AppRouterProps) {
   return (
     <BrowserRouter>
+      {session && <AvisoNotificacion tokenSesion={session.token} />}
       <Routes>
         {/* Ruta pública: si ya hay sesión, redirige al inicio (o a la invitación que se abrió sin sesión) */}
         <Route

@@ -78,6 +78,49 @@ describe('VisorFotos', () => {
     expect(onCambiar).not.toHaveBeenCalled()
   })
 
+  describe('borrar y vídeos', () => {
+    const VIDEO = { id: 'v', url: 'blob:v', nombre: 'paseo.mp4', esVideo: true }
+
+    it('el botón de borrar solo está si se puede borrar, y lo avisa', async () => {
+      const user = userEvent.setup()
+      const onBorrar = vi.fn()
+      const { rerender } = render(<VisorFotos fotos={FOTOS} indice={0} onCambiar={vi.fn()} onCerrar={vi.fn()} />)
+      expect(screen.queryByRole('button', { name: 'Borrar foto' })).toBeNull()
+
+      rerender(<VisorFotos fotos={FOTOS} indice={0} onCambiar={vi.fn()} onCerrar={vi.fn()} onBorrar={onBorrar} />)
+      await user.click(screen.getByRole('button', { name: 'Borrar foto' }))
+
+      expect(onBorrar).toHaveBeenCalledTimes(1)
+    })
+
+    it('un vídeo se reproduce con controles, con su nombre y el botón de borrar lo dice', () => {
+      render(<VisorFotos fotos={[VIDEO, ...FOTOS]} indice={0} onCambiar={vi.fn()} onCerrar={vi.fn()} onBorrar={vi.fn()} />)
+
+      expect(screen.getByRole('dialog').getAttribute('aria-label')).toBe('Vídeo 1 de 4: paseo.mp4')
+      const reproductor = document.querySelector('video') as HTMLVideoElement
+      expect(reproductor.getAttribute('src')).toBe('blob:v')
+      expect(reproductor.controls).toBe(true)
+      expect(screen.queryByRole('img')).toBeNull()
+      expect(screen.getByRole('button', { name: 'Borrar vídeo' })).toBeTruthy()
+    })
+
+    it('con un vídeo no se desliza ni las flechas del teclado cambian de archivo desde el reproductor', () => {
+      const onCambiar = vi.fn()
+      render(<VisorFotos fotos={[VIDEO, ...FOTOS]} indice={0} onCambiar={onCambiar} onCerrar={vi.fn()} />)
+      const zona = screen.getByTestId('zona-foto')
+      zona.getBoundingClientRect = () => ({ left: 0, top: 0, right: 400, bottom: 600, width: 400, height: 600, x: 0, y: 0, toJSON: () => ({}) })
+
+      fireEvent.pointerDown(zona, { clientX: 300, pointerId: 1, button: 0 })
+      fireEvent.pointerMove(zona, { clientX: 50, pointerId: 1 })
+      fireEvent.pointerUp(zona, { clientX: 50, pointerId: 1 })
+      fireEvent.keyDown(document.querySelector('video') as HTMLVideoElement, { key: 'ArrowRight' })
+      expect(onCambiar).not.toHaveBeenCalled()
+
+      fireEvent.keyDown(window, { key: 'ArrowRight' })
+      expect(onCambiar).toHaveBeenCalledWith(1)
+    })
+  })
+
   describe('deslizar con el dedo', () => {
     const zona = () => {
       const elemento = screen.getByTestId('zona-foto')
@@ -167,7 +210,7 @@ describe('ChatGaleria · ampliar una foto', () => {
   })
 
   const subir = async (user: ReturnType<typeof userEvent.setup>, nombres: string[]) => {
-    const selector = await screen.findByLabelText('Elegir la foto que se va a subir')
+    const selector = await screen.findByLabelText('Elegir las fotos o vídeos que se van a subir')
     for (const nombre of nombres) {
       await user.upload(selector, new File(['x'], nombre, { type: 'image/jpeg' }))
       await screen.findByRole('button', { name: `Ampliar ${nombre}` })

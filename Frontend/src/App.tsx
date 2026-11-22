@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
+import PantallaCarga from "./components/PantallaCarga"
 import AppRouter from "./router/AppRouter"
 import {
   ApiError,
@@ -11,6 +12,7 @@ import {
   type Sesion,
   type Usuario,
 } from "./services/authApi"
+import { soltarPush } from "./services/pushNotificaciones"
 import { borrarSesion, guardarSesion, leerSesion } from "./services/sesionStorage"
 
 export default function App() {
@@ -142,13 +144,14 @@ export default function App() {
 
   const handleCerrarSesion = async () => {
     setCerrandoSesion(true)
+    if (sesion) await soltarPush(sesion.token)
     if (sesion) await cerrarSesion(sesion.token).catch(() => undefined)
     borrarSesion()
     setSesion(null)
     setCerrandoSesion(false)
   }
 
-  if (comprobando) return null
+  if (comprobando) return <PantallaCarga />
 
   return (
     <AppRouter

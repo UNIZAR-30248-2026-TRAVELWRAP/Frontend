@@ -1,18 +1,27 @@
 export const TIPOS_FOTO = ["image/jpeg", "image/png", "image/webp"]
 export const MAX_BYTES_FOTO = 8_000_000
+export const TIPOS_VIDEO = ["video/mp4", "video/webm", "video/quicktime"]
+export const MAX_BYTES_VIDEO = 50_000_000
+export const TIPOS_ARCHIVO = [...TIPOS_FOTO, ...TIPOS_VIDEO]
 
-const EXTENSIONES_FOTO = /\.(jpe?g|png|webp)$/i
+export const esVideo = (tipo: string) => TIPOS_VIDEO.includes(tipo)
+
+const EXTENSIONES_ARCHIVO = /\.(jpe?g|png|webp|mp4|webm|mov)$/i
+const EXTENSIONES_VIDEO = /\.(mp4|webm|mov)$/i
+
+export const archivoEsVideo = (archivo: File) => (archivo.type ? esVideo(archivo.type) : EXTENSIONES_VIDEO.test(archivo.name))
 
 export const motivoParaNoSubirFoto = (archivo: File): string | null => {
-  const tipoValido = archivo.type ? TIPOS_FOTO.includes(archivo.type) : EXTENSIONES_FOTO.test(archivo.name)
-  if (!tipoValido) return "Solo se pueden subir fotos JPEG, PNG o WebP"
+  const tipoValido = archivo.type ? TIPOS_ARCHIVO.includes(archivo.type) : EXTENSIONES_ARCHIVO.test(archivo.name)
+  if (!tipoValido) return "Solo se pueden subir fotos (JPEG, PNG o WebP) o vídeos (MP4, WebM o MOV)"
   if (archivo.size === 0) return "El archivo está vacío"
+  if (archivoEsVideo(archivo)) return archivo.size > MAX_BYTES_VIDEO ? "El vídeo no puede ocupar más de 50 MB" : null
   if (archivo.size > MAX_BYTES_FOTO) return "La foto no puede ocupar más de 8 MB"
   return null
 }
 
-export const textoDeFotos = (fotos: number, miembros: number) =>
-  `${fotos} ${fotos === 1 ? "foto" : "fotos"} · ${miembros} ${miembros === 1 ? "miembro" : "miembros"}`
+export const textoDeFotos = (fotos: number, miembros: number, videos = 0) =>
+  `${fotos} ${fotos === 1 ? "foto" : "fotos"}${videos > 0 ? ` · ${videos} ${videos === 1 ? "vídeo" : "vídeos"}` : ""} · ${miembros} ${miembros === 1 ? "miembro" : "miembros"}`
 
 export const descripcionDeFoto = (subidoPor: string | null, creadoEn: string, miembros: { usuario_id: string; nombre: string | null }[]) => {
   const fecha = new Date(creadoEn)
@@ -23,3 +32,10 @@ export const descripcionDeFoto = (subidoPor: string | null, creadoEn: string, mi
   if (dia) return `Subida el ${dia}`
   return ""
 }
+
+const megabytes = (bytes: number) => `${(bytes / 1_000_000).toLocaleString("es-ES", { maximumFractionDigits: 1 })} MB`
+
+export const textoDeEspacio = (usadoBytes: number, limiteBytes: number) =>
+  usadoBytes >= limiteBytes
+    ? `Almacenamiento lleno: ${megabytes(limiteBytes)} de ${megabytes(limiteBytes)}`
+    : `${megabytes(usadoBytes)} de ${megabytes(limiteBytes)} usados`

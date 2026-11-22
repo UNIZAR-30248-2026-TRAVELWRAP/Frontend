@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, typ
 import Avatar from "../components/Avatar"
 import AvatarStack from "../components/AvatarStack"
 import BotonVolver from "../components/BotonVolver"
-import Icon from "../components/Icon"
+import IconoColor from "../components/IconoColor"
 import Sello from "../components/Sello"
 import SelectorSello from "../components/SelectorSello"
 import { ApiError } from "../services/authApi"
@@ -618,7 +618,7 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
                 onClick={() => setEligiendoSello(true)}
                 style={{ ...estiloBotonControl(true), flex: "none", background: "white", border: "none", color: C.navy }}
               >
-                <Icon name="medal" size={18} color={C.navy} strokeWidth={2} />
+                <IconoColor name="medal" size={22} />
                 Sellar
               </button>
             )}
@@ -631,12 +631,12 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
                 }}
                 style={{ ...estiloBotonControl(true), flex: "none", background: C.accent, border: "none" }}
               >
-                <Icon name="finish" size={18} color="white" strokeWidth={2} />
+                <IconoColor name="finish" size={22} />
                 Archivar viaje
               </button>
             )}
             <button type="button" onClick={onTerminar} style={{ ...estiloBotonControl(true), flex: "none" }}>
-              <Icon name="finish" size={18} color="white" strokeWidth={2} />
+              <IconoColor name="finish" size={22} />
               Ir a Mis viajes
             </button>
           </div>

@@ -4,6 +4,7 @@ import BotonVolver from "../components/BotonVolver"
 import DialogoConfirmacion from "../components/DialogoConfirmacion"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
+import IconoColor from "../components/IconoColor"
 import ListaTareas from "../components/ListaTareas"
 import VistaPreviaDocumento from "../components/VistaPreviaDocumento"
 import EscanerDocumento from "../components/EscanerDocumento"
@@ -455,7 +456,7 @@ export default function CarteraDocumentos({
                               flexShrink: 0,
                             }}
                           >
-                            <Icon name={aspecto.icono} size={22} color={aspecto.color} strokeWidth={1.6} />
+                            <IconoColor name={aspecto.icono} size={26} />
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div
