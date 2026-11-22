@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import MisViajes from '../src/screens/MisViajes'
 
@@ -23,6 +23,7 @@ const viaje = (id: string, datos: Record<string, unknown> = {}) => ({
   estado: 'activo',
   creado_en: '2026-10-12T10:00:00Z',
   pendiente_destino: false,
+  portada_url: null,
   rol: 'creador',
   archivado: false,
   miembros: [
@@ -77,6 +78,25 @@ describe('MisViajes', () => {
     expect(anterior.textContent).toContain('2 viajeros')
 
     expect(screen.getByText('Viajes activos')).toBeTruthy()
+  })
+
+  it('muestra la portada de fondo en la tarjeta del viaje activo y deja las demás como siempre', async () => {
+    const portada = 'https://storage.test/portadas/roma.jpg?token=abc'
+    conViajes([
+      viaje('con', { nombre: 'Roma 2027', portada_url: portada }),
+      viaje('sin', { nombre: 'Lisboa 2027' }),
+      viaje('fin', { nombre: 'Praga 2025', estado: 'finalizado', portada_url: portada }),
+    ])
+
+    render(<MisViajes tokenSesion="token-acceso" mostrarEjemplos={false} />)
+
+    const conPortada = await screen.findByRole('button', { name: /Roma 2027/ })
+    const fondo = within(conPortada).getByTestId('fondo-portada')
+    expect(fondo.getAttribute('src')).toBe(portada)
+    expect(fondo.getAttribute('alt')).toBe('')
+    expect(fondo.getAttribute('aria-hidden')).toBe('true')
+    expect(within(screen.getByRole('button', { name: /Lisboa 2027/ })).queryByTestId('fondo-portada')).toBeNull()
+    expect(screen.getAllByTestId('fondo-portada')).toHaveLength(1)
   })
 
   it('pide los viajes sin filtros: el servidor ya deja fuera los que el usuario ha archivado', async () => {

@@ -16,6 +16,7 @@ const itinerario = (id: string) => ({
     estado: 'activo' as const,
     creado_en: '2026-10-12T10:00:00Z',
     pendiente_destino: false,
+    portada_url: null,
     rol: 'miembro' as const,
     archivado: false,
     miembros: [{ usuario_id: 'u1', nombre: 'Berta', avatar_url: null, rol: 'creador' as const }],

@@ -25,6 +25,7 @@ const viaje = (datos: Record<string, unknown> = {}) => ({
   estado: 'activo',
   creado_en: '2026-10-12T10:00:00Z',
   pendiente_destino: false,
+  portada_url: null,
   rol: 'creador',
   miembros: [
     { usuario_id: 'u1', nombre: 'Adriana', avatar_url: null, rol: 'creador' },
@@ -99,12 +100,44 @@ describe('InicioViaje', () => {
     expect(onEditar).toHaveBeenCalledTimes(1)
   })
 
-  it('a un miembro que no es el creador no le deja editar el viaje', async () => {
+  it('a un miembro que no es el creador no le deja editar los datos, pero sí cambiar la portada', async () => {
+    const user = userEvent.setup()
     simularBackend({ rol: 'miembro' })
-    renderizar()
+    const onEditar = vi.fn()
+    renderizar({ onEditar })
 
     expect(await screen.findByRole('button', { name: 'Invitar' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Editar viaje/ })).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Cambiar portada' }))
+    expect(onEditar).toHaveBeenCalledTimes(1)
+  })
+
+  it('con portada la muestra de fondo de la cabecera, para el creador y para los miembros', async () => {
+    const portada = 'https://storage.test/portadas/roma.jpg?token=abc'
+    simularBackend({ portada_url: portada })
+    const { unmount } = renderizar()
+    expect((await screen.findByTestId('fondo-portada')).getAttribute('src')).toBe(portada)
+    unmount()
+
+    simularBackend({ portada_url: portada, rol: 'miembro' })
+    renderizar()
+    expect((await screen.findByTestId('fondo-portada')).getAttribute('src')).toBe(portada)
+  })
+
+  it('sin portada la cabecera se ve como siempre', async () => {
+    simularBackend()
+    renderizar()
+
+    expect(await screen.findByText('Roma')).toBeTruthy()
+    expect(screen.queryByTestId('fondo-portada')).toBeNull()
+  })
+
+  it('en un viaje finalizado nadie puede cambiar la portada', async () => {
+    simularBackend({ estado: 'finalizado', rol: 'miembro' })
+    renderizar()
+
+    expect(await screen.findByText(/Este viaje está finalizado/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Cambiar portada' })).toBeNull()
   })
 
   it('solo el creador puede finalizar el viaje', async () => {
