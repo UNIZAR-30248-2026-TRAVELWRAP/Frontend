@@ -17,6 +17,7 @@ import {
   type Transferencia,
 } from "../services/gastosApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
+import { viajeEnCache } from "../services/viajesEnCache"
 import { estiloAlerta } from "../styles/formulario"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
@@ -58,7 +59,7 @@ export default function ControlGastos({
   onAbrirGasto,
   onCambiarSeccion,
 }: ControlGastosProps) {
-  const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
+  const [viaje, setViaje] = useState<ViajeDelUsuario | null>(() => viajeEnCache(viajeId))
   const [gastos, setGastos] = useState<Gasto[]>([])
   const [total, setTotal] = useState(0)
   const [saldos, setSaldos] = useState<SaldoMiembro[]>([])
