@@ -5,8 +5,10 @@ import Badge from "../components/Badge"
 import DialogoConfirmacion from "../components/DialogoConfirmacion"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
+import TarjetaPlaylist from "../components/TarjetaPlaylist"
 import { ApiError } from "../services/authApi"
 import { abandonarViaje, finalizarViaje, obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
+import { viajeEnCache } from "../services/viajesEnCache"
 import { obtenerBalance } from "../services/gastosApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro, formatearFechasActivo, formatearImporte } from "../utils/formatoViaje"
@@ -85,7 +87,7 @@ export default function InicioViaje({
   usuarioId,
   onAbandonado,
 }: InicioViajeProps) {
-  const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
+  const [viaje, setViaje] = useState<ViajeDelUsuario | null>(() => viajeEnCache(viajeId))
   const [error, setError] = useState("")
   const [confirmandoFinalizar, setConfirmandoFinalizar] = useState(false)
   const [cerrando, setCerrando] = useState(false)
@@ -334,6 +336,7 @@ export default function InicioViaje({
         </div>
 
         <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+          {viaje && <TarjetaPlaylist viajeId={viajeId} tokenSesion={tokenSesion} activo={viaje.estado === "activo"} />}
           {error && (
             <div
               role="alert"
