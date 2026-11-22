@@ -53,6 +53,8 @@ const viajeValido = (valor: unknown): ViajeDelUsuario => {
     estado: unoDe(ESTADOS)(viaje.estado),
     creado_en: fechaHora(viaje.creado_en),
     pendiente_destino: booleano(viaje.pendiente_destino),
+    // La URL de la portada caduca: la copia guardada no la conserva
+    portada_url: null,
     rol: unoDe(ROLES)(viaje.rol),
     // Las copias guardadas antes de MEJ-12 no lo tienen: se dan por no archivadas
     archivado: viaje.archivado === undefined ? false : booleano(viaje.archivado),

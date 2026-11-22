@@ -24,6 +24,8 @@ export type Viaje = {
   creado_en: string
   // true si el viaje está activo y aún no tiene destino
   pendiente_destino: boolean
+  // URL temporal de la foto de portada (la ven todos los miembros), o null si el viaje no tiene
+  portada_url: string | null
 }
 
 export type ViajeDelUsuario = Viaje & {
@@ -111,3 +113,21 @@ export const desarchivarViaje = (viajeId: string, tokenSesion: string) =>
 // Responde 204 sin cuerpo
 export const eliminarViaje = (viajeId: string, tokenSesion: string) =>
   peticion<null>(`/viajes/${encodeURIComponent(viajeId)}`, { metodo: "DELETE", token: tokenSesion })
+
+// Sube la foto de portada del viaje (JPEG o PNG, de hasta 5 MB) y sustituye la anterior. Solo el creador, con el viaje activo
+export const subirPortada = (viajeId: string, archivo: Blob, tokenSesion: string) => {
+  const formulario = new FormData()
+  formulario.append("archivo", archivo, archivo.type === "image/png" ? "portada.png" : "portada.jpg")
+  return peticion<ViajeDelUsuario>(`/viajes/${encodeURIComponent(viajeId)}/portada`, {
+    metodo: "PUT",
+    formulario,
+    token: tokenSesion,
+  })
+}
+
+// Quita la foto de portada del viaje: portada_url queda en null. Solo el creador, con el viaje activo
+export const quitarPortada = (viajeId: string, tokenSesion: string) =>
+  peticion<ViajeDelUsuario>(`/viajes/${encodeURIComponent(viajeId)}/portada`, {
+    metodo: "DELETE",
+    token: tokenSesion,
+  })

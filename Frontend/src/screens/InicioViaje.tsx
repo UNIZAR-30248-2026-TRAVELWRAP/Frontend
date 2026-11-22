@@ -3,6 +3,7 @@ import AvatarStack from "../components/AvatarStack"
 import BarraInferior, { ALTO_BARRA_INFERIOR, type SeccionViaje } from "../components/BarraInferior"
 import Badge from "../components/Badge"
 import DialogoConfirmacion from "../components/DialogoConfirmacion"
+import FondoPortada from "../components/FondoPortada"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import IconoColor from "../components/IconoColor"
@@ -10,6 +11,7 @@ import { ApiError } from "../services/authApi"
 import { abandonarViaje, finalizarViaje, obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { obtenerBalance } from "../services/gastosApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
+import { ESTILO_CON_PORTADA } from "../styles/portada"
 import { aMiembro, formatearFechasActivo, formatearImporte } from "../utils/formatoViaje"
 import { conEuros } from "../utils/gastos"
 
@@ -172,7 +174,10 @@ export default function InicioViaje({
     <div style={{ background: C.bg, minHeight: "100vh" }}>
       <div style={{ maxWidth: 480, margin: "0 auto", paddingBottom: ALTO_BARRA_INFERIOR + 24 }}>
         {/* Cabecera: viaje, destino, fechas y presupuesto */}
-        <div style={{ background: GRADIENTS.hero, padding: "20px 20px 24px", borderRadius: RADIUS.header }}>
+        <div
+          style={{ ...ESTILO_CON_PORTADA, background: GRADIENTS.hero, padding: "20px 20px 24px", borderRadius: RADIUS.header }}
+        >
+          <FondoPortada url={viaje?.portada_url} />
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
             <div style={{ minWidth: 0 }}>
               <button
@@ -421,10 +426,13 @@ export default function InicioViaje({
                       <span style={{ fontFamily: NUNITO, fontWeight: 800, fontSize: 11, color: C.navy }}>Votaciones</span>
                     </button>
                   )}
-                  {activo && esCreador && (
+                  {/* El creador edita los datos del viaje; cualquier miembro puede cambiar su portada */}
+                  {activo && (
                     <button type="button" onClick={onEditar} style={botonCuadradoStyle}>
-                      <Icon name="settings" size={26} color={C.blue} strokeWidth={1.8} />
-                      <span style={{ fontFamily: NUNITO, fontWeight: 800, fontSize: 11, color: C.navy }}>Editar viaje</span>
+                      <Icon name={esCreador ? "settings" : "camera"} size={26} color={C.blue} strokeWidth={1.8} />
+                      <span style={{ fontFamily: NUNITO, fontWeight: 800, fontSize: 11, color: C.navy }}>
+                        {esCreador ? "Editar viaje" : "Cambiar portada"}
+                      </span>
                     </button>
                   )}
                 </div>

@@ -5,10 +5,12 @@ import Badge from "../components/Badge"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import IconoColor from "../components/IconoColor"
+import FondoPortada from "../components/FondoPortada"
 import SectionLabel from "../components/SectionLabel"
 import { ApiError } from "../services/authApi"
 import { listarViajes, type ViajeDelUsuario } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
+import { ESTILO_CON_PORTADA } from "../styles/portada"
 import { aMiembro, formatearFechasActivo, formatearFechasAnterior, formatearImporte } from "../utils/formatoViaje"
 
 // ─── Tipos de las tarjetas ────────────────────────────────────────────────────
@@ -19,6 +21,7 @@ type TarjetaActiva = {
   fechas: string
   presupuesto: string
   miembros: Miembro[]
+  portadaUrl?: string | null
 }
 
 type TarjetaPendiente = {
@@ -69,6 +72,7 @@ const aTarjetaActiva = (viaje: ViajeDelUsuario): TarjetaActiva | TarjetaPendient
         fechas: formatearFechasActivo(viaje.fecha_inicio, viaje.fecha_fin),
         presupuesto: formatearImporte(viaje.presupuesto, viaje.moneda),
         miembros: viaje.miembros.map((m, i) => aMiembro(m.nombre, i, m.avatar_url)),
+        portadaUrl: viaje.portada_url,
       }
 
 const aTarjetaAnterior = (viaje: ViajeDelUsuario, indice: number): TarjetaAnterior => ({
@@ -275,6 +279,7 @@ export default function MisViajes({
                 onClick={() => onSelectTrip?.(viaje.id)}
                 style={{
                   ...tarjetaBotonStyle,
+                  ...ESTILO_CON_PORTADA,
                   display: "block",
                   background: `linear-gradient(135deg, ${C.navy} 0%, ${C.blue} 100%)`,
                   borderRadius: RADIUS.xl,
@@ -283,6 +288,7 @@ export default function MisViajes({
                   boxShadow: "0 10px 30px rgba(26,54,93,0.35)",
                 }}
               >
+                <FondoPortada url={viaje.portadaUrl} />
                 <div
                   style={{
                     display: "flex",
