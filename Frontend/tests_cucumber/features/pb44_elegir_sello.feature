@@ -11,7 +11,7 @@ Característica: Elegir el sello al terminar el viaje (PB-44)
   Escenario: Elige uno de los cuatro sellos con el destino del viaje
     Dado que tengo el viaje finalizado "Roma 2027"
     Y que el servidor guarda mis sellos
-    Cuando llego al balance final del resumen del viaje "Roma 2027"
+    Cuando llego a la última diapositiva del resumen del viaje "Roma 2027"
     Y pulso el botón "Sellar"
     Entonces veo el diálogo de confirmación "Elige tu sello de Roma"
     Y veo el sello de "Roma 2027"
@@ -24,7 +24,7 @@ Característica: Elegir el sello al terminar el viaje (PB-44)
     Dado que tengo el viaje finalizado "Roma 2027"
     Y que el servidor guarda mis sellos
     Y que ya he elegido el sello "mapa" en el viaje "Roma 2027"
-    Cuando llego al balance final del resumen del viaje "Roma 2027"
+    Cuando llego a la última diapositiva del resumen del viaje "Roma 2027"
     Y pulso el botón "Sellar"
     Entonces el diseño de sello "Mapa" aparece marcado
     Cuando elijo el diseño de sello "Avión"
@@ -35,7 +35,7 @@ Característica: Elegir el sello al terminar el viaje (PB-44)
     Dado que tengo el viaje finalizado "Roma 2027"
     Y que el servidor guarda mis sellos
     Y que ya he elegido el sello "mapa" en el viaje "Roma 2027"
-    Cuando llego al balance final del resumen del viaje "Roma 2027"
+    Cuando llego a la última diapositiva del resumen del viaje "Roma 2027"
     Y pulso el botón "Sellar"
     Y confirmo en el diálogo "Deseleccionar todos"
     Y confirmo en el diálogo "Elegir"
@@ -45,7 +45,7 @@ Característica: Elegir el sello al terminar el viaje (PB-44)
     Dado que tengo el viaje finalizado "Roma 2027"
     Y que el servidor guarda mis sellos
     Y que ya he elegido el sello "mapa" en el viaje "Roma 2027"
-    Cuando llego al balance final del resumen del viaje "Roma 2027"
+    Cuando llego a la última diapositiva del resumen del viaje "Roma 2027"
     Y pulso el botón "Sellar"
     Y elijo el diseño de sello "Chincheta"
     Y confirmo en el diálogo "Cancelar"
@@ -55,7 +55,7 @@ Característica: Elegir el sello al terminar el viaje (PB-44)
   Escenario: Un miembro que no es el creador también puede sellar un viaje archivado
     Dado que soy miembro, pero no creador, del viaje archivado "Roma 2027"
     Y que el servidor guarda mis sellos
-    Cuando llego al balance final del resumen del viaje "Roma 2027"
+    Cuando llego a la última diapositiva del resumen del viaje "Roma 2027"
     Y pulso el botón "Sellar"
     Y elijo el diseño de sello "Chincheta"
     Y confirmo en el diálogo "Elegir"

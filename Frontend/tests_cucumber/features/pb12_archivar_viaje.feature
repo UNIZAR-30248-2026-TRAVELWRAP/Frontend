@@ -28,7 +28,7 @@ Característica: Finalizar y archivar un viaje (PB-12 y MEJ-12)
 
   Escenario: Archivar un viaje finalizado desde el final del resumen
     Dado que tengo el viaje finalizado "Roma 2027"
-    Cuando llego al balance final del resumen del viaje "Roma 2027"
+    Cuando llego a la última diapositiva del resumen del viaje "Roma 2027"
     Y pulso el botón "Archivar viaje"
     Entonces veo el diálogo de confirmación "¿Archivar este viaje?"
     Cuando confirmo en el diálogo "Archivar viaje"
@@ -38,7 +38,7 @@ Característica: Finalizar y archivar un viaje (PB-12 y MEJ-12)
 
   Escenario: Un miembro que no es el creador también archiva el viaje para sí mismo
     Dado que soy miembro, pero no creador, del viaje finalizado "Roma 2027"
-    Cuando llego al balance final del resumen del viaje "Roma 2027"
+    Cuando llego a la última diapositiva del resumen del viaje "Roma 2027"
     Y pulso el botón "Archivar viaje"
     Y confirmo en el diálogo "Archivar viaje"
     Entonces estoy en la pantalla de viajes archivados

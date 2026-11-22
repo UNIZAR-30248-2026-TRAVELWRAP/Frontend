@@ -31,7 +31,7 @@ const viaje = {
   ],
 };
 
-const RESUMEN = { dias: 4, gasto_total: 0, gasto_mayor: null, actividad_mas_votada: null, alma_del_grupo: null };
+const RESUMEN = { dias: 4, actividad_mas_votada: null, alma_del_grupo: null };
 
 type Sello = { id: string; viaje_id: string | null; diseno: string; destino: string; anio: number; elegido_en: string };
 
@@ -78,7 +78,6 @@ const simularBackend = async (page: Page, sellos: Sello[] = []) => {
     }
     if (ruta === `/viajes/${VIAJE_ID}/resumen`) return json(route, 200, RESUMEN);
     if (ruta === `/viajes/${VIAJE_ID}/fotos`) return json(route, 200, { fotos: [] });
-    if (ruta === `/viajes/${VIAJE_ID}/gastos/balance`) return json(route, 200, { saldos: [] });
     return json(route, 200, viaje);
   });
 
@@ -100,10 +99,10 @@ const simularBackend = async (page: Page, sellos: Sello[] = []) => {
   return sellos;
 };
 
-const llegarAlBalance = async (page: Page) => {
+const llegarALaUltima = async (page: Page) => {
   await page.goto(`/viajes/${VIAJE_ID}/resumen`);
   await expect(page.getByText('TravelWrap · Resumen')).toBeVisible();
-  for (let i = 0; i < 6; i++) await page.keyboard.press('ArrowRight');
+  for (let i = 0; i < 2; i++) await page.keyboard.press('ArrowRight');
   await expect(page.getByRole('button', { name: 'Sellar' })).toBeVisible();
 };
 
@@ -114,7 +113,7 @@ test.describe('Sellos de viaje', () => {
     await entrarConSesion(page);
     const sellos = await simularBackend(page);
 
-    await llegarAlBalance(page);
+    await llegarALaUltima(page);
     await page.getByRole('button', { name: 'Sellar' }).click();
     const selector = page.getByRole('dialog');
     await expect(selector.getByText('Ningún sello seleccionado')).toBeVisible();

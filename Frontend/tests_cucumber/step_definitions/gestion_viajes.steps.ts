@@ -75,14 +75,13 @@ const responder = (cuerpo: unknown, status = 200) => ({
   body: cuerpo === undefined ? '' : JSON.stringify(cuerpo),
 });
 
-// Lo que pide el resumen de fin de viaje (sin gastos, sin fotos y sin pagos pendientes)
+// Lo que pide el resumen de fin de viaje (sin votos, sin alma del grupo y sin fotos)
 const DATOS_DEL_RESUMEN: Record<string, unknown> = {
-  resumen: { dias: 4, gasto_total: 0, gasto_mayor: null, actividad_mas_votada: null, alma_del_grupo: null },
+  resumen: { dias: 4, actividad_mas_votada: null, alma_del_grupo: null },
   fotos: { fotos: [] },
-  balance: { saldos: [] },
 };
 
-// Pasa de diapositiva con la flecha y espera a que el resumen muestre la siguiente («2 de 7», «3 de 7»...).
+// Pasa de diapositiva con la flecha y espera a que el resumen muestre la siguiente («2 de 2», «3 de 5»...).
 // Así no se pulsa mientras los datos cargan ni se desfasa con el avance automático de cada diapositiva
 const avanzarDiapositivas = async (veces: number): Promise<void> => {
   const resumen = paginaActual().getByRole('region', { name: /Resumen del viaje, \d+ de \d+/ });
@@ -266,17 +265,17 @@ When('abro el inicio del viaje {string}', async (nombre: string) => {
   await irA(`/viajes/${idDelViaje(nombre)}`);
 });
 
-When('llego al balance final del resumen del viaje {string}', async (nombre: string) => {
+When('llego a la última diapositiva del resumen del viaje {string}', async (nombre: string) => {
   await irA(`/viajes/${idDelViaje(nombre)}/resumen`);
   await expect(paginaActual().getByText('TravelWrap · Resumen')).toBeVisible();
-  const balance = paginaActual().getByText('Balance final', { exact: true });
+  const ultima = paginaActual().getByText('días de aventura');
   // Las pulsaciones pueden perderse si el listener aún no está registrado (CI lenta):
   // se avanza de una en una hasta que la diapositiva final sea visible.
-  for (let i = 0; i < 12 && !(await balance.isVisible()); i++) {
+  for (let i = 0; i < 12 && !(await ultima.isVisible()); i++) {
     await paginaActual().keyboard.press('ArrowRight');
     await paginaActual().waitForTimeout(150);
   }
-  await expect(balance).toBeVisible();
+  await expect(ultima).toBeVisible();
 });
 
 When('cambio el nombre a {string} y el presupuesto a {string}', async (nombre: string, presupuesto: string) => {

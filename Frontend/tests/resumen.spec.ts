@@ -32,16 +32,9 @@ const viaje = {
 
 const RESUMEN = {
   dias: 4,
-  gasto_total: 178,
-  gasto_mayor: { concepto: 'Cena Trastevere', importe: 120.5 },
   actividad_mas_votada: { titulo: 'Coliseo', votos: 3 },
   alma_del_grupo: { usuario_id: BERTA_ID, nombre: 'Berta', pagos: 2, planes_propuestos: 4, fotos_subidas: 1 },
 };
-
-const SALDOS = [
-  { usuario_id: BERTA_ID, nombre: 'Berta', pagado: 178, parte: 89, saldo: 89 },
-  { usuario_id: USUARIO_ID, nombre: 'Adriana', pagado: 0, parte: 89, saldo: -89 },
-];
 
 const PNG_1X1 = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
@@ -68,7 +61,10 @@ const entrarConSesion = async (page: Page) => {
 const json = (route: Route, status: number, cuerpo: unknown) =>
   route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(cuerpo) });
 
-const simularBackend = async (page: Page, { fallaResumen = false }: { fallaResumen?: boolean } = {}) => {
+const simularBackend = async (
+  page: Page,
+  { fallaResumen = false, resumen = RESUMEN, fotos = true }: { fallaResumen?: boolean; resumen?: unknown; fotos?: boolean } = {},
+) => {
   const foto = {
     id: 'f1',
     viaje_id: VIAJE_ID,
@@ -84,10 +80,9 @@ const simularBackend = async (page: Page, { fallaResumen = false }: { fallaResum
     if (ruta === `/viajes/${VIAJE_ID}/resumen`) {
       return fallaResumen
         ? json(route, 502, { error: { codigo: 'error_resumen', mensaje: 'No se ha podido calcular el resumen del viaje' } })
-        : json(route, 200, RESUMEN);
+        : json(route, 200, resumen);
     }
-    if (ruta === `/viajes/${VIAJE_ID}/fotos`) return json(route, 200, { fotos: [foto] });
-    if (ruta === `/viajes/${VIAJE_ID}/gastos/balance`) return json(route, 200, { saldos: SALDOS });
+    if (ruta === `/viajes/${VIAJE_ID}/fotos`) return json(route, 200, { fotos: fotos ? [foto] : [] });
     return json(route, 200, viaje);
   });
 };
@@ -98,20 +93,17 @@ const sinDesbordamiento = (page: Page) =>
 test.describe('Resumen de fin de viaje (Wrap)', () => {
   test.use({ reducedMotion: 'reduce' });
 
-  test('recorre las siete diapositivas y termina en Mis viajes', async ({ page }) => {
+  test('recorre las cinco diapositivas y termina en Mis viajes', async ({ page }) => {
     await entrarConSesion(page);
     await simularBackend(page);
 
     await page.goto(`/viajes/${VIAJE_ID}/resumen`);
 
     await expect(page.getByRole('heading', { name: 'Roma' })).toBeVisible();
-    await expect(page.getByRole('region')).toHaveAccessibleName(/1 de 7: Portada/);
+    await expect(page.getByRole('region')).toHaveAccessibleName(/1 de 5: Portada/);
 
     await page.keyboard.press('ArrowRight');
     await expect(page.getByText('días de aventura')).toBeVisible();
-
-    await page.keyboard.press('ArrowRight');
-    await expect(page.getByText(/Cena Trastevere/)).toBeVisible();
 
     await page.keyboard.press('ArrowRight');
     await expect(page.getByText('3 votos')).toBeVisible();
@@ -122,11 +114,87 @@ test.describe('Resumen de fin de viaje (Wrap)', () => {
     await page.keyboard.press('ArrowRight');
     await expect(page.getByAltText('coliseo.jpg')).toBeVisible();
 
-    await page.keyboard.press('ArrowRight');
-    await expect(page.getByText('Adriana paga a Berta')).toBeVisible();
-
     await page.getByRole('button', { name: 'Ir a Mis viajes' }).click();
     await expect(page).toHaveURL(/\/$/);
+  });
+
+  test('un viaje sin datos solo enseña la portada y el tiempo juntos', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularBackend(page, { resumen: { dias: 4, actividad_mas_votada: null, alma_del_grupo: null }, fotos: false });
+
+    await page.goto(`/viajes/${VIAJE_ID}/resumen`);
+
+    await expect(page.getByRole('region')).toHaveAccessibleName(/1 de 2: Portada/);
+    await expect(page.getByText('TravelWrap · Resumen')).toBeVisible();
+    await expect(async () => {
+      await page.keyboard.press('ArrowRight');
+      await expect(page.getByRole('region')).toHaveAccessibleName(/2 de 2: Tiempo juntos/, { timeout: 1000 });
+    }).toPass();
+    await page.keyboard.press('ArrowRight');
+    await expect(page.getByRole('region')).toHaveAccessibleName(/2 de 2/);
+    await expect(page.getByText('Nadie votó actividades en este viaje')).toHaveCount(0);
+    await expect(page.getByText('0 fotos')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Ir a Mis viajes' })).toBeVisible();
+  });
+
+  test('ya no hay diapositivas de gastos ni de balance final', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularBackend(page);
+    let pidioElBalance = false;
+    page.on('request', (peticion) => {
+      if (peticion.url().endsWith('/balance')) pidioElBalance = true;
+    });
+
+    await page.goto(`/viajes/${VIAJE_ID}/resumen`);
+    await expect(page.getByRole('heading', { name: 'Roma' })).toBeVisible();
+    for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowRight');
+
+    await expect(page.getByRole('region')).toHaveAccessibleName(/5 de 5: Fotos/);
+    await expect(page.getByText('Balance final')).toHaveCount(0);
+    await expect(page.getByText('Cena Trastevere')).toHaveCount(0);
+    expect(pidioElBalance).toBe(false);
+  });
+
+  test('«Descargar imagen» crea un PNG vertical y lo descarga con el nombre del viaje', async ({ page }) => {
+    await entrarConSesion(page);
+    await page.route('https://storage.test/**', (route) =>
+      route.fulfill({ status: 200, contentType: 'image/png', body: PNG_1X1, headers: { 'access-control-allow-origin': '*' } }),
+    );
+    await simularBackend(page);
+
+    await page.goto(`/viajes/${VIAJE_ID}/resumen`);
+    await expect(page.getByRole('heading', { name: 'Roma' })).toBeVisible();
+    for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowRight');
+    const descarga = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Descargar imagen' }).click();
+
+    const archivo = await descarga;
+    expect(archivo.suggestedFilename()).toBe('TravelWrap-Roma-2027.png');
+    const ruta = await archivo.path();
+    const fs = await import('node:fs');
+    const bytes = fs.readFileSync(ruta);
+    expect(bytes.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
+    expect(bytes.readUInt32BE(16)).toBe(1080);
+    expect(bytes.readUInt32BE(20)).toBeGreaterThanOrEqual(1920);
+    await expect(page.getByRole('button', { name: 'Descargar imagen' })).toBeEnabled();
+    await expect(page.getByRole('alert')).toHaveCount(0);
+  });
+
+  test('si una foto no se puede cargar avisa y no descarga nada', async ({ page }) => {
+    await entrarConSesion(page);
+    await page.route('https://storage.test/**', (route) => route.fulfill({ status: 403, body: 'denegado' }));
+    await simularBackend(page);
+    let descargas = 0;
+    page.on('download', () => descargas++);
+
+    await page.goto(`/viajes/${VIAJE_ID}/resumen`);
+    await expect(page.getByRole('heading', { name: 'Roma' })).toBeVisible();
+    for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowRight');
+    await page.getByRole('button', { name: 'Descargar imagen' }).click();
+
+    await expect(page.getByRole('alert')).toContainText('No se ha podido cargar alguna de las fotos');
+    await expect(page.getByRole('button', { name: 'Descargar imagen' })).toBeEnabled();
+    expect(descargas).toBe(0);
   });
 
   test('en 320 px ninguna diapositiva desborda y los botones siguen visibles', async ({ page }) => {
@@ -137,7 +205,7 @@ test.describe('Resumen de fin de viaje (Wrap)', () => {
     await page.goto(`/viajes/${VIAJE_ID}/resumen`);
     await expect(page.getByRole('heading', { name: 'Roma' })).toBeVisible();
 
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 5; i++) {
       expect(await sinDesbordamiento(page)).toBe(true);
       await page.keyboard.press('ArrowRight');
     }
@@ -171,13 +239,13 @@ test.describe('Resumen de fin de viaje (Wrap)', () => {
 
       const derecha = await punto(page, 0.85);
       await page.mouse.click(derecha.x, derecha.y);
-      await expect(page.getByRole('region')).toHaveAccessibleName(/2 de 7/);
+      await expect(page.getByRole('region')).toHaveAccessibleName(/2 de 5/);
 
       const izquierda = await punto(page, 0.1);
       await page.mouse.click(izquierda.x, izquierda.y);
-      await expect(page.getByRole('region')).toHaveAccessibleName(/1 de 7/);
+      await expect(page.getByRole('region')).toHaveAccessibleName(/1 de 5/);
 
-      await expect(page.getByRole('region')).toHaveAccessibleName(/2 de 7/, { timeout: 12000 });
+      await expect(page.getByRole('region')).toHaveAccessibleName(/2 de 5/, { timeout: 12000 });
     });
 
     test('al mantener pulsado y arrastrar se ve la historia vecina; al soltar se cambia, y si se devuelve a su sitio no', async ({ page }) => {
@@ -196,13 +264,13 @@ test.describe('Resumen de fin de viaje (Wrap)', () => {
       await expect(page.getByText('días de aventura')).toBeAttached();
       await page.mouse.move(inicio.x, inicio.y, { steps: 8 });
       await page.mouse.up();
-      await expect(page.getByRole('region')).toHaveAccessibleName(/1 de 7/);
+      await expect(page.getByRole('region')).toHaveAccessibleName(/1 de 5/);
 
       await page.mouse.move(inicio.x, inicio.y);
       await page.mouse.down();
       await page.mouse.move(fin.x, fin.y, { steps: 8 });
       await page.mouse.up();
-      await expect(page.getByRole('region')).toHaveAccessibleName(/2 de 7/);
+      await expect(page.getByRole('region')).toHaveAccessibleName(/2 de 5/);
       await expect(page.getByText('días de aventura')).toBeVisible();
     });
   });

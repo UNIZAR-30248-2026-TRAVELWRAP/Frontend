@@ -190,16 +190,15 @@ test.describe('Inicio del viaje y su gestión', () => {
       viaje('roma', { nombre: 'Roma 2027', estado: 'finalizado', rol: 'miembro' }),
     ]);
     await page.route('**/api/viajes/roma/resumen', (route) =>
-      json(route, 200, { dias: 4, gasto_total: 0, gasto_mayor: null, actividad_mas_votada: null, alma_del_grupo: null }),
+      json(route, 200, { dias: 4, actividad_mas_votada: null, alma_del_grupo: null }),
     );
     await page.route('**/api/viajes/roma/fotos', (route) => json(route, 200, { fotos: [] }));
-    await page.route('**/api/viajes/roma/balance', (route) => json(route, 200, { saldos: [] }));
 
     await page.goto('/viajes/roma/resumen');
     // Las teclas solo cuentan cuando el resumen ya ha cargado
     await expect(page.getByText('TravelWrap · Resumen')).toBeVisible();
-    for (let i = 0; i < 6; i++) await page.keyboard.press('ArrowRight');
-    await expect(page.getByText('Balance final', { exact: true })).toBeVisible();
+    for (let i = 0; i < 2; i++) await page.keyboard.press('ArrowRight');
+    await expect(page.getByRole('region')).toHaveAccessibleName(/2 de 2: Tiempo juntos/);
     await page.getByRole('button', { name: 'Archivar viaje' }).click();
     const dialogo = page.getByRole('dialog');
     await expect(dialogo).toContainText('¿Archivar este viaje?');
