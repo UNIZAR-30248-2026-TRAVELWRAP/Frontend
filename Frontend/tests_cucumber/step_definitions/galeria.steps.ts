@@ -1,5 +1,5 @@
 import { Before, Given, Then, When } from '@cucumber/cucumber';
-import { expect } from '@playwright/test';
+import { expect, type Download } from '@playwright/test';
 import { idDelViaje } from './gestion_viajes.steps';
 import { paginaActual } from './login.steps';
 
@@ -26,20 +26,26 @@ let fotos: FotoGuardada[] = [];
 let subidas: { nombre: string; cabecera: string | undefined }[] = [];
 let rechazaPorContenido = false;
 let borradas: string[] = [];
+let archivosCaidos: string[] = [];
+let descargaPendiente: Promise<Download | null> | null = null;
 
 Before(() => {
   fotos = [];
   subidas = [];
   rechazaPorContenido = false;
   borradas = [];
+  archivosCaidos = [];
+  descargaPendiente = null;
 });
 
 const json = (status: number, cuerpo: unknown) => ({ status, contentType: 'application/json', body: JSON.stringify(cuerpo) });
 
 const simularFotos = async () => {
-  await paginaActual().route('https://storage.test/**', (route) =>
-    route.fulfill({ status: 200, contentType: 'image/png', body: PNG_1X1 }),
-  );
+  await paginaActual().route('https://storage.test/**', (route) => {
+    const nombre = new URL(route.request().url()).pathname.split('/').pop() ?? '';
+    if (archivosCaidos.includes(nombre)) return route.abort();
+    return route.fulfill({ status: 200, contentType: 'image/png', body: PNG_1X1, headers: { 'access-control-allow-origin': '*' } });
+  });
   await paginaActual().route('**/api/viajes/*/fotos', (route) => {
     const peticion = route.request();
     const viajeId = new URL(peticion.url()).pathname.split('/').at(-2) ?? '';
@@ -206,3 +212,13 @@ Then('el servidor ha recibido 1 foto {string}', (nombre: string) => {
   expect(subidas.map((s) => s.nombre)).toEqual([nombre]);
   expect(subidas[0].cabecera).toMatch(/^Bearer .+/);
 });
+
+export const prepararCaidaDeArchivo = (nombre: string) => {
+  archivosCaidos.push(nombre);
+};
+
+export const prepararDescarga = (descarga: Promise<Download | null>) => {
+  descargaPendiente = descarga;
+};
+
+export const descargaEnCurso = async () => (descargaPendiente ? await descargaPendiente : null);

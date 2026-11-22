@@ -71,7 +71,9 @@ const entrarConSesion = async (page: Page) => {
       body: JSON.stringify({ token: sesion.token, refresh_token: sesion.refresh_token }),
     }),
   );
-  await page.route('https://storage.test/**', (route) => route.fulfill({ status: 200, contentType: 'image/png', body: PNG_1X1 }));
+  await page.route('https://storage.test/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'image/png', body: PNG_1X1, headers: { 'access-control-allow-origin': '*' } }),
+  );
 };
 
 const json = (route: Route, status: number, cuerpo: unknown) =>
@@ -378,6 +380,140 @@ test.describe('Galería de fotos · vídeos, borrar y espacio', () => {
 
     await expect(visorAbierto(page)).toHaveAccessibleName('Foto 2 de 3: trevi.jpg');
     await expect(visorAbierto(page).getByRole('button', { name: 'Borrar foto' })).toHaveCount(0);
+  });
+});
+
+const MENSAJE_DESCARGA = 'Tu dispositivo no permite compartir archivos desde el navegador, así que se ha descargado para que lo envíes tú.';
+
+const conMenuDeCompartir = (page: Page, comportamiento: 'acepta' | 'cancela' = 'acepta') =>
+  page.addInitScript((modo) => {
+    const registro: { nombre: string; tipo: string; tamano: number }[] = [];
+    (window as unknown as { compartidos: typeof registro }).compartidos = registro;
+    Object.defineProperty(navigator, 'canShare', { value: () => true, configurable: true });
+    Object.defineProperty(navigator, 'share', {
+      value: async (datos: { files: File[] }) => {
+        if (modo === 'cancela') throw new DOMException('cancelado', 'AbortError');
+        registro.push({ nombre: datos.files[0].name, tipo: datos.files[0].type, tamano: datos.files[0].size });
+      },
+      configurable: true,
+    });
+  }, comportamiento);
+
+const compartidos = (page: Page) =>
+  page.evaluate(() => (window as unknown as { compartidos?: { nombre: string; tipo: string; tamano: number }[] }).compartidos ?? []);
+
+test.describe('Galería de fotos · compartir', () => {
+  test('el menú de compartir del dispositivo recibe la foto que se está viendo', async ({ page }) => {
+    await entrarConSesion(page);
+    await conMenuDeCompartir(page);
+    await simularBackend(page);
+    await page.goto(rutaGaleria);
+    await page.getByRole('button', { name: 'Ampliar trevi.jpg' }).click();
+
+    await page.getByRole('dialog').getByRole('button', { name: 'Compartir foto' }).click();
+
+    await expect.poll(() => compartidos(page)).toEqual([{ nombre: 'trevi.jpg', tipo: 'image/jpeg', tamano: PNG_1X1.length }]);
+    await expect(page.getByRole('status')).toHaveCount(0);
+    await expect(page.getByRole('alert')).toHaveCount(0);
+  });
+
+  test('sin menú de compartir del navegador, la foto se descarga y se explica', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularBackend(page);
+    await page.goto(rutaGaleria);
+    await page.getByRole('button', { name: 'Ampliar coliseo.jpg' }).click();
+    const descarga = page.waitForEvent('download');
+
+    await page.getByRole('dialog').getByRole('button', { name: 'Compartir foto' }).click();
+
+    expect((await descarga).suggestedFilename()).toBe('coliseo.jpg');
+    await expect(page.getByRole('status')).toHaveText(MENSAJE_DESCARGA);
+    await expect(page.getByRole('alert')).toHaveCount(0);
+  });
+
+  test('cancelar el menú de compartir no muestra ningún aviso', async ({ page }) => {
+    await entrarConSesion(page);
+    await conMenuDeCompartir(page, 'cancela');
+    await simularBackend(page);
+    await page.goto(rutaGaleria);
+    await page.getByRole('button', { name: 'Ampliar trevi.jpg' }).click();
+
+    await page.getByRole('dialog').getByRole('button', { name: 'Compartir foto' }).click();
+
+    await expect(page.getByRole('button', { name: 'Compartir foto' })).toBeEnabled();
+    await expect(page.getByRole('status')).toHaveCount(0);
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    expect(await compartidos(page)).toEqual([]);
+  });
+
+  test('si no se puede obtener el archivo se avisa y se puede volver a intentar', async ({ page }) => {
+    await entrarConSesion(page);
+    await conMenuDeCompartir(page);
+    await simularBackend(page);
+    await page.goto(rutaGaleria);
+    await page.route('https://storage.test/trevi.jpg', (route) => route.abort());
+    await page.getByRole('button', { name: 'Ampliar trevi.jpg' }).click();
+
+    await page.getByRole('dialog').getByRole('button', { name: 'Compartir foto' }).click();
+
+    await expect(page.getByRole('alert')).toHaveText('No se ha podido preparar el archivo para compartirlo');
+    await expect(page.getByRole('button', { name: 'Compartir foto' })).toBeEnabled();
+    expect(await compartidos(page)).toEqual([]);
+  });
+
+  test('el aviso desaparece al pasar a otra foto', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularBackend(page);
+    await page.goto(rutaGaleria);
+    await page.getByRole('button', { name: 'Ampliar plaza.jpg' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Compartir foto' }).click();
+    await expect(page.getByRole('status')).toHaveText(MENSAJE_DESCARGA);
+
+    await page.getByRole('button', { name: 'Foto siguiente' }).click();
+
+    await expect(page.getByRole('status')).toHaveCount(0);
+  });
+
+  test('un vídeo también se puede compartir', async ({ page }) => {
+    await entrarConSesion(page);
+    await conMenuDeCompartir(page);
+    await page.route('https://storage.test/paseo.mp4', (route) =>
+      route.fulfill({ status: 200, contentType: 'video/mp4', body: Buffer.alloc(10), headers: { 'access-control-allow-origin': '*' } }),
+    );
+    await simularBackend(page, { fotos: [fotoDe('v1', 'paseo.mp4', { tipo_mime: 'video/mp4', tamano_bytes: 5_000_000 })] });
+    await page.goto(rutaGaleria);
+    await page.getByRole('button', { name: 'Reproducir paseo.mp4' }).click();
+
+    await page.getByRole('dialog').getByRole('button', { name: 'Compartir vídeo' }).click();
+
+    await expect.poll(() => compartidos(page)).toEqual([{ nombre: 'paseo.mp4', tipo: 'video/mp4', tamano: 10 }]);
+  });
+
+  test('con el viaje finalizado se puede compartir pero no borrar', async ({ page }) => {
+    await entrarConSesion(page);
+    await conMenuDeCompartir(page);
+    await simularBackend(page, { estado: 'finalizado' });
+    await page.goto(rutaGaleria);
+    await page.getByRole('button', { name: 'Ampliar trevi.jpg' }).click();
+
+    await expect(page.getByRole('dialog').getByRole('button', { name: 'Borrar foto' })).toHaveCount(0);
+    await page.getByRole('dialog').getByRole('button', { name: 'Compartir foto' }).click();
+
+    await expect.poll(async () => (await compartidos(page)).length).toBe(1);
+  });
+
+  test('en 320 px los botones del visor miden al menos 44 px y caben en la pantalla', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await entrarConSesion(page);
+    await simularBackend(page);
+    await page.goto(rutaGaleria);
+    await page.getByRole('button', { name: 'Ampliar trevi.jpg' }).click();
+
+    for (const nombre of ['Compartir foto', 'Borrar foto', 'Cerrar foto']) {
+      const caja = await page.getByRole('dialog').getByRole('button', { name: nombre }).boundingBox();
+      expect(caja && caja.width >= 44 && caja.height >= 44 && caja.x + caja.width <= 320).toBe(true);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 });
 
