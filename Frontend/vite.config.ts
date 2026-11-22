@@ -9,6 +9,8 @@ export default defineConfig({
     // (src/assets/travelwrap-logo.png), que tiene el dibujo dentro de la zona segura: sirve también como maskable
     VitePWA({
       registerType: 'autoUpdate',
+      // Los avisos push (public/push-sw.js) los gestiona el mismo service worker que la caché de la PWA
+      workbox: { importScripts: ['push-sw.js'] },
       includeAssets: ['apple-touch-icon.png'],
       manifest: {
         name: 'TravelWrap',

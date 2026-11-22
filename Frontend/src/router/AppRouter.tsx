@@ -28,6 +28,7 @@ import FinDeViaje from "../screens/FinDeViaje";
 import { buscarDirecciones } from "../services/actividadesApi";
 import type { SeccionViaje } from "../components/BarraInferior";
 import { rutaTrasLogin } from "../services/invitacionPendiente";
+import AvisoNotificacion from "../components/AvisoNotificacion";
 
 interface AppRouterProps {
   session: Sesion | null;
@@ -447,6 +448,7 @@ export default function AppRouter({
 }: AppRouterProps) {
   return (
     <BrowserRouter>
+      {session && <AvisoNotificacion tokenSesion={session.token} />}
       <Routes>
         {/* Ruta pública: si ya hay sesión, redirige al inicio (o a la invitación que se abrió sin sesión) */}
         <Route

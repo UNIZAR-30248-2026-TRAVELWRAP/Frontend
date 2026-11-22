@@ -3,6 +3,7 @@ import Avatar from "../components/Avatar"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import IconoColor from "../components/IconoColor"
+import OpcionNotificaciones from "../components/OpcionNotificaciones"
 import PasaporteViajes from "../components/PasaporteViajes"
 import SectionLabel from "../components/SectionLabel"
 import type { Usuario } from "../services/authApi"
@@ -528,6 +529,8 @@ export default function Perfil({
           )}
 
           <SectionLabel>Cuenta y seguridad</SectionLabel>
+
+          {token && <OpcionNotificaciones token={token} />}
 
           {error && (
             <div
