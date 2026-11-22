@@ -10,6 +10,7 @@ export type PuntoInteres = {
   latitud: number
   longitud: number
   lugar_externo_id: string | null
+  direccion: string | null
   creado_por: string | null
   creado_en: string
 }
@@ -21,6 +22,7 @@ export type NuevoPuntoInteres = {
   latitud: number
   longitud: number
   lugar_externo_id: string | null
+  direccion: string | null
 }
 
 const rutaDe = (viajeId: string) => `/viajes/${encodeURIComponent(viajeId)}/puntos-de-interes`

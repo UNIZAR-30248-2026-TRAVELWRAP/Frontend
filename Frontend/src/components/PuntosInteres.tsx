@@ -4,6 +4,7 @@ import { ALTO_BARRA_INFERIOR } from "./BarraInferior"
 import DialogoConfirmacion from "./DialogoConfirmacion"
 import Icon from "./Icon"
 import SectionLabel from "./SectionLabel"
+import "./PuntosInteres.css"
 import type { UbicacionElegida } from "./MapaPuntosInteres"
 import { CATEGORIAS, iconoDeCategoria, type Categoria, type ResultadoDireccion } from "../services/actividadesApi"
 import { ApiError } from "../services/authApi"
@@ -85,22 +86,30 @@ const botonPanelStyle = (principal: boolean, habilitado = true): CSSProperties =
   padding: "0 12px",
 })
 
+const DURACION_SALIDA_MS = 200
+
+const sinMovimiento = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
+
+const textoDeCoordenadas = (lugar: { latitud: number; longitud: number }) =>
+  `Sin dirección · ${lugar.latitud.toFixed(5).replace(".", ",")}, ${lugar.longitud.toFixed(5).replace(".", ",")}`
+
 const textoDeTipo = (categoria: Categoria | null) => CATEGORIAS.find((c) => c.valor === categoria)?.texto ?? "Sin tipo"
 
 const desplazar = (elemento: HTMLElement | null) => {
-  const suave = !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+  const suave = !sinMovimiento()
   elemento?.scrollIntoView?.({ behavior: suave ? "smooth" : "auto", block: "start" })
 }
 
 type PanelInferiorProps = {
   titulo: string
   ampliado: boolean
+  saliendo: boolean
   onCerrar: () => void
   textoCerrar: string
   children: ReactNode
 }
 
-function PanelInferior({ titulo, ampliado, onCerrar, textoCerrar, children }: PanelInferiorProps) {
+function PanelInferior({ titulo, ampliado, saliendo, onCerrar, textoCerrar, children }: PanelInferiorProps) {
   return (
     <div
       style={{
@@ -118,6 +127,7 @@ function PanelInferior({ titulo, ampliado, onCerrar, textoCerrar, children }: Pa
         role="dialog"
         aria-modal="false"
         aria-label={titulo}
+        className={saliendo ? "pi-panel-saliendo" : "pi-panel"}
         style={{
           width: "100%",
           maxWidth: 480,
@@ -177,6 +187,7 @@ export default function PuntosInteres({ viajeId, tokenSesion, viaje, editable, o
   const [intento, setIntento] = useState(0)
   const [elegida, setElegida] = useState<UbicacionElegida | null>(null)
   const [lugarExternoId, setLugarExternoId] = useState<string | null>(null)
+  const [direccion, setDireccion] = useState<string | null>(null)
   const [consulta, setConsulta] = useState("")
   const [buscando, setBuscando] = useState(false)
   const [errorBusqueda, setErrorBusqueda] = useState("")
@@ -195,6 +206,29 @@ export default function PuntosInteres({ viajeId, tokenSesion, viaje, editable, o
   const [filtroTipo, setFiltroTipo] = useState<FiltroTipo | null>(null)
   const [filtroAutor, setFiltroAutor] = useState<string | null>(null)
   const tarjetaMapa = useRef<HTMLDivElement>(null)
+  const [saliendo, setSaliendo] = useState(false)
+  const temporizador = useRef<number | null>(null)
+
+  useEffect(
+    () => () => {
+      if (temporizador.current !== null) window.clearTimeout(temporizador.current)
+    },
+    [],
+  )
+
+  const cerrarPanel = (accion: () => void) => {
+    if (saliendo) return
+    if (sinMovimiento()) {
+      accion()
+      return
+    }
+    setSaliendo(true)
+    temporizador.current = window.setTimeout(() => {
+      temporizador.current = null
+      setSaliendo(false)
+      accion()
+    }, DURACION_SALIDA_MS)
+  }
 
   useEffect(() => {
     let vigente = true
@@ -249,6 +283,7 @@ export default function PuntosInteres({ viajeId, tokenSesion, viaje, editable, o
   const limpiarFormulario = () => {
     setElegida(null)
     setLugarExternoId(null)
+    setDireccion(null)
     setNombre("")
     setNota("")
     setCategoria(null)
@@ -261,12 +296,13 @@ export default function PuntosInteres({ viajeId, tokenSesion, viaje, editable, o
 
   const alTocarMapa = (ubicacion: UbicacionElegida) => {
     if (puntoSeleccionado) {
-      setSeleccionado(null)
+      cerrarPanel(() => setSeleccionado(null))
       return
     }
     if (!editable) return
     setElegida(ubicacion)
     setLugarExternoId(null)
+    setDireccion(null)
     setResultados(null)
     verMapa()
   }
@@ -296,6 +332,7 @@ export default function PuntosInteres({ viajeId, tokenSesion, viaje, editable, o
     setSeleccionado(null)
     setElegida({ latitud: resultado.latitud, longitud: resultado.longitud })
     setLugarExternoId(resultado.lugar_externo_id)
+    setDireccion(resultado.nombre.slice(0, 300))
     if (nombre.trim() === "") setNombre(resultado.titulo.slice(0, 120))
     setConsulta("")
     setResultados(null)
@@ -319,6 +356,7 @@ export default function PuntosInteres({ viajeId, tokenSesion, viaje, editable, o
           latitud: elegida.latitud,
           longitud: elegida.longitud,
           lugar_externo_id: lugarExternoId,
+          direccion,
         },
         tokenSesion,
       )
@@ -451,7 +489,7 @@ export default function PuntosInteres({ viajeId, tokenSesion, viaje, editable, o
             </div>
 
             {buscando && (
-              <div role="status" style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, marginTop: 8 }}>
+              <div className="pi-aparece" role="status" style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, marginTop: 8 }}>
                 Buscando...
               </div>
             )}
@@ -470,6 +508,7 @@ export default function PuntosInteres({ viajeId, tokenSesion, viaje, editable, o
 
             {resultados !== null && resultados.length > 0 && (
               <div
+                className="pi-aparece"
                 role="list"
                 aria-label="Resultados de la búsqueda"
                 style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8, maxHeight: 220, overflowY: "auto" }}
@@ -532,7 +571,7 @@ export default function PuntosInteres({ viajeId, tokenSesion, viaje, editable, o
             alElegirPunto={elegirPunto}
             ampliado={mapaAmpliado}
             alAlternarAmpliado={() => setMapaAmpliado((valor) => !valor)}
-            desplazamiento={mapaAmpliado ? 160 : 90}
+            desplazamiento={mapaAmpliado ? 160 : 55}
           />
         </Suspense>
 
@@ -545,6 +584,7 @@ export default function PuntosInteres({ viajeId, tokenSesion, viaje, editable, o
 
       {opcionesTipo.length > 1 && (
         <div
+          className="pi-aparece"
           role="group"
           aria-label="Filtrar por tipo"
           style={{ display: "flex", alignItems: "center", gap: 8, overflowX: "auto", paddingBottom: 8 }}
@@ -573,6 +613,7 @@ export default function PuntosInteres({ viajeId, tokenSesion, viaje, editable, o
 
       {autores.length > 1 && (
         <div
+          className="pi-aparece"
           role="group"
           aria-label="Filtrar por quién lo añadió"
           style={{ display: "flex", alignItems: "center", gap: 8, overflowX: "auto", paddingBottom: 8 }}
@@ -674,6 +715,9 @@ export default function PuntosInteres({ viajeId, tokenSesion, viaje, editable, o
                     {punto.categoria && (
                       <span style={{ color: C.accent, fontSize: 11, fontWeight: 800 }}>{textoDeTipo(punto.categoria)}</span>
                     )}
+                    {punto.direccion && (
+                      <span style={{ color: C.muted, fontSize: 12, lineHeight: 1.4, overflowWrap: "anywhere" }}>{punto.direccion}</span>
+                    )}
                     {punto.nota && (
                       <span
                         style={{
@@ -735,7 +779,8 @@ export default function PuntosInteres({ viajeId, tokenSesion, viaje, editable, o
         <PanelInferior
           titulo={puntoSeleccionado.nombre}
           ampliado={mapaAmpliado}
-          onCerrar={() => setSeleccionado(null)}
+          saliendo={saliendo}
+          onCerrar={() => cerrarPanel(() => setSeleccionado(null))}
           textoCerrar="Cerrar ficha"
         >
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
@@ -756,6 +801,14 @@ export default function PuntosInteres({ viajeId, tokenSesion, viaje, editable, o
             <span style={{ fontFamily: NUNITO, color: C.accent, fontSize: 13, fontWeight: 800 }}>
               {textoDeTipo(puntoSeleccionado.categoria)}
             </span>
+          </div>
+          <div
+            style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 12, fontFamily: NUNITO, fontSize: 13, color: C.navy, lineHeight: 1.4 }}
+          >
+            <span style={{ marginTop: 1, flexShrink: 0, display: "flex" }}>
+              <Icon name="pin" size={15} color={C.blue} strokeWidth={2} />
+            </span>
+            <span style={{ overflowWrap: "anywhere" }}>{puntoSeleccionado.direccion ?? textoDeCoordenadas(puntoSeleccionado)}</span>
           </div>
           {puntoSeleccionado.nota && (
             <p style={{ margin: "0 0 12px", fontFamily: NUNITO, color: C.navy, fontSize: 14, lineHeight: 1.5, overflowWrap: "anywhere" }}>
@@ -803,8 +856,29 @@ export default function PuntosInteres({ viajeId, tokenSesion, viaje, editable, o
       ) : (
         editable &&
         elegida && (
-          <PanelInferior titulo="Nuevo punto de interés" ampliado={mapaAmpliado} onCerrar={limpiarFormulario} textoCerrar="Descartar punto">
+          <PanelInferior
+            titulo="Nuevo punto de interés"
+            ampliado={mapaAmpliado}
+            saliendo={saliendo}
+            onCerrar={() => cerrarPanel(limpiarFormulario)}
+            textoCerrar="Descartar punto"
+          >
             <form onSubmit={handleGuardar} noValidate>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 8,
+                  marginBottom: 12,
+                  fontFamily: NUNITO,
+                  fontSize: 12,
+                  color: C.muted,
+                  lineHeight: 1.4,
+                }}
+              >
+                <Icon name="pin" size={14} color={C.muted} strokeWidth={2} />
+                <span style={{ overflowWrap: "anywhere" }}>{direccion ?? textoDeCoordenadas(elegida)}</span>
+              </div>
               <div style={{ marginBottom: 12 }}>
                 <label htmlFor="punto-nombre" style={estiloEtiqueta}>
                   Nombre del punto
@@ -864,7 +938,7 @@ export default function PuntosInteres({ viajeId, tokenSesion, viaje, editable, o
               )}
 
               <div style={{ display: "flex", gap: 10 }}>
-                <button type="button" onClick={limpiarFormulario} style={botonPanelStyle(false)}>
+                <button type="button" onClick={() => cerrarPanel(limpiarFormulario)} style={botonPanelStyle(false)}>
                   Cancelar
                 </button>
                 <button type="submit" disabled={!puedeGuardar} style={botonPanelStyle(true, puedeGuardar)}>

@@ -22,6 +22,18 @@ type MapaPuntosInteresProps = {
 
 export const ALTO_MAPA_PUNTOS = 280
 
+const sinMovimiento = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
+
+const moverA = (mapa: L.Map, destino: L.LatLng, margen: number) => {
+  const zoom = Math.max(mapa.getZoom(), 15)
+  const centro = mapa.unproject(mapa.project(destino, zoom).add([0, margen]), zoom)
+  if (sinMovimiento()) {
+    mapa.setView(centro, zoom, { animate: false })
+    return
+  }
+  mapa.flyTo(centro, zoom, { duration: 0.6 })
+}
+
 const ATRIBUCION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
 
 const FORMA = "M18 1.5C9 1.5 2 8.5 2 17.3c0 11.7 16 27.2 16 27.2s16-15.5 16-27.2C34 8.5 27 1.5 18 1.5z"
@@ -144,8 +156,7 @@ export default function MapaPuntosInteres({
       alt: "Ubicación elegida",
       interactive: false,
     }).addTo(capa)
-    actual.setView([ubicacion.latitud, ubicacion.longitud], Math.max(actual.getZoom(), 15), { animate: false })
-    if (margen.current > 0) actual.panBy([0, margen.current], { animate: false })
+    moverA(actual, L.latLng(ubicacion.latitud, ubicacion.longitud), margen.current)
   }, [claveElegida])
 
   useEffect(() => {
@@ -153,8 +164,7 @@ export default function MapaPuntosInteres({
     const marcador = marcadores.current.get(enfocado.id)
     const actual = mapa.current
     if (!marcador || !actual) return
-    actual.setView(marcador.getLatLng(), Math.max(actual.getZoom(), 15), { animate: false })
-    if (margen.current > 0) actual.panBy([0, margen.current], { animate: false })
+    moverA(actual, marcador.getLatLng(), margen.current)
   }, [enfocado])
 
   return (
