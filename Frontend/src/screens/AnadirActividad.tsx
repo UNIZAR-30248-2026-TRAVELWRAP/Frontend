@@ -6,6 +6,7 @@ import {
   CATEGORIAS,
   crearActividad,
   editarActividad,
+  urlFotoActividad,
   listarActividades,
   type Actividad,
   type Categoria,
@@ -14,7 +15,9 @@ import {
   type ResultadoDireccion,
 } from "../services/actividadesApi"
 import { ApiError } from "../services/authApi"
+import type { DatosActividadEscaneada } from "../services/escaneoApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
+import { viajeEnCache } from "../services/viajesEnCache"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { diasDelItinerario } from "../utils/formatoViaje"
 import BotonVolver from "../components/BotonVolver"
@@ -28,6 +31,10 @@ type AnadirActividadProps = {
   actividadId?: string
   onVolver?: () => void
   fechaInicial?: string
+  // Datos leídos de un documento escaneado: rellenan el formulario de una actividad nueva, que el usuario revisa
+  datosEscaneados?: DatosActividadEscaneada
+  // Foto del documento escaneado: se guarda con la actividad al crearla
+  fotoRuta?: string | null
   onGuardada?: (fecha: string) => void
   onBuscarDirecciones?: (consulta: string) => Promise<ResultadoDireccion[]>
 }
@@ -37,12 +44,14 @@ export default function AnadirActividad({
   tokenSesion,
   actividadId,
   fechaInicial = "",
+  datosEscaneados,
+  fotoRuta,
   onVolver,
   onGuardada,
   onBuscarDirecciones,
 }: AnadirActividadProps) {
   const edicion = actividadId !== undefined
-  const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
+  const [viaje, setViaje] = useState<ViajeDelUsuario | null>(() => viajeEnCache(viajeId))
   const [errorCarga, setErrorCarga] = useState("")
   const [titulo, setTitulo] = useState("")
   const [ubicacion, setUbicacion] = useState("")
@@ -51,6 +60,21 @@ export default function AnadirActividad({
   const [categoria, setCategoria] = useState<Categoria | null>(null)
   const [fecha, setFecha] = useState("")
   const [original, setOriginal] = useState<Actividad | null>(null)
+  const [errorFoto, setErrorFoto] = useState("")
+
+  // Abre la foto del documento escaneado en otra pestaña. El enlace caduca, así que se pide uno nuevo cada vez.
+  // La pestaña se abre antes de pedir el enlace, porque el navegador bloquea las ventanas abiertas tras una espera
+  const verFotoDelDocumento = async () => {
+    setErrorFoto("")
+    const ventana = window.open("", "_blank")
+    try {
+      const { url } = await urlFotoActividad(viajeId, actividadId ?? "", tokenSesion)
+      if (ventana) ventana.location.href = url
+    } catch (e) {
+      ventana?.close()
+      setErrorFoto(e instanceof ApiError ? e.message : "No se ha podido abrir la foto del documento")
+    }
+  }
   const [resultados, setResultados] = useState<ResultadoDireccion[] | null>(null)
   const [buscando, setBuscando] = useState(false)
   const [errorBusqueda, setErrorBusqueda] = useState("")
@@ -92,9 +116,21 @@ export default function AnadirActividad({
           setFecha(actividad.fecha)
           return
         }
+        // Lo leído del documento escaneado sustituye a los valores por defecto del formulario
+        if (datosEscaneados) {
+          setTitulo(datosEscaneados.titulo ?? "")
+          setHora(datosEscaneados.hora_inicio ?? "")
+          setUbicacion(datosEscaneados.ubicacion_nombre ?? "")
+          setCategoria(datosEscaneados.categoria ?? null)
+        }
         if (datos.fecha_inicio && datos.fecha_fin) {
-          const enElViaje = diasDelItinerario(datos.fecha_inicio, datos.fecha_fin, []).some((d) => d.fecha === fechaInicial)
-          setFecha(enElViaje ? fechaInicial : datos.fecha_inicio)
+          const diasDelViaje = diasDelItinerario(datos.fecha_inicio, datos.fecha_fin, []).map((d) => d.fecha)
+          // La fecha del documento solo se usa si cae dentro de los días del viaje
+          if (datosEscaneados?.fecha && diasDelViaje.includes(datosEscaneados.fecha)) {
+            setFecha(datosEscaneados.fecha)
+          } else {
+            setFecha(diasDelViaje.includes(fechaInicial) ? fechaInicial : datos.fecha_inicio)
+          }
         } else {
           setFecha(fechaInicial)
         }
@@ -105,7 +141,7 @@ export default function AnadirActividad({
     return () => {
       vigente = false
     }
-  }, [viajeId, tokenSesion, fechaInicial, actividadId])
+  }, [viajeId, tokenSesion, fechaInicial, actividadId, datosEscaneados])
 
   const dias =
     viaje?.fecha_inicio && viaje.fecha_fin
@@ -189,7 +225,7 @@ export default function AnadirActividad({
     setError("")
     try {
       if (edicion) await editarActividad(viajeId, actividadId, cambios, tokenSesion)
-      else await crearActividad(viajeId, datosDelFormulario, tokenSesion)
+      else await crearActividad(viajeId, fotoRuta ? { ...datosDelFormulario, foto_ruta: fotoRuta } : datosDelFormulario, tokenSesion)
       onGuardada?.(fecha)
     } catch (e) {
       setError(mensajeDeError(e))
@@ -248,6 +284,50 @@ export default function AnadirActividad({
         </div>
 
         <div style={{ padding: "20px 16px 32px" }}>
+          {datosEscaneados && actividadId === undefined && (
+            <p
+              role="status"
+              style={{
+                background: C.lightBlue,
+                color: C.navy,
+                borderRadius: 14,
+                padding: "10px 12px",
+                fontFamily: NUNITO,
+                fontSize: 13,
+                fontWeight: 700,
+                margin: "0 0 16px",
+              }}
+            >
+              Hemos leído estos datos del documento. Revísalos antes de guardar la actividad.
+            </p>
+          )}
+          {edicion && original?.tiene_foto && (
+            <div style={{ marginBottom: 16 }}>
+              <button
+                type="button"
+                onClick={() => void verFotoDelDocumento()}
+                style={{
+                  width: "100%",
+                  minHeight: 44,
+                  borderRadius: RADIUS.lg,
+                  border: `1.5px solid ${C.border}`,
+                  background: "white",
+                  color: C.blue,
+                  fontFamily: NUNITO,
+                  fontSize: 14,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                }}
+              >
+                Ver foto del documento
+              </button>
+              {errorFoto && (
+                <p role="alert" style={{ margin: "8px 0 0", fontSize: 12, fontWeight: 700, color: C.red }}>
+                  {errorFoto}
+                </p>
+              )}
+            </div>
+          )}
           {errorCarga && (
             <div role="alert" style={estiloAlerta}>
               No se ha podido cargar el viaje: {errorCarga}

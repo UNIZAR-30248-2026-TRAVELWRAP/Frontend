@@ -6,16 +6,20 @@ import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import ListaTareas from "../components/ListaTareas"
 import VistaPreviaDocumento from "../components/VistaPreviaDocumento"
+import EscanerDocumento from "../components/EscanerDocumento"
 import SectionLabel from "../components/SectionLabel"
 import { ApiError } from "../services/authApi"
 import {
   eliminarDocumento,
+  guardarResumen,
   listarDocumentos,
   subirDocumento,
   TIPOS_DOCUMENTO,
   type Documento,
 } from "../services/documentosApi"
+import type { ResultadoEscaneo } from "../services/escaneoApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
+import { viajeEnCache } from "../services/viajesEnCache"
 import { estiloAlerta } from "../styles/formulario"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
@@ -48,6 +52,9 @@ type CarteraDocumentosProps = {
   pestanaInicial?: Pestana
   onVolver?: () => void
   onCambiarSeccion?: (seccion: SeccionViaje) => void
+  // Un documento escaneado que es un gasto o una actividad: la pantalla que lo confirma se abre con sus datos.
+  // Los resúmenes de otros documentos los guarda esta pantalla en la cartera
+  onEscaneoConfirmar?: (resultado: ResultadoEscaneo) => void
 }
 
 export default function CarteraDocumentos({
@@ -57,9 +64,10 @@ export default function CarteraDocumentos({
   pestanaInicial = "cartera",
   onVolver,
   onCambiarSeccion,
+  onEscaneoConfirmar,
 }: CarteraDocumentosProps) {
   const [pestana, setPestana] = useState<Pestana>(pestanaInicial)
-  const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
+  const [viaje, setViaje] = useState<ViajeDelUsuario | null>(() => viajeEnCache(viajeId))
   const [documentos, setDocumentos] = useState<Documento[]>([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState("")
@@ -72,6 +80,7 @@ export default function CarteraDocumentos({
   const [eliminando, setEliminando] = useState(false)
   const [errorEliminar, setErrorEliminar] = useState("")
   const selectorArchivo = useRef<HTMLInputElement>(null)
+  const [escaneando, setEscaneando] = useState(false)
 
   // El viaje hace falta para saber quién subió cada documento y si aún se pueden subir
   useEffect(() => {
@@ -122,6 +131,34 @@ export default function CarteraDocumentos({
       setAviso(`«${documento.nombre}» se ha añadido a la cartera`)
     } catch (e) {
       setErrorSubida(`No se ha podido subir el documento: ${mensajeDeError(e)}`)
+    } finally {
+      setSubiendo(false)
+    }
+  }
+
+  // Tras escanear: un gasto o una actividad pasa a su pantalla de confirmación; cualquier otro documento se guarda
+  // como resumen .txt en la cartera. Si el OCR no ha leído texto, no se guarda nada y se avisa
+  const handleEscaneado = async (resultado: ResultadoEscaneo) => {
+    setEscaneando(false)
+    setAviso("")
+    if (resultado.tipo !== "otro") {
+      onEscaneoConfirmar?.(resultado)
+      return
+    }
+
+    const texto = resultado.datos.resumen.trim()
+    if (texto === "") {
+      setErrorSubida("No se ha leído ningún texto en el documento. Prueba con otra foto, con más luz.")
+      return
+    }
+    setErrorSubida("")
+    setSubiendo(true)
+    try {
+      const documento = await guardarResumen(viajeId, texto, tokenSesion)
+      setDocumentos((anteriores) => [documento, ...anteriores])
+      setAviso(`«${documento.nombre}» se ha guardado en la cartera`)
+    } catch (e) {
+      setErrorSubida(`No se ha podido guardar el resumen: ${mensajeDeError(e)}`)
     } finally {
       setSubiendo(false)
     }
@@ -266,12 +303,13 @@ export default function CarteraDocumentos({
                     onChange={handleArchivoElegido}
                     hidden
                   />
+                  <div style={{ display: "flex", gap: 8 }}>
                   <button
                     type="button"
                     onClick={() => selectorArchivo.current?.click()}
                     disabled={subiendo}
                     style={{
-                      width: "100%",
+                      flex: 1,
                       background: C.blue,
                       color: "white",
                       border: "none",
@@ -293,6 +331,33 @@ export default function CarteraDocumentos({
                     <Icon name="plus" size={16} color="white" strokeWidth={2.5} />
                     {subiendo ? "Subiendo documento..." : "Subir documento"}
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setEscaneando(true)}
+                    disabled={subiendo}
+                    style={{
+                      flex: 1,
+                      minHeight: 48,
+                      borderRadius: RADIUS.lg,
+                      border: "none",
+                      background: GRADIENTS.accent,
+                      color: "white",
+                      fontFamily: NUNITO,
+                      fontSize: 15,
+                      fontWeight: 800,
+                      cursor: subiendo ? "wait" : "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 7,
+                      boxShadow: SHADOWS.button,
+                      marginBottom: 8,
+                    }}
+                  >
+                    <Icon name="camera" size={16} color="white" strokeWidth={2.5} />
+                    Escanear con OCR
+                  </button>
+                  </div>
                   <p style={{ fontFamily: NUNITO, color: C.muted, fontSize: 11, textAlign: "center", margin: "0 0 16px" }}>
                     PDF o imagen JPEG o PNG, de 8 MB como máximo
                   </p>
@@ -467,6 +532,14 @@ export default function CarteraDocumentos({
 
       {abierto && (
         <VistaPreviaDocumento viajeId={viajeId} documento={abierto} tokenSesion={tokenSesion} onCerrar={cerrarVistaPrevia} />
+      )}
+      {escaneando && (
+        <EscanerDocumento
+          viajeId={viajeId}
+          tokenSesion={tokenSesion}
+          onCerrar={() => setEscaneando(false)}
+          onEscaneado={handleEscaneado}
+        />
       )}
 
       {aEliminar && (

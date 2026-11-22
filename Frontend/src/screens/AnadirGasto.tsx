@@ -5,6 +5,7 @@ import Icon from "../components/Icon"
 import SectionLabel from "../components/SectionLabel"
 import { ApiError } from "../services/authApi"
 import { crearGasto, editarGasto, type CategoriaGasto, type Gasto } from "../services/gastosApi"
+import type { DatosGastoEscaneado } from "../services/escaneoApi"
 import { obtenerViaje, type MiembroDelViaje } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
@@ -78,6 +79,10 @@ type AnadirGastoProps = {
   // Si se pasa, la pantalla modifica este gasto en lugar de registrar uno nuevo
   gastoInicial?: Gasto
   onGuardado?: (gasto: Gasto) => void
+  // Datos leídos de un ticket escaneado: rellenan el formulario, que el usuario revisa antes de guardar
+  datosEscaneados?: DatosGastoEscaneado
+  // Foto del ticket escaneado: se guarda con el gasto al registrarlo
+  fotoRuta?: string | null
 }
 
 export default function AnadirGasto({
@@ -88,12 +93,21 @@ export default function AnadirGasto({
   onRegistrado,
   gastoInicial,
   onGuardado,
+  datosEscaneados,
+  fotoRuta,
 }: AnadirGastoProps) {
   const editando = gastoInicial !== undefined
+  const escaneado = !editando && datosEscaneados !== undefined
   const [miembros, setMiembros] = useState<MiembroDelViaje[]>([])
   const [cargando, setCargando] = useState(true)
-  const [importe, setImporte] = useState(gastoInicial ? String(gastoInicial.importe).replace(".", ",") : "")
-  const [concepto, setConcepto] = useState(gastoInicial?.concepto ?? "")
+  const [importe, setImporte] = useState(
+    gastoInicial
+      ? String(gastoInicial.importe).replace(".", ",")
+      : datosEscaneados?.importe != null
+        ? String(datosEscaneados.importe).replace(".", ",")
+        : "",
+  )
+  const [concepto, setConcepto] = useState(gastoInicial?.concepto ?? datosEscaneados?.concepto ?? "")
   const [categoria, setCategoria] = useState<CategoriaGasto>(gastoInicial?.categoria ?? "comida")
   const [pagadoPor, setPagadoPor] = useState(gastoInicial?.pagado_por ?? "")
   const [participantes, setParticipantes] = useState<string[]>(
@@ -188,7 +202,7 @@ export default function AnadirGasto({
         onGuardado?.(gasto)
         return
       }
-      const gasto = await crearGasto(viajeId, datos, tokenSesion)
+      const gasto = await crearGasto(viajeId, fotoRuta ? { ...datos, foto_ruta: fotoRuta } : datos, tokenSesion)
       onRegistrado?.(gasto)
     } catch (e) {
       // El backend explica el motivo (viaje finalizado, alguien que ya no es miembro...)
@@ -243,6 +257,23 @@ export default function AnadirGasto({
         </div>
 
         <form onSubmit={handleSubmit} noValidate style={{ padding: "20px 16px 32px" }}>
+          {escaneado && (
+            <p
+              role="status"
+              style={{
+                background: C.lightBlue,
+                color: C.navy,
+                borderRadius: 14,
+                padding: "10px 12px",
+                fontFamily: NUNITO,
+                fontSize: 13,
+                fontWeight: 700,
+                margin: "0 0 16px",
+              }}
+            >
+              Hemos leído estos datos del ticket. Revísalos antes de guardar el gasto.
+            </p>
+          )}
           {/* Importe destacado */}
           <div
             style={{
