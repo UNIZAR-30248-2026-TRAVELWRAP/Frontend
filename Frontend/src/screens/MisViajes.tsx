@@ -4,6 +4,7 @@ import AvatarStack from "../components/AvatarStack"
 import Badge from "../components/Badge"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
+import IconoColor from "../components/IconoColor"
 import SectionLabel from "../components/SectionLabel"
 import { ApiError } from "../services/authApi"
 import { listarViajes, type ViajeDelUsuario } from "../services/viajesApi"
@@ -56,7 +57,7 @@ const VIAJES_ANTERIORES_DEMO: TarjetaAnterior[] = [
 ]
 
 // ─── Formato de los datos reales ──────────────────────────────────────────────
-const ICONOS_ANTERIORES = ["map", "route", "flight"]
+const ICONOS_ANTERIORES = ["map", "maleta", "flight"]
 
 const aTarjetaActiva = (viaje: ViajeDelUsuario): TarjetaActiva | TarjetaPendiente =>
   viaje.pendiente_destino
@@ -451,7 +452,7 @@ export default function MisViajes({
                         flexShrink: 0,
                       }}
                     >
-                      <Icon name={viaje.icono} size={22} color={C.blue} strokeWidth={1.6} />
+                      <IconoColor name={viaje.icono} size={26} />
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontFamily: NUNITO, color: C.navy, fontSize: 14, fontWeight: 800 }}>

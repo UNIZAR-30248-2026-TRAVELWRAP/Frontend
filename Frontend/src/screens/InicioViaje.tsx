@@ -5,6 +5,7 @@ import Badge from "../components/Badge"
 import DialogoConfirmacion from "../components/DialogoConfirmacion"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
+import IconoColor from "../components/IconoColor"
 import { ApiError } from "../services/authApi"
 import { abandonarViaje, finalizarViaje, obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { obtenerBalance } from "../services/gastosApi"
@@ -220,7 +221,7 @@ export default function InicioViaje({
                     {viaje.nombre}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <Icon name="pin" size={24} color={C.accent} strokeWidth={2.2} />
+                    <IconoColor name="pin" size={28} />
                     <Heading size={viaje.destino ? 32 : 24} color="white">
                       {viaje.destino ?? "Destino por decidir"}
                     </Heading>
@@ -416,7 +417,7 @@ export default function InicioViaje({
                 <div style={{ display: "flex", gap: 10, pointerEvents: "auto" }}>
                   {activo && (
                     <button type="button" onClick={onVotaciones} style={botonCuadradoStyle}>
-                      <Icon name="vote" size={26} color={C.blue} strokeWidth={1.8} />
+                      <IconoColor name="vote" size={28} />
                       <span style={{ fontFamily: NUNITO, fontWeight: 800, fontSize: 11, color: C.navy }}>Votaciones</span>
                     </button>
                   )}
@@ -457,7 +458,7 @@ export default function InicioViaje({
                   flexShrink: 0,
                 }}
               >
-                <Icon name="medal" size={21} color={C.accent} strokeWidth={1.8} />
+                <IconoColor name="medal" size={25} />
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: NUNITO, fontWeight: 800, color: C.navy, fontSize: 14 }}>Resumen del viaje</div>

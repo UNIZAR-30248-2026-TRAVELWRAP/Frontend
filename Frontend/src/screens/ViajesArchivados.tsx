@@ -3,6 +3,7 @@ import Badge from "../components/Badge"
 import DialogoConfirmacion from "../components/DialogoConfirmacion"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
+import IconoColor from "../components/IconoColor"
 import SectionLabel from "../components/SectionLabel"
 import { ApiError } from "../services/authApi"
 import { borrarItinerario } from "../services/itinerarioGuardado"
@@ -11,7 +12,7 @@ import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { formatearFechasAnterior, formatearImporte } from "../utils/formatoViaje"
 import BotonVolver from "../components/BotonVolver"
 
-const ICONOS = ["map", "route", "flight"]
+const ICONOS = ["map", "maleta", "flight"]
 
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
 
@@ -189,7 +190,7 @@ export default function ViajesArchivados({ tokenSesion, onVolver, onVerViaje }: 
                           flexShrink: 0,
                         }}
                       >
-                        <Icon name={ICONOS[indice % ICONOS.length]} size={23} color={C.blue} strokeWidth={1.7} />
+                        <IconoColor name={ICONOS[indice % ICONOS.length]} size={27} />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontFamily: NUNITO, color: C.navy, fontSize: 15, fontWeight: 900 }}>

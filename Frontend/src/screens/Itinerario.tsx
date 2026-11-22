@@ -13,6 +13,7 @@ import DialogoConfirmacion from "../components/DialogoConfirmacion"
 import BarraInferior, { ALTO_BARRA_INFERIOR, type SeccionViaje } from "../components/BarraInferior"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
+import IconoColor from "../components/IconoColor"
 import SectionLabel from "../components/SectionLabel"
 import Avatar from "../components/Avatar"
 import {
@@ -577,7 +578,7 @@ export default function Itinerario({
                                 width: 40,
                                 height: 40,
                                 borderRadius: "50%",
-                                background: primera ? C.accent : "white",
+                                background: "white",
                                 border: `2.5px solid ${primera ? C.accent : C.blue}`,
                                 display: "flex",
                                 alignItems: "center",
@@ -587,12 +588,7 @@ export default function Itinerario({
                                 boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
                               }}
                             >
-                              <Icon
-                                name={iconoDeCategoria(actividad.categoria)}
-                                size={18}
-                                color={primera ? "white" : C.blue}
-                                strokeWidth={1.8}
-                              />
+                              <IconoColor name={iconoDeCategoria(actividad.categoria)} size={22} />
                             </div>
                             <div
                               style={{
@@ -622,7 +618,7 @@ export default function Itinerario({
                                         gap: 4,
                                       }}
                                     >
-                                      <Icon name="pin" size={11} color={C.muted} strokeWidth={2} />
+                                      <IconoColor name="pin" size={14} />
                                       <span style={{ overflowWrap: "anywhere" }}>{actividad.ubicacion_nombre}</span>
                                     </div>
                                   )}

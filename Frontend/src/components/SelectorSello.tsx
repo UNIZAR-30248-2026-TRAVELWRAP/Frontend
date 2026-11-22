@@ -1,6 +1,7 @@
 import { useState } from "react"
 import Heading from "./Heading"
 import Icon from "./Icon"
+import IconoColor from "./IconoColor"
 import Sello from "./Sello"
 import { ApiError } from "../services/authApi"
 import type { DisenoSello } from "../services/sellosApi"
@@ -117,7 +118,7 @@ export default function SelectorSello({ destino, anio, actual, onGuardar, onCerr
                       justifyContent: "center",
                     }}
                   >
-                    ✓
+                    <Icon name="check" size={13} color="white" strokeWidth={3} />
                   </span>
                 )}
               </button>
@@ -205,7 +206,7 @@ export default function SelectorSello({ destino, anio, actual, onGuardar, onCerr
               gap: 6,
             }}
           >
-            <Icon name="medal" size={16} color="white" strokeWidth={2} />
+            <IconoColor name="medal" size={20} />
             {guardando ? "Guardando..." : "Elegir"}
           </button>
         </div>

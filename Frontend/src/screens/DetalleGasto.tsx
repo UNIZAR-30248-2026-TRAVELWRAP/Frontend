@@ -4,6 +4,7 @@ import DialogoConfirmacion from "../components/DialogoConfirmacion"
 import BarraInferior, { ALTO_BARRA_INFERIOR } from "../components/BarraInferior"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
+import IconoColor from "../components/IconoColor"
 import SectionLabel from "../components/SectionLabel"
 import { ApiError } from "../services/authApi"
 import { eliminarGasto, obtenerGasto, type DetalleGasto as Detalle } from "../services/gastosApi"
@@ -183,7 +184,7 @@ export default function DetalleGasto({
                 >
                   <dt style={{ color: C.muted, fontWeight: 700 }}>Categoría</dt>
                   <dd style={{ margin: 0, color: C.navy, display: "flex", alignItems: "center", gap: 6 }}>
-                    <Icon name={iconoDeCategoriaGasto(gasto.categoria)} size={15} color={C.blue} strokeWidth={1.6} />
+                    <IconoColor name={iconoDeCategoriaGasto(gasto.categoria)} size={18} />
                     {categoria?.texto ?? gasto.categoria}
                   </dd>
                   <dt style={{ color: C.muted, fontWeight: 700 }}>Pagó</dt>

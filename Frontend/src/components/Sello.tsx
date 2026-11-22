@@ -1,4 +1,4 @@
-import Icon from "./Icon"
+import IconoColor from "./IconoColor"
 import type { DisenoSello } from "../services/sellosApi"
 import { NUNITO } from "../styles/tokens"
 import { infoDeDiseno, textoDelSello } from "../utils/sellos"
@@ -44,7 +44,7 @@ export default function Sello({ diseno, destino, anio, indice = 0, compacto = fa
           boxSizing: "border-box",
         }}
       >
-        <Icon name={icono} size={compacto ? 20 : 28} color={color} strokeWidth={1.7} />
+        <IconoColor name={icono} size={compacto ? 24 : 32} />
         <div
           style={{
             fontFamily: NUNITO,
