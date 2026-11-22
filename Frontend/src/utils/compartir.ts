@@ -8,8 +8,9 @@ const archivoDe = async (url: string, nombre: string, tipoMime: string) => {
     throw new Error("No se ha podido preparar el archivo para compartirlo")
   }
   if (!respuesta.ok) throw new Error("No se ha podido preparar el archivo para compartirlo")
-  const contenido = await respuesta.blob()
-  return new File([contenido], nombre, { type: tipoMime || contenido.type })
+  // Se lee como bytes (y no como Blob) para no mezclar el Blob de Node con el File de jsdom
+  const contenido = await respuesta.arrayBuffer()
+  return new File([contenido], nombre, { type: tipoMime || respuesta.headers.get('Content-Type') || '' })
 }
 
 const descargar = (archivo: File) => {

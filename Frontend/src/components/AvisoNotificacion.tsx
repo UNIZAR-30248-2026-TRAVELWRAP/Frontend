@@ -44,6 +44,8 @@ export default function AvisoNotificacion({ tokenSesion }: { tokenSesion: string
   const abrir = () => {
     if (!aviso) return
     cerrar()
+    // Hasta que cambie la ruta, un aviso repetido que llegue ahora no debe volver a mostrarse
+    rutaActual.current = rutaDeAviso(aviso)
     void navigate(rutaDeAviso(aviso))
   }
 
