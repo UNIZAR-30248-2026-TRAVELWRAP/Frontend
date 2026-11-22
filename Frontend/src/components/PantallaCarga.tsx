@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { C, GRADIENTS, NUNITO } from "../styles/tokens"
+import logo from "../assets/travelwrap-logo.png"
 
 const RETRASO_AVISO_MS = 3000
 
@@ -30,6 +31,13 @@ export default function PantallaCarga() {
         textAlign: "center",
       }}
     >
+      <img
+        src={logo}
+        alt=""
+        aria-hidden="true"
+        style={{ width: 96, height: 96, objectFit: "contain" }}
+      />
+      <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800 }}>TravelWrap</h1>
       <div
         aria-hidden="true"
         className="tw-spinner"
@@ -41,7 +49,6 @@ export default function PantallaCarga() {
           borderTopColor: C.accent,
         }}
       />
-      <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800 }}>TravelWrap</h1>
       <p style={{ margin: 0, fontSize: 14, minHeight: 40, maxWidth: 280, opacity: 0.9 }}>
         {tardando
           ? "Conectando con el servidor, puede tardar unos segundos..."
