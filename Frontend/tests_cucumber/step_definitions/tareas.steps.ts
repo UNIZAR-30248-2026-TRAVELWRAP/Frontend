@@ -89,6 +89,17 @@ When('abro la lista de tareas del viaje {string}', async (viaje: string) => {
   await expect(paginaActual().getByText('Lista de Tareas', { exact: true })).toBeVisible();
 });
 
+When('abro el inicio del viaje {string} con sus tareas', async (viaje: string) => {
+  const id = idDe(viaje);
+  await simularTareas();
+  await paginaActual().goto(new URL(`/viajes/${id}`, paginaActual().url()).toString());
+  await expect(paginaActual().getByRole('navigation', { name: 'Secciones del viaje' })).toBeVisible();
+});
+
+When('toco la tarjeta de tareas pendientes', async () => {
+  await paginaActual().getByRole('button', { name: /Tareas pendientes/ }).click();
+});
+
 When('añado la tarea {string} para {string}', async (texto: string, responsable: string) => {
   await paginaActual().getByRole('button', { name: 'Nueva' }).click();
   await paginaActual().getByLabel('Tarea', { exact: true }).fill(texto);
@@ -112,6 +123,17 @@ When('pulso eliminar la tarea {string}', async (texto: string) => {
 });
 
 // ── Comprobaciones ───────────────────────────────────────────────────────────
+
+Then('no veo la tarjeta de tareas pendientes', async () => {
+  // Se espera a que el viaje esté cargado, para que la tarjeta no falte solo por no haber llegado aún
+  await expect(paginaActual().getByRole('button', { name: /Votaciones/ })).toBeVisible();
+  await expect(paginaActual().getByRole('button', { name: /Tareas pendientes/ })).toHaveCount(0);
+});
+
+Then('veo la lista de tareas del viaje', async () => {
+  await expect(paginaActual()).toHaveURL(/\/documentos\?pestana=tareas$/);
+  await expect(paginaActual().getByText('Lista de Tareas', { exact: true })).toBeVisible();
+});
 
 Then('veo la tarea {string}', async (texto: string) => {
   await expect(fila(texto)).toBeVisible();
