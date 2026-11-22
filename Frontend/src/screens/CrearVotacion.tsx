@@ -5,6 +5,7 @@ import Icon from "../components/Icon"
 import SectionLabel from "../components/SectionLabel"
 import { ApiError } from "../services/authApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
+import { viajeEnCache } from "../services/viajesEnCache"
 import { crearVotacion, type NuevaVotacion, type Votacion } from "../services/votacionesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
@@ -49,7 +50,7 @@ type CrearVotacionProps = {
 }
 
 export default function CrearVotacion({ viajeId, tokenSesion, onVolver, onCreada }: CrearVotacionProps) {
-  const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
+  const [viaje, setViaje] = useState<ViajeDelUsuario | null>(() => viajeEnCache(viajeId))
   const [tipo, setTipo] = useState<TipoCreable>("otro")
   const [pregunta, setPregunta] = useState("")
   const [opciones, setOpciones] = useState<OpcionEnEdicion[]>([opcionVacia(), opcionVacia()])

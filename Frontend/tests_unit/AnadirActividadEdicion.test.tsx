@@ -1,4 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach as antesDeCadaPrueba } from 'vitest'
+import { olvidarViajes } from '../src/services/viajesEnCache'
+antesDeCadaPrueba(() => olvidarViajes())
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import AnadirActividad from '../src/screens/AnadirActividad'

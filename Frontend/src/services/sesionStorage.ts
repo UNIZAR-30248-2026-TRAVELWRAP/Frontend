@@ -1,5 +1,6 @@
 import type { Sesion } from "./authApi"
 import { borrarItinerarios } from "./itinerarioGuardado"
+import { olvidarViajes } from "./viajesEnCache"
 import { copiaValida, email, fechaHora, identificador, objeto, opcional, texto, token, urlImagen } from "../utils/datosGuardados"
 
 const CLAVE = "travelwrap.sesion"
@@ -44,6 +45,7 @@ export const guardarSesion = (sesion: Sesion) => {
 
 export const borrarSesion = () => {
   borrarItinerarios()
+  olvidarViajes()
   try {
     localStorage.removeItem(CLAVE)
   } catch {

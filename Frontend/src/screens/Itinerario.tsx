@@ -27,6 +27,7 @@ import { ApiError } from "../services/authApi"
 import { obtenerRutaDelDia, type RutaDelDia } from "../services/rutasApi"
 import { guardarItinerario, leerItinerario } from "../services/itinerarioGuardado"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
+import { viajeEnCache } from "../services/viajesEnCache"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro, diasDelItinerario, fechaDeHoy, formatearFechasActivo } from "../utils/formatoViaje"
 import { moverActividad, ordenarAgenda, puedeReordenarse } from "../utils/ordenActividades"
@@ -80,7 +81,7 @@ export default function Itinerario({
   onEditarActividad,
   onCambiarSeccion,
 }: ItinerarioProps) {
-  const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
+  const [viaje, setViaje] = useState<ViajeDelUsuario | null>(() => viajeEnCache(viajeId))
   const [actividades, setActividades] = useState<Actividad[]>([])
   const [error, setError] = useState("")
   const [guardadoEn, setGuardadoEn] = useState<string | null>(null)

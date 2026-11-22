@@ -5,6 +5,52 @@ import { descargarDocumento, mensajeAlAbrir } from "../utils/documentos"
 import Icon from "./Icon"
 import VisorPdf from "./VisorPdf"
 
+// Resumen en texto: se descarga el .txt y se muestra tal cual, con sus saltos de línea
+function TextoDocumento({ url, onError }: { url: string; onError: () => void }) {
+  const [texto, setTexto] = useState<string | null>(null)
+
+  useEffect(() => {
+    let vigente = true
+    fetch(url)
+      .then((respuesta) => {
+        if (!respuesta.ok) throw new Error(`Respuesta ${respuesta.status}`)
+        return respuesta.text()
+      })
+      .then((contenido) => {
+        if (vigente) setTexto(contenido)
+      })
+      .catch(() => {
+        if (vigente) onError()
+      })
+    return () => {
+      vigente = false
+    }
+  }, [url, onError])
+
+  if (texto === null) {
+    return <p style={{ margin: "auto", fontFamily: NUNITO, color: "rgba(255,255,255,0.8)", fontSize: 14 }}>Cargando...</p>
+  }
+  return (
+    <pre
+      style={{
+        flex: 1,
+        minHeight: 0,
+        overflow: "auto",
+        margin: 0,
+        padding: 16,
+        whiteSpace: "pre-wrap",
+        overflowWrap: "anywhere",
+        fontFamily: NUNITO,
+        fontSize: 14,
+        lineHeight: 1.5,
+        color: "white",
+      }}
+    >
+      {texto}
+    </pre>
+  )
+}
+
 type VistaPreviaDocumentoProps = {
   viajeId: string
   documento: Documento
@@ -95,6 +141,7 @@ export default function VistaPreviaDocumento({ viajeId, documento, tokenSesion, 
   }
 
   const esPdf = documento.tipo_mime === "application/pdf"
+  const esTexto = documento.tipo_mime === "text/plain"
 
   return (
     <div
@@ -151,6 +198,8 @@ export default function VistaPreviaDocumento({ viajeId, documento, tokenSesion, 
           <p style={{ margin: "auto", fontFamily: NUNITO, color: "rgba(255,255,255,0.8)", fontSize: 14 }}>Cargando...</p>
         ) : esPdf ? (
           <VisorPdf url={url} onError={alFallarElContenido} />
+        ) : esTexto ? (
+          <TextoDocumento url={url} onError={alFallarElContenido} />
         ) : (
           <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 8px 16px" }}>
             <img

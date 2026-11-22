@@ -3,6 +3,7 @@ import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import { ApiError } from "../services/authApi"
 import { editarViaje, obtenerViaje, type CambiosViaje, type ViajeDelUsuario } from "../services/viajesApi"
+import { viajeEnCache } from "../services/viajesEnCache"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import BotonVolver from "../components/BotonVolver"
 import { estiloAlerta, estiloCampo, estiloEtiqueta } from "../styles/formulario"
@@ -46,7 +47,7 @@ type EditarViajeProps = {
 }
 
 export default function EditarViaje({ viajeId, tokenSesion, onVolver, onGuardado }: EditarViajeProps) {
-  const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
+  const [viaje, setViaje] = useState<ViajeDelUsuario | null>(() => viajeEnCache(viajeId))
   const [formulario, setFormulario] = useState<Formulario | null>(null)
   const [errorCarga, setErrorCarga] = useState("")
   const [guardando, setGuardando] = useState(false)

@@ -6,6 +6,7 @@ import OpcionVotacion from "../components/OpcionVotacion"
 import ProponerOpcion from "../components/ProponerOpcion"
 import { ApiError } from "../services/authApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
+import { viajeEnCache } from "../services/viajesEnCache"
 import {
   cerrarVotacion,
   listarVotaciones,
@@ -34,7 +35,7 @@ type ElegirDestinoProps = {
 }
 
 export default function ElegirDestino({ viajeId, tokenSesion, onVolver, onInvitar, onDestinoFijado }: ElegirDestinoProps) {
-  const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
+  const [viaje, setViaje] = useState<ViajeDelUsuario | null>(() => viajeEnCache(viajeId))
   const [votacion, setVotacion] = useState<Votacion | null>(null)
   const [error, setError] = useState("")
   const [votando, setVotando] = useState(false)

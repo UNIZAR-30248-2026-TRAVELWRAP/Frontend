@@ -10,6 +10,7 @@ import { enviarMensaje, listarMensajes, type Mensaje } from "../services/chatApi
 import { marcarChatLeido } from "../services/chatLeidos"
 import { escucharMensajes } from "../services/chatTiempoReal"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
+import { viajeEnCache } from "../services/viajesEnCache"
 import { estiloAlerta } from "../styles/formulario"
 import { aMiembro } from "../utils/formatoViaje"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
@@ -43,7 +44,7 @@ type ChatProps = {
 
 // Pantalla: Chat del grupo (mensajes en tiempo real y envío de mensajes)
 export default function Chat({ viajeId, tokenSesion, usuarioId, onVolver, onAbrirGaleria, onCambiarSeccion }: ChatProps) {
-  const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
+  const [viaje, setViaje] = useState<ViajeDelUsuario | null>(() => viajeEnCache(viajeId))
   const [mensajes, setMensajes] = useState<Mensaje[]>([])
   const [hayAnteriores, setHayAnteriores] = useState(false)
   const [cargando, setCargando] = useState(true)

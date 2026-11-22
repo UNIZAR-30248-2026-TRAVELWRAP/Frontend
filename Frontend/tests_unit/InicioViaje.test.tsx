@@ -1,4 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach as antesDeCadaPrueba } from 'vitest'
+import { olvidarViajes } from '../src/services/viajesEnCache'
+antesDeCadaPrueba(() => olvidarViajes())
 import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import InicioViaje from '../src/screens/InicioViaje'
@@ -36,7 +39,7 @@ const viaje = (datos: Record<string, unknown> = {}) => ({
 // GET devuelve el viaje y POST /finalizar lo devuelve finalizado (o la respuesta indicada)
 const simularBackend = (datos: Record<string, unknown> = {}, finalizar = () => respuesta(200, viaje({ ...datos, estado: 'finalizado' }))) => {
   const fetchMock = vi.fn((url: string, opciones?: RequestInit) =>
-    opciones?.method === 'POST' && url.endsWith('/finalizar') ? finalizar() : respuesta(200, viaje(datos)),
+    url.endsWith('/playlist') ? respuesta(200, { playlist: null }) : opciones?.method === 'POST' && url.endsWith('/finalizar') ? finalizar() : respuesta(200, viaje(datos)),
   )
   vi.stubGlobal('fetch', fetchMock)
   return fetchMock
@@ -177,7 +180,7 @@ describe('InicioViaje · finalizar viaje con confirmación', () => {
     await user.click(within(ventana).getByRole('button', { name: 'Cancelar' }))
 
     expect(dialogo()).toBeNull()
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls.filter(([url]) => !String(url).endsWith('/playlist'))).toHaveLength(1)
   })
 
   it('al confirmar finaliza el viaje y avisa con el viaje finalizado', async () => {
@@ -191,7 +194,7 @@ describe('InicioViaje · finalizar viaje con confirmación', () => {
 
     await vi.waitFor(() => expect(onFinalizado).toHaveBeenCalledTimes(1))
     expect(onFinalizado.mock.calls[0][0].estado).toBe('finalizado')
-    const [url, opciones] = fetchMock.mock.calls[1] as unknown as [string, RequestInit]
+    const [url, opciones] = fetchMock.mock.calls.find(([, o]) => o?.method === 'POST') as unknown as [string, RequestInit]
     expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/finalizar$`))
     expect(opciones.method).toBe('POST')
     expect(dialogo()).toBeNull()
