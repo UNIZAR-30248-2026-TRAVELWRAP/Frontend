@@ -217,6 +217,7 @@ function RutaItinerario({ sesion }: { sesion: Sesion }) {
         navigate(`/viajes/${viajeId}/actividades/${actividad.id}/editar?fecha=${actividad.fecha}`)
       }
       onCambiarSeccion={(seccion) => navigate(rutaDeSeccion(viajeId, seccion))}
+      onBuscarDirecciones={(consulta) => buscarDirecciones(consulta, sesion.token).then((resultado) => resultado.direcciones)}
     />
   );
 }

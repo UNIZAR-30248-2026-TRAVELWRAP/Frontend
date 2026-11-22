@@ -16,6 +16,7 @@ import Icon from "../components/Icon"
 import IconoColor from "../components/IconoColor"
 import SectionLabel from "../components/SectionLabel"
 import Avatar from "../components/Avatar"
+import PuntosInteres from "../components/PuntosInteres"
 import {
   CATEGORIAS,
   eliminarActividad,
@@ -23,6 +24,7 @@ import {
   listarActividades,
   reordenarActividades,
   type Actividad,
+  type ResultadoDireccion,
 } from "../services/actividadesApi"
 import { ApiError } from "../services/authApi"
 import { obtenerRutaDelDia, type RutaDelDia } from "../services/rutasApi"
@@ -37,6 +39,11 @@ import { estiloAlerta } from "../styles/formulario"
 const MapaActividades = lazy(() => import("../components/MapaActividades"))
 
 const ALTO_MAPA_CARGANDO = 220
+
+const VISTAS = [
+  { id: "agenda", icono: "calendar", texto: "Agenda" },
+  { id: "puntos", icono: "pin", texto: "Puntos de interés" },
+] as const
 
 const formatearDistancia = (metros: number) =>
   metros < 1000 ? `${Math.round(metros / 10) * 10} m` : `${(metros / 1000).toFixed(1).replace(".", ",")} km`
@@ -71,6 +78,7 @@ type ItinerarioProps = {
   onAnadirActividad?: (fecha: string) => void
   onEditarActividad?: (actividad: Actividad) => void
   onCambiarSeccion?: (seccion: SeccionViaje) => void
+  onBuscarDirecciones?: (consulta: string) => Promise<ResultadoDireccion[]>
 }
 
 export default function Itinerario({
@@ -81,6 +89,7 @@ export default function Itinerario({
   onAnadirActividad,
   onEditarActividad,
   onCambiarSeccion,
+  onBuscarDirecciones,
 }: ItinerarioProps) {
   const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
   const [actividades, setActividades] = useState<Actividad[]>([])
@@ -92,6 +101,7 @@ export default function Itinerario({
   const [errorEliminar, setErrorEliminar] = useState("")
   const [diaElegido, setDiaElegido] = useState(diaInicial)
   const [mapaAmpliado, setMapaAmpliado] = useState(false)
+  const [vista, setVista] = useState<"agenda" | "puntos">("agenda")
   const [guardandoOrden, setGuardandoOrden] = useState(false)
   const [errorOrden, setErrorOrden] = useState("")
   const sensores = useSensors(
@@ -265,7 +275,7 @@ export default function Itinerario({
     <div style={{ background: C.bg, minHeight: "100vh" }}>
       <div style={{ maxWidth: 480, margin: "0 auto", paddingBottom: ALTO_BARRA_INFERIOR + 24 }}>
         <div style={{ background: GRADIENTS.header, padding: "20px 20px 22px", borderRadius: RADIUS.header }}>
-          <div style={{ marginBottom: dias.length > 0 ? 16 : 0 }}>
+          <div style={{ marginBottom: viaje ? 16 : 0 }}>
             <button
               type="button"
               onClick={onVolver}
@@ -299,8 +309,60 @@ export default function Itinerario({
               Itinerario
             </Heading>
           </div>
+          {viaje && (
+            <div
+              role="tablist"
+              aria-label="Vista del itinerario"
+              style={{
+                display: "flex",
+                background: "rgba(255,255,255,0.14)",
+                borderRadius: 12,
+                padding: 4,
+                gap: 3,
+                marginBottom: dias.length > 0 ? 14 : 0,
+              }}
+            >
+              {VISTAS.map(({ id, icono, texto }) => {
+                const seleccionada = vista === id
+                return (
+                  <button
+                    type="button"
+                    role="tab"
+                    key={id}
+                    aria-selected={seleccionada}
+                    onClick={() => setVista(id)}
+                    style={{
+                      flex: 1,
+                      minHeight: 44,
+                      background: seleccionada ? "white" : "transparent",
+                      color: seleccionada ? C.blue : "rgba(255,255,255,0.75)",
+                      border: "none",
+                      borderRadius: 9,
+                      padding: "8px 4px",
+                      fontFamily: NUNITO,
+                      fontWeight: 800,
+                      fontSize: 13,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 5,
+                    }}
+                  >
+                    <Icon name={icono} size={14} color={seleccionada ? C.blue : "rgba(255,255,255,0.75)"} strokeWidth={2} />
+                    {texto}
+                  </button>
+                )
+              })}
+            </div>
+          )}
           {dias.length > 0 && (
-            <div role="group" aria-label="Día del itinerario" style={{ display: "flex", gap: 8, overflowX: "auto" }}>
+            <div
+              role={vista === "agenda" ? "group" : undefined}
+              aria-label={vista === "agenda" ? "Día del itinerario" : undefined}
+              aria-hidden={vista === "agenda" ? undefined : true}
+              style={{ display: "flex", gap: 8, overflowX: "auto", visibility: vista === "agenda" ? "visible" : "hidden" }}
+            >
               {dias.map((d) => {
                 const activa = dia === d.fecha
                 return (
@@ -389,7 +451,17 @@ export default function Itinerario({
             </div>
           )}
 
-          {viaje && dias.length > 0 && (
+          {viaje && vista === "puntos" && (
+            <PuntosInteres
+              viajeId={viajeId}
+              tokenSesion={tokenSesion}
+              viaje={viaje}
+              editable={puedeModificar}
+              onBuscarDirecciones={onBuscarDirecciones}
+            />
+          )}
+
+          {viaje && vista === "agenda" && dias.length > 0 && (
             <div
               style={{
                 background: "white",
@@ -501,7 +573,7 @@ export default function Itinerario({
             </div>
           )}
 
-          {viaje && activo && !guardadoEn && (
+          {viaje && vista === "agenda" && activo && !guardadoEn && (
             <button
               type="button"
               onClick={() => onAnadirActividad?.(dia)}
@@ -528,13 +600,13 @@ export default function Itinerario({
             </button>
           )}
 
-          {viaje && dias.length === 0 && (
+          {viaje && vista === "agenda" && dias.length === 0 && (
             <div style={avisoVacioStyle}>
               Todavía no hay actividades ni fechas en este viaje. Añade una actividad y aparecerá aquí por día.
             </div>
           )}
 
-          {dias.length > 0 && (
+          {vista === "agenda" && dias.length > 0 && (
             <>
               <SectionLabel>Agenda del día</SectionLabel>
               {fueraDeLasFechas && (
