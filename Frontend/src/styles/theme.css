@@ -195,6 +195,22 @@
   color: var(--tw-navy);
 }
 
+@keyframes tw-girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.tw-spinner {
+  animation: tw-girar 0.9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tw-spinner {
+    animation-duration: 3s;
+  }
+}
+
 @keyframes tw-toast-entra {
   from {
     opacity: 0;
