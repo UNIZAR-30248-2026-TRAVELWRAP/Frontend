@@ -11,10 +11,13 @@ export type UbicacionElegida = { latitud: number; longitud: number }
 type MapaPuntosInteresProps = {
   puntos: PuntoInteres[]
   elegida: UbicacionElegida | null
+  seleccionado: string | null
   enfocado: { id: string; vez: number } | null
-  alTocarMapa?: (ubicacion: UbicacionElegida) => void
+  alTocarMapa: (ubicacion: UbicacionElegida) => void
+  alElegirPunto: (id: string) => void
   ampliado?: boolean
   alAlternarAmpliado?: () => void
+  desplazamiento?: number
 }
 
 export const ALTO_MAPA_PUNTOS = 280
@@ -23,46 +26,43 @@ const ATRIBUCION = '&copy; <a href="https://www.openstreetmap.org/copyright">Ope
 
 const FORMA = "M18 1.5C9 1.5 2 8.5 2 17.3c0 11.7 16 27.2 16 27.2s16-15.5 16-27.2C34 8.5 27 1.5 18 1.5z"
 
-const crearIcono = (relleno: string, borde: string, discontinuo: boolean) =>
-  L.divIcon({
+const crearIcono = (relleno: string, borde: string, discontinuo: boolean, escala = 1) => {
+  const ancho = Math.round(36 * escala)
+  const alto = Math.round(46 * escala)
+  return L.divIcon({
     className: "mapa-marcador",
-    html: `<svg width="36" height="46" viewBox="0 0 36 46" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.35));"><path d="${FORMA}" fill="${relleno}" stroke="${borde}" stroke-width="2.5"${discontinuo ? ' stroke-dasharray="4 3"' : ""}/><circle cx="18" cy="17" r="6" fill="${discontinuo ? borde : "white"}"/></svg>`,
-    iconSize: [36, 46],
-    iconAnchor: [18, 45],
-    popupAnchor: [0, -42],
+    html: `<svg width="${ancho}" height="${alto}" viewBox="0 0 36 46" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.35));"><path d="${FORMA}" fill="${relleno}" stroke="${borde}" stroke-width="2.5"${discontinuo ? ' stroke-dasharray="4 3"' : ""}/><circle cx="18" cy="17" r="6" fill="${discontinuo ? borde : "white"}"/></svg>`,
+    iconSize: [ancho, alto],
+    iconAnchor: [ancho / 2, alto - 1],
   })
-
-const crearPopup = (punto: PuntoInteres) => {
-  const contenido = document.createElement("div")
-  const nombre = document.createElement("strong")
-  nombre.textContent = punto.nombre
-  contenido.appendChild(nombre)
-  if (punto.nota) {
-    const nota = document.createElement("div")
-    nota.textContent = punto.nota
-    contenido.appendChild(nota)
-  }
-  return contenido
 }
 
 export default function MapaPuntosInteres({
   puntos,
   elegida,
+  seleccionado,
   enfocado,
   alTocarMapa,
+  alElegirPunto,
   ampliado = false,
   alAlternarAmpliado,
+  desplazamiento = 0,
 }: MapaPuntosInteresProps) {
   const contenedor = useRef<HTMLDivElement>(null)
   const mapa = useRef<L.Map | null>(null)
   const capaPuntos = useRef<L.LayerGroup | null>(null)
   const capaElegida = useRef<L.LayerGroup | null>(null)
   const marcadores = useRef<Map<string, L.Marker>>(new Map())
+  const ultimaClave = useRef<string | null>(null)
   const alTocar = useRef(alTocarMapa)
+  const alElegir = useRef(alElegirPunto)
+  const margen = useRef(desplazamiento)
 
   useEffect(() => {
     alTocar.current = alTocarMapa
-  }, [alTocarMapa])
+    alElegir.current = alElegirPunto
+    margen.current = desplazamiento
+  }, [alTocarMapa, alElegirPunto, desplazamiento])
 
   useEffect(() => {
     if (!contenedor.current) return
@@ -72,7 +72,7 @@ export default function MapaPuntosInteres({
     capaElegida.current = L.layerGroup().addTo(nuevo)
     mapa.current = nuevo
     nuevo.on("click", (evento: L.LeafletMouseEvent) => {
-      alTocar.current?.({ latitud: evento.latlng.lat, longitud: evento.latlng.lng })
+      alTocar.current({ latitud: evento.latlng.lat, longitud: evento.latlng.lng })
     })
     const alRedimensionar = () => nuevo.invalidateSize()
     window.addEventListener("resize", alRedimensionar)
@@ -83,6 +83,7 @@ export default function MapaPuntosInteres({
       capaPuntos.current = null
       capaElegida.current = null
       marcadores.current = new Map()
+      ultimaClave.current = null
     }
   }, [])
 
@@ -97,22 +98,27 @@ export default function MapaPuntosInteres({
     const capa = capaPuntos.current
     if (!actual || !capa) return
     const lista: PuntoInteres[] = JSON.parse(clavePuntos)
+    const cambiaronLosPuntos = ultimaClave.current !== clavePuntos
+    ultimaClave.current = clavePuntos
     capa.clearLayers()
     marcadores.current = new Map()
+    lista.forEach((punto) => {
+      const elegido = punto.id === seleccionado
+      const marcador = L.marker([punto.latitud, punto.longitud], {
+        icon: elegido ? crearIcono(C.navy, "white", false, 1.3) : crearIcono(C.accent, "white", false),
+        title: punto.nombre,
+        alt: `Punto de interés: ${punto.nombre}`,
+        zIndexOffset: elegido ? 1000 : 0,
+      })
+        .on("click", () => alElegir.current(punto.id))
+        .addTo(capa)
+      marcadores.current.set(punto.id, marcador)
+    })
+    if (!cambiaronLosPuntos) return
     if (lista.length === 0) {
       actual.setView([25, 10], 2)
       return
     }
-    lista.forEach((punto) => {
-      const marcador = L.marker([punto.latitud, punto.longitud], {
-        icon: crearIcono(C.accent, "white", false),
-        title: punto.nombre,
-        alt: `Punto de interés: ${punto.nombre}`,
-      })
-        .bindPopup(crearPopup(punto))
-        .addTo(capa)
-      marcadores.current.set(punto.id, marcador)
-    })
     if (lista.length === 1) {
       actual.setView([lista[0].latitud, lista[0].longitud], 15)
       return
@@ -121,7 +127,7 @@ export default function MapaPuntosInteres({
       padding: [36, 36],
       maxZoom: 16,
     })
-  }, [clavePuntos])
+  }, [clavePuntos, seleccionado])
 
   const claveElegida = JSON.stringify(elegida)
 
@@ -138,7 +144,8 @@ export default function MapaPuntosInteres({
       alt: "Ubicación elegida",
       interactive: false,
     }).addTo(capa)
-    actual.setView([ubicacion.latitud, ubicacion.longitud], Math.max(actual.getZoom(), 15))
+    actual.setView([ubicacion.latitud, ubicacion.longitud], Math.max(actual.getZoom(), 15), { animate: false })
+    if (margen.current > 0) actual.panBy([0, margen.current], { animate: false })
   }, [claveElegida])
 
   useEffect(() => {
@@ -146,8 +153,8 @@ export default function MapaPuntosInteres({
     const marcador = marcadores.current.get(enfocado.id)
     const actual = mapa.current
     if (!marcador || !actual) return
-    actual.setView(marcador.getLatLng(), Math.max(actual.getZoom(), 15))
-    marcador.openPopup()
+    actual.setView(marcador.getLatLng(), Math.max(actual.getZoom(), 15), { animate: false })
+    if (margen.current > 0) actual.panBy([0, margen.current], { animate: false })
   }, [enfocado])
 
   return (
@@ -156,7 +163,7 @@ export default function MapaPuntosInteres({
         ref={contenedor}
         role="region"
         aria-label="Mapa de los puntos de interés"
-        style={{ position: "absolute", inset: 0, background: C.lightBlue, cursor: alTocarMapa ? "crosshair" : undefined }}
+        style={{ position: "absolute", inset: 0, background: C.lightBlue }}
       />
       {alAlternarAmpliado && (
         <button
