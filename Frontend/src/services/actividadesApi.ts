@@ -39,6 +39,8 @@ export type Actividad = {
   creado_por: string | null
   creado_en: string
   actualizado_en: string
+  // Si la actividad se creó desde un escaneo con la foto del documento (la foto se pide con urlFotoActividad)
+  tiene_foto?: boolean
 }
 
 export type NuevaActividad = {
@@ -51,6 +53,8 @@ export type NuevaActividad = {
   latitud: number | null
   longitud: number | null
   lugar_externo_id: string | null
+  // Ruta de la foto del documento escaneado, si la actividad se crea desde el escaneo
+  foto_ruta?: string
 }
 
 export const buscarDirecciones = (consulta: string, tokenSesion: string) =>
@@ -92,3 +96,10 @@ export const crearActividad = (viajeId: string, actividad: NuevaActividad, token
     cuerpo: actividad,
     token: tokenSesion,
   })
+
+// Enlace temporal para ver la foto del documento escaneado de la actividad. Caduca a los 5 minutos
+export const urlFotoActividad = (viajeId: string, actividadId: string, tokenSesion: string) =>
+  peticion<{ url: string; expira_en: string }>(
+    `/viajes/${encodeURIComponent(viajeId)}/actividades/${encodeURIComponent(actividadId)}/foto/url`,
+    { token: tokenSesion }
+  )

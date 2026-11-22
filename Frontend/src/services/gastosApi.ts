@@ -20,6 +20,8 @@ export type Gasto = {
   creado_por: string | null
   creado_en: string
   actualizado_en: string
+  // Si el gasto se creó desde un escaneo con la foto del ticket (la foto se pide con urlFotoGasto)
+  tiene_foto?: boolean
   // Las partes siempre suman el importe del gasto
   repartos: RepartoGasto[]
 }
@@ -33,6 +35,8 @@ export type NuevoGasto = {
   fecha?: string | null
   // Miembros entre los que se divide a partes iguales, sin repetir
   participantes: string[]
+  // Ruta de la foto del ticket escaneado, si el gasto se crea desde el escaneo (la devuelve el escaneo)
+  foto_ruta?: string
 }
 
 export type ListaGastos = {
@@ -142,3 +146,10 @@ export const eliminarGasto = (viajeId: string, gastoId: string, tokenSesion: str
 // Registra el gasto y su reparto a partes iguales. Devuelve el gasto con la parte de cada participante
 export const crearGasto = (viajeId: string, gasto: NuevoGasto, tokenSesion: string) =>
   peticion<Gasto>(rutaGastos(viajeId), { metodo: "POST", cuerpo: gasto, token: tokenSesion })
+
+// Enlace temporal para ver la foto del ticket del gasto. Caduca a los 5 minutos
+export const urlFotoGasto = (viajeId: string, gastoId: string, tokenSesion: string) =>
+  peticion<{ url: string; expira_en: string }>(
+    `${rutaGastos(viajeId)}/${encodeURIComponent(gastoId)}/foto/url`,
+    { token: tokenSesion }
+  )
