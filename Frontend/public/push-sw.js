@@ -16,8 +16,8 @@ self.addEventListener('push', (evento) => {
       if (ventanas.some((ventana) => ventana.visibilityState === 'visible')) return undefined
       return self.registration.showNotification(aviso.viaje_nombre, {
         body: aviso.texto,
-        icon: '/pwa-192x192.png',
-        badge: '/pwa-192x192.png',
+        icon: '/notificacion-192x192.png',
+        badge: '/notificacion-192x192.png',
         tag: `${aviso.viaje_id}-${aviso.tipo}`,
         data: { ruta: rutaDeAviso(aviso) },
       })

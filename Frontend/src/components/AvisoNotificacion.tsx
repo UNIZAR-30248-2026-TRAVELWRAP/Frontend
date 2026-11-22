@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import Icon from "./Icon"
+import appLogo from "../assets/travelwrap-logo.png"
 import { escucharAvisos, rutaDeAviso, type AvisoViaje } from "../services/notificacionesTiempoReal"
 import { sincronizarPush } from "../services/pushNotificaciones"
 import { C, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
@@ -93,15 +94,13 @@ export default function AvisoNotificacion({ tokenSesion }: { tokenSesion: string
           style={{
             width: 36,
             height: 36,
-            borderRadius: 11,
-            background: C.bg,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             flexShrink: 0,
           }}
         >
-          <Icon name="bell" size={18} color={C.navy} strokeWidth={2} />
+          <img src={appLogo} alt="" style={{ width: 36, height: 36, objectFit: "contain" }} />
         </div>
         <div style={{ flex: 1, fontFamily: NUNITO, minWidth: 0 }}>
           <div style={{ color: C.navy, fontSize: 13, fontWeight: 800 }}>{aviso.viaje_nombre}</div>
