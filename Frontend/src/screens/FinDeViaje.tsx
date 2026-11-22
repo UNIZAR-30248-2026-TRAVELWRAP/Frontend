@@ -7,16 +7,14 @@ import Sello from "../components/Sello"
 import SelectorSello from "../components/SelectorSello"
 import { ApiError } from "../services/authApi"
 import { listarFotos, type Foto } from "../services/fotosApi"
-import { obtenerBalance, type SaldoMiembro } from "../services/gastosApi"
 import { obtenerResumenDelViaje, type ResumenDelViaje } from "../services/resumenApi"
 import { elegirSello, obtenerSello, quitarSello, type DisenoSello, type Sello as SelloDelViaje } from "../services/sellosApi"
 import { archivarViaje, obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import DialogoConfirmacion from "../components/DialogoConfirmacion"
 import { estiloAlerta } from "../styles/formulario"
 import { C, NUNITO } from "../styles/tokens"
-import { conEuros } from "../utils/gastos"
 import { aMiembro, diasDelViaje, formatearFechasActivo } from "../utils/formatoViaje"
-import { calcularTransferencias, listaDeNombres, textoDeDias, textoDeVotos } from "../utils/resumen"
+import { listaDeNombres, textoDeDias, textoDeVotos } from "../utils/resumen"
 
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
 
@@ -104,7 +102,6 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
   const [eligiendoSello, setEligiendoSello] = useState(false)
   const [resumen, setResumen] = useState<ResumenDelViaje | null>(null)
   const [fotos, setFotos] = useState<Foto[]>([])
-  const [saldos, setSaldos] = useState<SaldoMiembro[]>([])
   const [error, setError] = useState("")
   const [pagina, setPagina] = useState(0)
   const [pausado, setPausado] = useState(false)
@@ -125,15 +122,13 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
       obtenerViaje(viajeId, tokenSesion),
       obtenerResumenDelViaje(viajeId, tokenSesion),
       listarFotos(viajeId, tokenSesion).catch(() => null),
-      obtenerBalance(viajeId, tokenSesion).catch(() => null),
       obtenerSello(viajeId, tokenSesion).catch(() => null),
     ])
-      .then(([datosViaje, datosResumen, listaFotos, balance, datosSello]) => {
+      .then(([datosViaje, datosResumen, listaFotos, datosSello]) => {
         if (!vigente) return
         setViaje(datosViaje)
         setResumen(datosResumen)
         setFotos((listaFotos?.fotos ?? []).filter((foto) => foto.url !== null))
-        setSaldos(balance?.saldos ?? [])
         setSello(datosSello?.sello ?? null)
       })
       .catch((e) => {
@@ -178,17 +173,20 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
   const anio = viaje?.fecha_inicio?.slice(0, 4) ?? ""
   const alma = resumen?.alma_del_grupo ?? null
   const indiceDelAlma = alma ? (viaje?.miembros ?? []).findIndex((m) => m.usuario_id === alma.usuario_id) : -1
-  const transferencias = calcularTransferencias(saldos)
-  const colorDe = (nombre: string) => {
-    const indice = (viaje?.miembros ?? []).findIndex((m) => m.nombre === nombre)
-    return aMiembro(nombre, Math.max(indice, 0))
-  }
+  const estadisticasDelAlma = alma
+    ? [
+        { etiqueta: "Pagos", valor: alma.pagos },
+        { etiqueta: "Planes propuestos", valor: alma.planes_propuestos },
+        { etiqueta: "Fotos subidas", valor: alma.fotos_subidas },
+      ].filter((dato) => dato.valor > 0)
+    : []
 
-  const diapositivas: { titulo: string; contenido: ReactNode }[] =
+  const diapositivas: { titulo: string; visible: boolean; contenido: ReactNode }[] =
     viaje && resumen
       ? [
           {
             titulo: "Portada",
+            visible: true,
             contenido: (
               <>
                 <p style={estiloEtiqueta}>TravelWrap · Resumen</p>
@@ -207,6 +205,7 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
           },
           {
             titulo: "Tiempo juntos",
+            visible: resumen.dias > 0,
             contenido: (
               <>
                 <p style={estiloEtiqueta}>Tiempo juntos</p>
@@ -230,30 +229,12 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
             ),
           },
           {
-            titulo: "Gastos",
-            contenido: (
-              <>
-                <p style={estiloEtiqueta}>En total gastasteis</p>
-                <div style={{ fontSize: 64, fontWeight: 900, lineHeight: 1, marginBottom: 6, overflowWrap: "anywhere" }}>
-                  {conEuros(resumen.gasto_total)}
-                </div>
-                <div style={{ fontSize: 16, color: "rgba(255,255,255,0.9)", marginBottom: 32 }}>
-                  {miembros.length > 1 ? `entre los ${miembros.length}` : "en el viaje"}
-                </div>
-                <div style={{ fontSize: 14, color: "rgba(255,255,255,0.95)", overflowWrap: "anywhere" }}>
-                  {resumen.gasto_mayor
-                    ? `El gasto más alto: ${resumen.gasto_mayor.concepto} · ${conEuros(resumen.gasto_mayor.importe)}`
-                    : "No se registró ningún gasto en este viaje"}
-                </div>
-              </>
-            ),
-          },
-          {
             titulo: "El momento estrella",
+            visible: resumen.actividad_mas_votada !== null,
             contenido: (
               <>
                 <p style={estiloEtiqueta}>El momento estrella</p>
-                {resumen.actividad_mas_votada ? (
+                {resumen.actividad_mas_votada && (
                   <div style={{ ...estiloTarjeta, width: "100%", borderRadius: 22, padding: 24, boxSizing: "border-box" }}>
                     <div style={{ fontSize: 30, fontWeight: 900, marginBottom: 8, overflowWrap: "anywhere" }}>
                       {resumen.actividad_mas_votada.titulo}
@@ -263,18 +244,17 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
                     </div>
                     <div style={{ fontSize: 14, fontWeight: 800 }}>{textoDeVotos(resumen.actividad_mas_votada.votos)}</div>
                   </div>
-                ) : (
-                  <div style={{ fontSize: 16, color: "rgba(255,255,255,0.95)" }}>Nadie votó actividades en este viaje</div>
                 )}
               </>
             ),
           },
           {
             titulo: "El alma del grupo",
+            visible: alma !== null,
             contenido: (
               <>
                 <p style={estiloEtiqueta}>El alma del grupo</p>
-                {alma ? (
+                {alma && (
                   <>
                     <div style={{ marginBottom: 16 }}>
                       <Avatar member={aMiembro(alma.nombre, Math.max(indiceDelAlma, 0))} size={90} showBorder={false} />
@@ -282,38 +262,37 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
                     <div style={{ fontSize: 36, fontWeight: 900, marginBottom: 6, overflowWrap: "anywhere" }}>
                       {alma.nombre ?? "Antiguo miembro"}
                     </div>
-                    <div style={{ fontSize: 15, color: "rgba(255,255,255,0.95)", marginBottom: 28 }}>Pagó la cuenta más veces</div>
-                    <ul
-                      aria-label={`Estadísticas de ${alma.nombre ?? "este viajero"}`}
-                      style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 10 }}
-                    >
-                      {[
-                        { etiqueta: "Pagos", valor: alma.pagos },
-                        { etiqueta: "Planes propuestos", valor: alma.planes_propuestos },
-                        { etiqueta: "Fotos subidas", valor: alma.fotos_subidas },
-                      ].map((dato) => (
-                        <li key={dato.etiqueta} style={{ ...estiloTarjeta, padding: "14px 12px", minWidth: 78 }}>
-                          <div style={{ fontSize: 24, fontWeight: 900 }}>{dato.valor}</div>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.9)", marginTop: 2 }}>{dato.etiqueta}</div>
-                        </li>
-                      ))}
-                    </ul>
+                    <div style={{ fontSize: 15, color: "rgba(255,255,255,0.95)", marginBottom: estadisticasDelAlma.length > 0 ? 28 : 0 }}>
+                      Pagó la cuenta más veces
+                    </div>
+                    {estadisticasDelAlma.length > 0 && (
+                      <ul
+                        aria-label={`Estadísticas de ${alma.nombre ?? "este viajero"}`}
+                        style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 10 }}
+                      >
+                        {estadisticasDelAlma.map((dato) => (
+                          <li key={dato.etiqueta} style={{ ...estiloTarjeta, padding: "14px 12px", minWidth: 78 }}>
+                            <div style={{ fontSize: 24, fontWeight: 900 }}>{dato.valor}</div>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.9)", marginTop: 2 }}>{dato.etiqueta}</div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </>
-                ) : (
-                  <div style={{ fontSize: 16, color: "rgba(255,255,255,0.95)" }}>Nadie registró pagos en este viaje</div>
                 )}
               </>
             ),
           },
           {
             titulo: "Fotos",
+            visible: fotos.length > 0,
             contenido: (
               <>
                 <p style={estiloEtiqueta}>Vuestros recuerdos</p>
                 <div style={{ fontSize: 32, fontWeight: 900, marginBottom: 20 }}>
                   {fotos.length} {fotos.length === 1 ? "foto" : "fotos"}
                 </div>
-                {fotos.length > 0 ? (
+                {fotos.length > 0 && (
                   <ul
                     aria-label="Fotos del viaje"
                     style={{
@@ -338,52 +317,11 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
                       </li>
                     ))}
                   </ul>
-                ) : (
-                  <div style={{ fontSize: 16, color: "rgba(255,255,255,0.95)" }}>Nadie subió fotos a la galería</div>
                 )}
               </>
             ),
           },
-          {
-            titulo: "Balance final",
-            contenido: (
-              <>
-                <p style={estiloEtiqueta}>Balance final</p>
-                <div style={{ fontSize: 26, fontWeight: 900, marginBottom: 24 }}>
-                  {transferencias.length > 0 ? "Casi listos" : "Todo saldado"}
-                </div>
-                {transferencias.length > 0 ? (
-                  <ul
-                    aria-label="Pagos pendientes entre los viajeros"
-                    style={{ ...estiloTarjeta, listStyle: "none", margin: 0, padding: 0, width: "100%", overflow: "hidden" }}
-                  >
-                    {transferencias.map((t, i) => (
-                      <li
-                        key={`${t.de}-${t.a}-${i}`}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 10,
-                          padding: "12px 14px",
-                          borderTop: i === 0 ? "none" : "1px solid rgba(255,255,255,0.2)",
-                          textAlign: "left",
-                        }}
-                      >
-                        <Avatar member={colorDe(t.de)} size={30} showBorder={false} />
-                        <span style={{ flex: 1, fontSize: 13, overflowWrap: "anywhere" }}>
-                          <strong>{t.de}</strong> paga a <strong>{t.a}</strong>
-                        </span>
-                        <span style={{ fontSize: 15, fontWeight: 900 }}>{conEuros(t.importe)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div style={{ fontSize: 16, color: "rgba(255,255,255,0.95)" }}>Nadie debe nada a nadie</div>
-                )}
-              </>
-            ),
-          },
-        ]
+        ].filter((diapositiva) => diapositiva.visible)
       : []
 
   const total = diapositivas.length
