@@ -119,7 +119,7 @@ export default function MapaPuntosInteres({
       const marcador = L.marker([punto.latitud, punto.longitud], {
         icon: elegido ? crearIcono(C.navy, "white", false, 1.3) : crearIcono(C.accent, "white", false),
         title: punto.nombre,
-        alt: `Punto de interés: ${punto.nombre}`,
+        alt: punto.nombre,
         zIndexOffset: elegido ? 1000 : 0,
       })
         .on("click", () => alElegir.current(punto.id))
