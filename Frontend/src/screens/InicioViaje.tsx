@@ -10,6 +10,7 @@ import IconoColor from "../components/IconoColor"
 import { ApiError } from "../services/authApi"
 import { abandonarViaje, finalizarViaje, obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { obtenerBalance } from "../services/gastosApi"
+import { listarTareas } from "../services/tareasApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { ESTILO_CON_PORTADA } from "../styles/portada"
 import { aMiembro, formatearFechasActivo, formatearImporte } from "../utils/formatoViaje"
@@ -62,6 +63,8 @@ type InicioViajeProps = {
   onEditar?: () => void
   onInvitar?: () => void
   onVotaciones?: () => void
+  // Abre la «Lista de tareas» de la cartera
+  onTareas?: () => void
   onResumen?: () => void
   // Un viaje sin destino solo muestra la votación del destino
   onPendienteDestino?: () => void
@@ -81,6 +84,7 @@ export default function InicioViaje({
   onEditar,
   onInvitar,
   onVotaciones,
+  onTareas,
   onResumen,
   onPendienteDestino,
   onFinalizado,
@@ -98,6 +102,7 @@ export default function InicioViaje({
   const [comprobandoSaldo, setComprobandoSaldo] = useState(false)
   const [abandonando, setAbandonando] = useState(false)
   const [errorAbandonar, setErrorAbandonar] = useState("")
+  const [tareasPendientes, setTareasPendientes] = useState(0)
 
   useEffect(() => {
     let vigente = true
@@ -112,6 +117,21 @@ export default function InicioViaje({
       vigente = false
     }
   }, [viajeId, tokenSesion])
+
+  // Tareas pendientes asignadas al usuario; si no se pueden cargar, la tarjeta simplemente no se muestra
+  useEffect(() => {
+    let vigente = true
+    listarTareas(viajeId, tokenSesion)
+      .then(({ tareas }) => {
+        if (vigente) setTareasPendientes(tareas.filter((t) => !t.hecha && t.responsable?.usuario_id === usuarioId).length)
+      })
+      .catch(() => {
+        if (vigente) setTareasPendientes(0)
+      })
+    return () => {
+      vigente = false
+    }
+  }, [viajeId, tokenSesion, usuarioId])
 
   // Un viaje pendiente de destino solo muestra la votación del destino
   const pendiente = viaje?.pendiente_destino === true
@@ -438,6 +458,46 @@ export default function InicioViaje({
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Solo aparece si el usuario tiene tareas pendientes asignadas */}
+          {viaje && activo && tareasPendientes > 0 && (
+            <button
+              type="button"
+              onClick={onTareas}
+              style={{
+                ...tarjetaStyle,
+                width: "100%",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                textAlign: "left",
+              }}
+            >
+              <div
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 13,
+                  background: C.lightBlue,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <Icon name="task" size={22} color={C.blue} strokeWidth={2} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: NUNITO, fontWeight: 800, color: C.navy, fontSize: 14 }}>Tareas pendientes</div>
+                <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, marginTop: 2 }}>
+                  {tareasPendientes === 1 ? "1 tarea por completar" : `${tareasPendientes} tareas por completar`}
+                </div>
+              </div>
+              <span style={{ fontFamily: NUNITO, fontWeight: 800, color: C.blue, fontSize: 12 }}>Ver todas</span>
+              <Icon name="arrow_right" size={16} color={C.blue} strokeWidth={2} />
+            </button>
           )}
 
           {viaje && !activo && (

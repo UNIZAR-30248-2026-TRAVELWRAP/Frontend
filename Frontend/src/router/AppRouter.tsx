@@ -106,6 +106,7 @@ function RutaInicioViaje({ sesion }: { sesion: Sesion }) {
       onEditar={() => navigate(`/viajes/${viajeId}/editar`)}
       onInvitar={() => navigate(`/viajes/${viajeId}/invitar`)}
       onVotaciones={() => navigate(`/viajes/${viajeId}/votaciones`)}
+      onTareas={() => navigate(`/viajes/${viajeId}/documentos?pestana=tareas`)}
       onResumen={() => navigate(`/viajes/${viajeId}/resumen`)}
       onCambiarSeccion={(seccion) => navigate(rutaDeSeccion(viajeId, seccion))}
       onPendienteDestino={() => navigate(`/viajes/${viajeId}/destino`, { replace: true })}
