@@ -12,8 +12,11 @@ import { elegirSello, obtenerSello, quitarSello, type DisenoSello, type Sello as
 import { archivarViaje, obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import DialogoConfirmacion from "../components/DialogoConfirmacion"
 import { estiloAlerta } from "../styles/formulario"
+import Icon from "../components/Icon"
 import { C, NUNITO } from "../styles/tokens"
 import { aMiembro, diasDelViaje, formatearFechasActivo } from "../utils/formatoViaje"
+import { descargarArchivo } from "../utils/compartir"
+import { crearImagenResumen, ErrorDeImagen, type DatosImagenResumen } from "../utils/imagenResumen"
 import { listaDeNombres, textoDeDias, textoDeVotos } from "../utils/resumen"
 
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
@@ -100,6 +103,8 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
   const [errorArchivar, setErrorArchivar] = useState("")
   const [sello, setSello] = useState<SelloDelViaje | null>(null)
   const [eligiendoSello, setEligiendoSello] = useState(false)
+  const [generandoImagen, setGenerandoImagen] = useState(false)
+  const [errorImagen, setErrorImagen] = useState("")
   const [resumen, setResumen] = useState<ResumenDelViaje | null>(null)
   const [fotos, setFotos] = useState<Foto[]>([])
   const [error, setError] = useState("")
@@ -180,6 +185,44 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
         { etiqueta: "Fotos subidas", valor: alma.fotos_subidas },
       ].filter((dato) => dato.valor > 0)
     : []
+
+  const datosImagen: DatosImagenResumen | null =
+    viaje && resumen
+      ? {
+          lugar,
+          anio,
+          fechas: formatearFechasActivo(viaje.fecha_inicio, viaje.fecha_fin),
+          nombres: listaDeNombres(nombres),
+          dias: resumen.dias > 0 ? { numero: resumen.dias, texto: textoDeDias(resumen.dias) } : null,
+          estrella: resumen.actividad_mas_votada
+            ? { titulo: resumen.actividad_mas_votada.titulo, votos: textoDeVotos(resumen.actividad_mas_votada.votos) }
+            : null,
+          alma: alma
+            ? {
+                nombre: alma.nombre ?? "Antiguo miembro",
+                color: aMiembro(alma.nombre, Math.max(indiceDelAlma, 0)).color,
+                estadisticas: estadisticasDelAlma,
+              }
+            : null,
+          fotos: fotos.slice(0, MAX_FOTOS_VISIBLES).flatMap((foto) => (foto.url ? [foto.url] : [])),
+          totalFotos: fotos.length,
+        }
+      : null
+
+  const handleDescargarImagen = async () => {
+    if (!datosImagen || generandoImagen) return
+    setGenerandoImagen(true)
+    setErrorImagen("")
+    try {
+      const imagen = await crearImagenResumen(datosImagen)
+      const nombreDelArchivo = `TravelWrap-${[lugar, anio].filter(Boolean).join("-").replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "")}.png`
+      descargarArchivo(new File([imagen], nombreDelArchivo, { type: "image/png" }))
+    } catch (e) {
+      setErrorImagen(e instanceof ErrorDeImagen ? e.message : "No se ha podido crear la imagen")
+    } finally {
+      setGenerandoImagen(false)
+    }
+  }
 
   const diapositivas: { titulo: string; visible: boolean; contenido: ReactNode }[] =
     viaje && resumen
@@ -544,6 +587,21 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
 
         {total > 0 && !haySiguiente && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "12px 20px 20px" }}>
+            {errorImagen && (
+              <div role="alert" style={estiloAlerta}>
+                {errorImagen}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={handleDescargarImagen}
+              disabled={generandoImagen}
+              aria-busy={generandoImagen}
+              style={{ ...estiloBotonControl(!generandoImagen), flex: "none" }}
+            >
+              <Icon name="download" size={20} color="white" strokeWidth={2.2} />
+              {generandoImagen ? "Creando la imagen..." : "Descargar imagen"}
+            </button>
             {puedeSellar && sello && (
               <div style={{ width: 130, alignSelf: "center", marginBottom: 4 }}>
                 <Sello diseno={sello.diseno} destino={sello.destino} anio={sello.anio} compacto />

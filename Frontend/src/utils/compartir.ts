@@ -12,7 +12,7 @@ const archivoDe = async (url: string, nombre: string, tipoMime: string) => {
   return new File([contenido], nombre, { type: tipoMime || contenido.type })
 }
 
-const descargar = (archivo: File) => {
+export const descargarArchivo = (archivo: File) => {
   const enlaceTemporal = URL.createObjectURL(archivo)
   const enlace = document.createElement("a")
   enlace.href = enlaceTemporal
@@ -36,6 +36,6 @@ export const compartirArchivo = async (url: string, nombre: string, tipoMime: st
       if (e instanceof DOMException && e.name === "AbortError") return "cancelado"
     }
   }
-  descargar(archivo)
+  descargarArchivo(archivo)
   return "descargado"
 }
