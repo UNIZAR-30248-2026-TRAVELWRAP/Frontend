@@ -13,6 +13,7 @@ import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { estiloAlerta } from "../styles/formulario"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
+import { compartirArchivo } from "../utils/compartir"
 import { archivoEsVideo, descripcionDeFoto, esVideo, motivoParaNoSubirFoto, textoDeEspacio, textoDeFotos, TIPOS_ARCHIVO } from "../utils/galeria"
 
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
@@ -52,6 +53,8 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
   const [aBorrar, setABorrar] = useState<FotoVisible | null>(null)
   const [borrando, setBorrando] = useState(false)
   const [errorBorrar, setErrorBorrar] = useState("")
+  const [compartiendo, setCompartiendo] = useState(false)
+  const [avisoVisor, setAvisoVisor] = useState<{ tipo: "info" | "error"; texto: string } | null>(null)
   const miniaturas = useRef<(HTMLButtonElement | null)[]>([])
 
   useEffect(() => {
@@ -85,10 +88,36 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
   }))
   const numeroDeVideos = fotos.filter((foto) => esVideo(foto.tipo_mime)).length
 
+  const cambiarFotoDelVisor = (indice: number) => {
+    setAvisoVisor(null)
+    setFotoAbierta(indice)
+  }
+
   const cerrarVisor = () => {
     const cerrada = fotoAbierta
     setFotoAbierta(null)
+    setAvisoVisor(null)
     if (cerrada !== null) setTimeout(() => miniaturas.current[cerrada]?.focus(), 0)
+  }
+
+  const handleCompartir = async () => {
+    const foto = fotoAbierta === null ? null : fotos[fotoAbierta]
+    if (!foto || compartiendo) return
+    setCompartiendo(true)
+    setAvisoVisor(null)
+    try {
+      const resultado = await compartirArchivo(foto.url, foto.nombre, foto.tipo_mime)
+      if (resultado === "descargado") {
+        setAvisoVisor({
+          tipo: "info",
+          texto: "Tu dispositivo no permite compartir archivos desde el navegador, así que se ha descargado para que lo envíes tú.",
+        })
+      }
+    } catch (e) {
+      setAvisoVisor({ tipo: "error", texto: e instanceof Error ? e.message : "No se ha podido compartir" })
+    } finally {
+      setCompartiendo(false)
+    }
   }
 
   const abrirBorrado = () => {
@@ -385,9 +414,12 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
         <VisorFotos
           fotos={fotosDelVisor}
           indice={fotoAbierta}
-          onCambiar={setFotoAbierta}
+          onCambiar={cambiarFotoDelVisor}
           onCerrar={cerrarVisor}
           onBorrar={activo ? abrirBorrado : undefined}
+          onCompartir={handleCompartir}
+          compartiendo={compartiendo}
+          aviso={avisoVisor}
         />
       )}
 
