@@ -124,7 +124,8 @@ export default function Chat({ viajeId, tokenSesion, usuarioId, onVolver, onAbri
     <div style={{ background: C.bg, minHeight: "100vh" }}>
       <div style={{ maxWidth: 480, margin: "0 auto", paddingBottom: ALTO_BARRA_INFERIOR + 88 }}>
         {/* Cabecera y pestañas: Chat (esta pantalla) y Galería */}
-        <div style={{ background: GRADIENTS.header, padding: "20px 20px 20px", borderRadius: RADIUS.header }}>
+        {/* La cabecera y las pestañas se quedan arriba al desplazarse por los mensajes */}
+        <div style={{ position: "sticky", top: 0, zIndex: 15, background: GRADIENTS.header, padding: "20px 20px 20px", borderRadius: RADIUS.header }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
             <BotonVolver onClick={onVolver} />
             <div style={{ minWidth: 0 }}>
