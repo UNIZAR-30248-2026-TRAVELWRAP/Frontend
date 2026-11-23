@@ -630,7 +630,6 @@ export default function InicioViaje({
         >
           El viaje pasará a «Viajes anteriores» en Mis viajes y quedará de solo lectura: ya no se podrán editar sus datos ni añadir
           actividades o gastos.
-          <strong style={{ display: "block", color: C.red, marginTop: 6 }}>Esta acción no se puede deshacer.</strong>
         </DialogoConfirmacion>
       )}
 

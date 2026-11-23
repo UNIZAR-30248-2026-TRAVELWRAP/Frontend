@@ -231,7 +231,7 @@ describe('InicioViaje · finalizar viaje con confirmación', () => {
     const ventana = dialogo()!
     expect(within(ventana).getByText('¿Finalizar este viaje?')).toBeTruthy()
     expect(within(ventana).getByText(/pasará a «Viajes anteriores»/)).toBeTruthy()
-    expect(within(ventana).getByText('Esta acción no se puede deshacer.')).toBeTruthy()
+    expect(within(ventana).queryByText('Esta acción no se puede deshacer.')).toBeNull()
 
     await user.click(within(ventana).getByRole('button', { name: 'Cancelar' }))
 
