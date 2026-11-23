@@ -191,6 +191,57 @@ test.describe('Resumen de fin de viaje (Wrap)', () => {
     await expect(page.getByRole('status')).toHaveCount(0);
   });
 
+  test('«Compartir» comparte la imagen del resumen con el menú del dispositivo', async ({ page }) => {
+    await entrarConSesion(page);
+    await page.route('https://storage.test/**', (route) =>
+      route.fulfill({ status: 200, contentType: 'image/png', body: PNG_1X1, headers: { 'access-control-allow-origin': '*' } }),
+    );
+    await page.addInitScript(() => {
+      const compartidos: { nombre: string; tipo: string; bytes: number }[] = [];
+      (window as unknown as { compartidos: typeof compartidos }).compartidos = compartidos;
+      Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => true });
+      Object.defineProperty(navigator, 'share', {
+        configurable: true,
+        value: async (datos: { files: File[] }) => {
+          compartidos.push({ nombre: datos.files[0].name, tipo: datos.files[0].type, bytes: datos.files[0].size });
+        },
+      });
+    });
+    await simularBackend(page);
+
+    await page.goto(`/viajes/${VIAJE_ID}/resumen`);
+    await expect(page.getByRole('heading', { name: 'Roma' })).toBeVisible();
+    for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowRight');
+    await expect(page.getByAltText('Resumen del viaje a Roma')).toBeVisible({ timeout: 15000 });
+
+    await page.getByRole('button', { name: 'Compartir' }).click();
+
+    await expect
+      .poll(() => page.evaluate(() => (window as unknown as { compartidos: { nombre: string; tipo: string; bytes: number }[] }).compartidos))
+      .toEqual([expect.objectContaining({ nombre: 'TravelWrap-Roma-2027.png', tipo: 'image/png' })]);
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await expect(page.getByRole('status')).toHaveCount(0);
+  });
+
+  test('si el navegador no sabe compartir archivos «Compartir» descarga la imagen y avisa', async ({ page }) => {
+    await entrarConSesion(page);
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+    });
+    await simularBackend(page, { fotos: false });
+
+    await page.goto(`/viajes/${VIAJE_ID}/resumen`);
+    await expect(page.getByRole('heading', { name: 'Roma' })).toBeVisible();
+    for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowRight');
+    await expect(page.getByAltText('Resumen del viaje a Roma')).toBeVisible({ timeout: 15000 });
+
+    const descarga = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Compartir' }).click();
+
+    expect((await descarga).suggestedFilename()).toBe('TravelWrap-Roma-2027.png');
+    await expect(page.getByRole('status')).toContainText('se ha descargado la imagen');
+  });
+
   test('si una foto no se puede cargar el resumen se crea sin fotos y se avisa', async ({ page }) => {
     await entrarConSesion(page);
     await page.route('https://storage.test/**', (route) => route.fulfill({ status: 403, body: 'denegado' }));
@@ -256,6 +307,21 @@ test.describe('Resumen de fin de viaje (Wrap)', () => {
       const caja = await page.getByRole('region').boundingBox();
       return { x: (caja?.x ?? 0) + (caja?.width ?? 0) * fraccion, y: (caja?.y ?? 0) + (caja?.height ?? 0) / 2 };
     };
+
+    test('el botón de pausa detiene el avance automático y el de reanudar lo continúa', async ({ page }) => {
+      await entrarConSesion(page);
+      await simularBackend(page);
+
+      await page.goto(`/viajes/${VIAJE_ID}/resumen`);
+      await expect(page.getByRole('heading', { name: 'Roma' })).toBeVisible();
+      await page.getByRole('button', { name: 'Pausar' }).click();
+      await expect(page.getByRole('button', { name: 'Reanudar' })).toBeVisible();
+      await page.waitForTimeout(5600);
+      await expect(page.getByRole('region')).toHaveAccessibleName(/1 de 6: Portada/);
+
+      await page.getByRole('button', { name: 'Reanudar' }).click();
+      await expect(page.getByRole('region')).toHaveAccessibleName(/2 de 6: Tiempo juntos/, { timeout: 8000 });
+    });
 
     test('se toca a los lados para pasar y la barra avanza sola a los 5 segundos', async ({ page }) => {
       await entrarConSesion(page);

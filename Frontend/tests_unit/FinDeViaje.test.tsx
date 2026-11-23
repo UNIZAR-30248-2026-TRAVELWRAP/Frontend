@@ -503,6 +503,32 @@ describe('FinDeViaje: como las historias', () => {
     ahora.mockRestore()
   })
 
+  it('el botón de pausa detiene la barra y el de reanudar la vuelve a poner en marcha', async () => {
+    simularBackend()
+    await abrir()
+    const usuario = userEvent.setup()
+
+    await usuario.click(screen.getByRole('button', { name: 'Pausar' }))
+    expect(screen.getByTestId('progreso-activo').style.animationPlayState).toBe('paused')
+    expect(screen.getByRole('button', { name: 'Reanudar' }).getAttribute('aria-pressed')).toBe('true')
+
+    await usuario.click(screen.getByRole('button', { name: 'Reanudar' }))
+    expect(screen.getByTestId('progreso-activo').style.animationPlayState).toBe('running')
+    expect(screen.getByRole('button', { name: 'Pausar' })).toBeTruthy()
+  })
+
+  it('la pausa manual se mantiene al cambiar de diapositiva', async () => {
+    simularBackend()
+    await abrir()
+    const usuario = userEvent.setup()
+
+    await usuario.click(screen.getByRole('button', { name: 'Pausar' }))
+    await siguiente()
+
+    expect(diapositivaActual()).toContain('2 de 6')
+    expect(screen.getByTestId('progreso-activo').style.animationPlayState).toBe('paused')
+  })
+
   it('al arrastrar el cubo gira y se ve la historia vecina; al soltar pasado el umbral se cambia', async () => {
     simularBackend()
     await abrir()
@@ -619,6 +645,7 @@ describe('FinDeViaje: como las historias', () => {
     await abrir()
 
     expect(screen.queryByTestId('progreso-activo')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Pausar' })).toBeNull()
     toque(300)
     expect(diapositivaActual()).toContain('2 de 6')
 

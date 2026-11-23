@@ -16,7 +16,7 @@ import { estiloAlerta } from "../styles/formulario"
 import Icon from "../components/Icon"
 import { C, NUNITO } from "../styles/tokens"
 import { aMiembro, diasDelViaje, formatearFechasActivo } from "../utils/formatoViaje"
-import { descargarArchivo } from "../utils/compartir"
+import { compartirFichero, descargarArchivo } from "../utils/compartir"
 import { crearImagenResumen, ErrorDeImagen, type DatosImagenResumen } from "../utils/imagenResumen"
 import { listaDeNombres, textoDeDias, textoDeVotos } from "../utils/resumen"
 
@@ -107,6 +107,7 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
   const [generandoImagen, setGenerandoImagen] = useState(false)
   const [errorImagen, setErrorImagen] = useState("")
   const [avisoImagen, setAvisoImagen] = useState("")
+  const [avisoCompartir, setAvisoCompartir] = useState("")
   const [imagen, setImagen] = useState<{ blob: Blob; url: string } | null>(null)
   const imagenEnCurso = useRef<Promise<Blob | null> | null>(null)
   const imagenIntentada = useRef(false)
@@ -116,6 +117,7 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
   const [error, setError] = useState("")
   const [pagina, setPagina] = useState(0)
   const [pausado, setPausado] = useState(false)
+  const [pausaManual, setPausaManual] = useState(false)
   const [pestanaOculta, setPestanaOculta] = useState(() => document.hidden)
   const [angulo, setAngulo] = useState(0)
   const [enMovimiento, setEnMovimiento] = useState(false)
@@ -249,12 +251,33 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
     return tarea
   }
 
+  const archivoDeLaImagen = async () => {
+    const blob = imagen?.blob ?? (await generarImagen())
+    if (!blob) return null
+    const nombreDelArchivo = `TravelWrap-${[lugar, anio].filter(Boolean).join("-").replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "")}.png`
+    return new File([blob], nombreDelArchivo, { type: "image/png" })
+  }
+
   const handleDescargarImagen = async () => {
     if (generandoImagen) return
-    const blob = imagen?.blob ?? (await generarImagen())
-    if (!blob) return
-    const nombreDelArchivo = `TravelWrap-${[lugar, anio].filter(Boolean).join("-").replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "")}.png`
-    descargarArchivo(new File([blob], nombreDelArchivo, { type: "image/png" }))
+    setAvisoCompartir("")
+    const archivo = await archivoDeLaImagen()
+    if (archivo) descargarArchivo(archivo)
+  }
+
+  const handleCompartirImagen = async () => {
+    if (generandoImagen) return
+    setAvisoCompartir("")
+    const archivo = await archivoDeLaImagen()
+    if (!archivo) return
+    try {
+      const resultado = await compartirFichero(archivo)
+      if (resultado === "descargado") {
+        setAvisoCompartir("Tu dispositivo no permite compartir archivos desde el navegador, así que se ha descargado la imagen para que la envíes tú.")
+      }
+    } catch {
+      setErrorImagen("No se ha podido compartir la imagen")
+    }
   }
 
   const diapositivas: { titulo: string; visible: boolean; contenido: ReactNode }[] =
@@ -574,13 +597,36 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
                         background: "white",
                         width: i < pagina || (i === pagina && !automatico) ? "100%" : 0,
                         animation: rellenando ? `wrap-progreso ${DURACION_DIAPOSITIVA_MS}ms linear forwards` : undefined,
-                        animationPlayState: pausado || pestanaOculta ? "paused" : "running",
+                        animationPlayState: pausado || pausaManual || pestanaOculta ? "paused" : "running",
                       }}
                     />
                   </div>
                 )
               })}
             </div>
+          )}
+          {total > 0 && automatico && (
+            <button
+              type="button"
+              onClick={() => setPausaManual((p) => !p)}
+              aria-label={pausaManual ? "Reanudar" : "Pausar"}
+              aria-pressed={pausaManual}
+              style={{
+                width: 32,
+                height: 32,
+                flex: "none",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: "50%",
+                border: "none",
+                background: "rgba(255,255,255,0.2)",
+                cursor: "pointer",
+                padding: 0,
+              }}
+            >
+              <Icon name={pausaManual ? "play" : "pause"} size={16} color="white" strokeWidth={2.2} />
+            </button>
           )}
         </div>
 
@@ -680,6 +726,20 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
             >
               <Icon name="download" size={20} color="white" strokeWidth={2.2} />
               {generandoImagen ? "Creando la imagen..." : "Descargar imagen"}
+            </button>
+            {avisoCompartir && (
+              <div role="status" style={{ ...estiloTarjeta, padding: "10px 12px", fontSize: 13, fontWeight: 700, textAlign: "center" }}>
+                {avisoCompartir}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={handleCompartirImagen}
+              disabled={generandoImagen}
+              style={{ ...estiloBotonControl(!generandoImagen), flex: "none" }}
+            >
+              <Icon name="share" size={20} color="white" strokeWidth={2.2} />
+              Compartir
             </button>
             {puedeSellar && sello && (
               <div style={{ width: 130, alignSelf: "center", marginBottom: 4 }}>

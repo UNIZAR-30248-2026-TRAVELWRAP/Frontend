@@ -6,6 +6,7 @@ import FinDeViaje from '../src/screens/FinDeViaje'
 const mocks = vi.hoisted(() => ({
   crearImagenResumen: vi.fn(),
   descargarArchivo: vi.fn(),
+  compartirFichero: vi.fn(),
 }))
 
 vi.mock('../src/utils/imagenResumen', async (importarOriginal) => {
@@ -15,7 +16,7 @@ vi.mock('../src/utils/imagenResumen', async (importarOriginal) => {
 
 vi.mock('../src/utils/compartir', async (importarOriginal) => {
   const original = await importarOriginal<typeof import('../src/utils/compartir')>()
-  return { ...original, descargarArchivo: mocks.descargarArchivo }
+  return { ...original, descargarArchivo: mocks.descargarArchivo, compartirFichero: mocks.compartirFichero }
 })
 
 const VIAJE_ID = '123e4567-e89b-12d3-a456-426614174000'
@@ -74,6 +75,8 @@ const abrirUltima = async () => {
 beforeEach(() => {
   mocks.crearImagenResumen.mockReset()
   mocks.descargarArchivo.mockReset()
+  mocks.compartirFichero.mockReset()
+  mocks.compartirFichero.mockResolvedValue('compartido')
   mocks.crearImagenResumen.mockResolvedValue(new Blob(['png'], { type: 'image/png' }))
   URL.createObjectURL = vi.fn(() => 'blob:resumen')
   URL.revokeObjectURL = vi.fn()
@@ -216,6 +219,69 @@ describe('FinDeViaje: resumen final y descarga de la imagen', () => {
     await usuario.click(screen.getByRole('button', { name: 'Descargar imagen' }))
 
     await waitFor(() => expect(mocks.descargarArchivo).toHaveBeenCalledTimes(1))
+  })
+
+  it('«Compartir» comparte la imagen ya creada con su nombre y no la descarga', async () => {
+    simular()
+    const usuario = await abrirUltima()
+    await screen.findByAltText('Resumen del viaje a Roma, Italia')
+
+    await usuario.click(screen.getByRole('button', { name: 'Compartir' }))
+
+    await waitFor(() => expect(mocks.compartirFichero).toHaveBeenCalledTimes(1))
+    const archivo = mocks.compartirFichero.mock.calls[0][0] as File
+    expect(archivo.name).toBe('TravelWrap-Roma-Italia-2027.png')
+    expect(archivo.type).toBe('image/png')
+    expect(mocks.crearImagenResumen).toHaveBeenCalledTimes(1)
+    expect(mocks.descargarArchivo).not.toHaveBeenCalled()
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('si el dispositivo no puede compartir se descarga y se avisa', async () => {
+    simular()
+    mocks.compartirFichero.mockResolvedValue('descargado')
+    const usuario = await abrirUltima()
+    await screen.findByAltText('Resumen del viaje a Roma, Italia')
+
+    await usuario.click(screen.getByRole('button', { name: 'Compartir' }))
+
+    expect((await screen.findByRole('status')).textContent).toContain('se ha descargado la imagen')
+  })
+
+  it('si se cancela el menú de compartir no avisa de nada', async () => {
+    simular()
+    mocks.compartirFichero.mockResolvedValue('cancelado')
+    const usuario = await abrirUltima()
+    await screen.findByAltText('Resumen del viaje a Roma, Italia')
+
+    await usuario.click(screen.getByRole('button', { name: 'Compartir' }))
+
+    await waitFor(() => expect(mocks.compartirFichero).toHaveBeenCalledTimes(1))
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('si compartir falla enseña un error', async () => {
+    simular()
+    mocks.compartirFichero.mockRejectedValue(new Error('boom'))
+    const usuario = await abrirUltima()
+    await screen.findByAltText('Resumen del viaje a Roma, Italia')
+
+    await usuario.click(screen.getByRole('button', { name: 'Compartir' }))
+
+    expect((await screen.findByRole('alert')).textContent).toBe('No se ha podido compartir la imagen')
+  })
+
+  it('«Compartir» crea la imagen si todavía no existe y no comparte si no se puede crear', async () => {
+    simular()
+    mocks.crearImagenResumen.mockRejectedValue(new Error('boom'))
+    const usuario = await abrirUltima()
+    await screen.findByRole('alert')
+
+    await usuario.click(screen.getByRole('button', { name: 'Compartir' }))
+
+    await waitFor(() => expect(mocks.crearImagenResumen).toHaveBeenCalledTimes(2))
+    expect(mocks.compartirFichero).not.toHaveBeenCalled()
   })
 
   it('un viaje sin datos también enseña el resumen y se descarga', async () => {

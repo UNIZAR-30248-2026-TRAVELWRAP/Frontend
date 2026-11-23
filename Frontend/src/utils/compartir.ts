@@ -27,11 +27,13 @@ export const descargarArchivo = (archivo: File) => {
 export const puedeCompartirArchivos = (archivo: File) =>
   typeof navigator.share === "function" && typeof navigator.canShare === "function" && navigator.canShare({ files: [archivo] })
 
-export const compartirArchivo = async (url: string, nombre: string, tipoMime: string): Promise<ResultadoCompartir> => {
-  const archivo = await archivoDe(url, nombre, tipoMime)
+export const compartirArchivo = async (url: string, nombre: string, tipoMime: string): Promise<ResultadoCompartir> =>
+  compartirFichero(await archivoDe(url, nombre, tipoMime))
+
+export const compartirFichero = async (archivo: File): Promise<ResultadoCompartir> => {
   if (puedeCompartirArchivos(archivo)) {
     try {
-      await navigator.share({ files: [archivo], title: nombre })
+      await navigator.share({ files: [archivo], title: archivo.name })
       return "compartido"
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") return "cancelado"
