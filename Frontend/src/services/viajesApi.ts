@@ -115,6 +115,14 @@ export const desarchivarViaje = (viajeId: string, tokenSesion: string) =>
     token: tokenSesion,
   })
 
+// Reabre el viaje finalizado: vuelve a estar activo («En curso») para todos los miembros (cualquier miembro,
+// solo desde finalizado; el backend responde 409 si no lo está)
+export const reabrirViaje = (viajeId: string, tokenSesion: string) =>
+  peticion<ViajeDelUsuario>(`/viajes/${encodeURIComponent(viajeId)}/reabrir`, {
+    metodo: "POST",
+    token: tokenSesion,
+  })
+
 // Elimina el viaje solo para el usuario, que debe tenerlo archivado (el último miembro lo borra de verdad).
 // Responde 204 sin cuerpo
 export const eliminarViaje = (viajeId: string, tokenSesion: string) =>

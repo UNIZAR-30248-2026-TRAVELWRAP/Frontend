@@ -9,8 +9,8 @@ import { ApiError } from "../services/authApi"
 import { listarFotos, type Foto } from "../services/fotosApi"
 import { obtenerResumenDelViaje, type ResumenDelViaje } from "../services/resumenApi"
 import { elegirSello, obtenerSello, quitarSello, type DisenoSello, type Sello as SelloDelViaje } from "../services/sellosApi"
-import { archivarViaje, obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
-import { viajeEnCache } from "../services/viajesEnCache"
+import { archivarViaje, obtenerViaje, reabrirViaje, type ViajeDelUsuario } from "../services/viajesApi"
+import { guardarViajeEnCache, viajeEnCache } from "../services/viajesEnCache"
 import DialogoConfirmacion from "../components/DialogoConfirmacion"
 import { estiloAlerta } from "../styles/formulario"
 import Icon from "../components/Icon"
@@ -36,7 +36,8 @@ type FinDeViajeProps = {
   viajeId: string
   tokenSesion: string
   onVolver?: () => void
-  onTerminar?: () => void
+  // Tras reabrir el viaje finalizado (cualquier miembro): vuelve a estar activo
+  onReabierto?: () => void
   // Tras archivar el viaje desde el balance final (cualquier miembro, con el viaje finalizado y sin archivar)
   onArchivado?: () => void
 }
@@ -97,11 +98,14 @@ const estiloTarjeta: CSSProperties = {
   borderRadius: 14,
 }
 
-export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar, onArchivado }: FinDeViajeProps) {
+export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onReabierto, onArchivado }: FinDeViajeProps) {
   const [viaje, setViaje] = useState<ViajeDelUsuario | null>(() => viajeEnCache(viajeId))
   const [confirmandoArchivar, setConfirmandoArchivar] = useState(false)
   const [archivando, setArchivando] = useState(false)
   const [errorArchivar, setErrorArchivar] = useState("")
+  const [confirmandoReabrir, setConfirmandoReabrir] = useState(false)
+  const [reabriendo, setReabriendo] = useState(false)
+  const [errorReabrir, setErrorReabrir] = useState("")
   const [sello, setSello] = useState<SelloDelViaje | null>(null)
   const [eligiendoSello, setEligiendoSello] = useState(false)
   const [generandoImagen, setGenerandoImagen] = useState(false)
@@ -163,6 +167,21 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
       setErrorArchivar(mensajeDeError(e))
     } finally {
       setArchivando(false)
+    }
+  }
+
+  const handleReabrir = async () => {
+    setReabriendo(true)
+    setErrorReabrir("")
+    try {
+      const reabierto = await reabrirViaje(viajeId, tokenSesion)
+      guardarViajeEnCache(reabierto)
+      setConfirmandoReabrir(false)
+      onReabierto?.()
+    } catch (e) {
+      setErrorReabrir(mensajeDeError(e))
+    } finally {
+      setReabriendo(false)
     }
   }
 
@@ -434,7 +453,7 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
                     style={{
                       display: "block",
                       maxWidth: "100%",
-                      maxHeight: `min(560px, max(200px, calc(100dvh - ${puedeSellar && sello ? 400 : 330}px)))`,
+                      maxHeight: "min(560px, max(200px, calc(100dvh - 390px)))",
                       objectFit: "contain",
                       borderRadius: 16,
                       border: "1px solid rgba(255,255,255,0.3)",
@@ -446,6 +465,93 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
                     {errorImagen ? "Pulsa «Descargar imagen» para volver a intentarlo" : "Creando tu resumen..."}
                   </p>
                 )}
+                <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
+                  {errorImagen && (
+                    <div role="alert" style={estiloAlerta}>
+                      {errorImagen}
+                    </div>
+                  )}
+                  {avisoImagen && (
+                    <div role="status" style={{ ...estiloTarjeta, padding: "8px 12px", fontSize: 13, fontWeight: 700 }}>
+                      {avisoImagen}
+                    </div>
+                  )}
+                  {avisoCompartir && (
+                    <div role="status" style={{ ...estiloTarjeta, padding: "8px 12px", fontSize: 13, fontWeight: 700 }}>
+                      {avisoCompartir}
+                    </div>
+                  )}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
+                    <button
+                      type="button"
+                      onClick={handleDescargarImagen}
+                      disabled={generandoImagen}
+                      aria-busy={generandoImagen}
+                      aria-label={generandoImagen ? "Creando la imagen..." : "Descargar imagen"}
+                      style={{ ...estiloBotonControl(!generandoImagen), flex: "none" }}
+                    >
+                      <Icon name="download" size={18} color="white" strokeWidth={2.2} />
+                      {generandoImagen ? "Creando..." : "Descargar"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCompartirImagen}
+                      disabled={generandoImagen}
+                      style={{ ...estiloBotonControl(!generandoImagen), flex: "none" }}
+                    >
+                      <Icon name="share" size={18} color="white" strokeWidth={2.2} />
+                      Compartir
+                    </button>
+                  </div>
+                </div>
+              </>
+            ),
+          },
+          {
+            titulo: "Acciones",
+            visible: puedeSellar,
+            contenido: (
+              <>
+                <p style={estiloEtiqueta}>¿Y ahora qué?</p>
+                {sello && (
+                  <div style={{ width: 120, margin: "0 0 20px" }}>
+                    <Sello diseno={sello.diseno} destino={sello.destino} anio={sello.anio} compacto />
+                  </div>
+                )}
+                <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 10 }}>
+                  <button
+                    type="button"
+                    onClick={() => setEligiendoSello(true)}
+                    style={{ ...estiloBotonControl(true), flex: "none", background: "white", border: "none", color: C.navy }}
+                  >
+                    <IconoColor name="medal" size={20} />
+                    Sellar
+                  </button>
+                  {puedeArchivar && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setErrorArchivar("")
+                        setConfirmandoArchivar(true)
+                      }}
+                      style={{ ...estiloBotonControl(true), flex: "none", background: C.accent, border: "none" }}
+                    >
+                      <IconoColor name="finish" size={20} />
+                      Archivar viaje
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setErrorReabrir("")
+                      setConfirmandoReabrir(true)
+                    }}
+                    style={{ ...estiloBotonControl(true), flex: "none" }}
+                  >
+                    <Icon name="play" size={18} color="white" strokeWidth={2.2} />
+                    Reabrir viaje
+                  </button>
+                </div>
               </>
             ),
           },
@@ -505,6 +611,7 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
 
   const alPulsar = (evento: PointerEvent<HTMLDivElement>) => {
     if (evento.button > 0 || ocupado.current) return
+    if ((evento.target as HTMLElement).closest("button")) return
     const caja = evento.currentTarget.getBoundingClientRect()
     setMedidas({ ancho: caja.width, alto: caja.height })
     pulsacion.current = { x: evento.clientX, inicio: Date.now(), arrastrando: false, delta: 0 }
@@ -705,91 +812,6 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
           )}
         </div>
 
-        {total > 0 && !haySiguiente && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "10px 20px 16px" }}>
-            {errorImagen && (
-              <div role="alert" style={estiloAlerta}>
-                {errorImagen}
-              </div>
-            )}
-            {avisoImagen && (
-              <div role="status" style={{ ...estiloTarjeta, padding: "8px 12px", fontSize: 13, fontWeight: 700, textAlign: "center" }}>
-                {avisoImagen}
-              </div>
-            )}
-            {avisoCompartir && (
-              <div role="status" style={{ ...estiloTarjeta, padding: "8px 12px", fontSize: 13, fontWeight: 700, textAlign: "center" }}>
-                {avisoCompartir}
-              </div>
-            )}
-            {puedeSellar && sello && (
-              <div style={{ width: 120, alignSelf: "center", margin: "2px 0 6px" }}>
-                <Sello diseno={sello.diseno} destino={sello.destino} anio={sello.anio} compacto />
-              </div>
-            )}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
-              <button
-                type="button"
-                onClick={handleDescargarImagen}
-                disabled={generandoImagen}
-                aria-busy={generandoImagen}
-                aria-label={generandoImagen ? "Creando la imagen..." : "Descargar imagen"}
-                style={{ ...estiloBotonControl(!generandoImagen), flex: "none" }}
-              >
-                <Icon name="download" size={18} color="white" strokeWidth={2.2} />
-                {generandoImagen ? "Creando..." : "Descargar"}
-              </button>
-              <button
-                type="button"
-                onClick={handleCompartirImagen}
-                disabled={generandoImagen}
-                style={{ ...estiloBotonControl(!generandoImagen), flex: "none" }}
-              >
-                <Icon name="share" size={18} color="white" strokeWidth={2.2} />
-                Compartir
-              </button>
-              {puedeSellar && (
-                <button
-                  type="button"
-                  onClick={() => setEligiendoSello(true)}
-                  style={{
-                    ...estiloBotonControl(true),
-                    flex: "none",
-                    background: "white",
-                    border: "none",
-                    color: C.navy,
-                    gridColumn: puedeArchivar ? undefined : "1 / -1",
-                  }}
-                >
-                  <IconoColor name="medal" size={20} />
-                  Sellar
-                </button>
-              )}
-              {puedeArchivar && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setErrorArchivar("")
-                    setConfirmandoArchivar(true)
-                  }}
-                  style={{
-                    ...estiloBotonControl(true),
-                    flex: "none",
-                    background: C.accent,
-                    border: "none",
-                  }}
-                >
-                  <IconoColor name="finish" size={20} />
-                  Archivar viaje
-                </button>
-              )}
-              <button type="button" onClick={onTerminar} style={{ ...estiloBotonControl(true), flex: "none", gridColumn: "1 / -1" }}>
-                <IconoColor name="finish" size={20} />
-                Ir a Mis viajes
-              </button>
-            </div>
-          </div>
-        )}
         {eligiendoSello && (
           <SelectorSello
             destino={lugar}
@@ -798,6 +820,22 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
             onGuardar={handleGuardarSello}
             onCerrar={() => setEligiendoSello(false)}
           />
+        )}
+        {confirmandoReabrir && (
+          <DialogoConfirmacion
+            titulo="¿Reabrir este viaje?"
+            icono="play"
+            color={C.green}
+            colorFondo={C.greenBg}
+            textoConfirmar="Reabrir viaje"
+            textoConfirmando="Reabriendo viaje..."
+            ocupado={reabriendo}
+            error={errorReabrir}
+            onConfirmar={handleReabrir}
+            onCancelar={() => setConfirmandoReabrir(false)}
+          >
+            {viaje?.nombre} volverá a estar en curso para todos los viajeros y se podrá editar de nuevo.
+          </DialogoConfirmacion>
         )}
         {confirmandoArchivar && (
           <DialogoConfirmacion

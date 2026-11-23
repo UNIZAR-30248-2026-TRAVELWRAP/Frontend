@@ -376,7 +376,7 @@ function RutaFinDeViaje({ sesion }: { sesion: Sesion }) {
       viajeId={viajeId}
       tokenSesion={sesion.token}
       onVolver={volver}
-      onTerminar={() => navigate("/", { replace: true })}
+      onReabierto={() => navigate(`/viajes/${encodeURIComponent(viajeId)}`, { replace: true })}
       onArchivado={() => navigate("/viajes/archivados", { replace: true })}
     />
   );
