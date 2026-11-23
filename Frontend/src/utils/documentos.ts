@@ -33,10 +33,12 @@ export const fechaDeSubida = (creadoEn: string) => {
 }
 
 // Icono y colores de cada tipo de documento, como las tarjetas de la cartera del prototipo
-export const aspectoDeDocumento = (tipo: TipoDocumento) =>
-  tipo === "application/pdf"
-    ? { icono: "document", texto: "PDF", color: C.red, fondo: C.redBg }
-    : { icono: "gallery", texto: "Imagen", color: C.green, fondo: C.greenBg }
+export const aspectoDeDocumento = (tipo: TipoDocumento) => {
+  if (tipo === "application/pdf") return { icono: "document", texto: "PDF", color: C.red, fondo: C.redBg }
+  // Resúmenes en texto que guarda el escaneo (no se pueden subir a mano)
+  if (tipo === "text/plain") return { icono: "document", texto: "Resumen", color: C.blue, fondo: C.lightBlue }
+  return { icono: "gallery", texto: "Imagen", color: C.green, fondo: C.greenBg }
+}
 
 // Mensaje cuando no se puede abrir o descargar un documento. Si otro miembro lo ha borrado, lo dice
 export const mensajeAlAbrir = (error: unknown) => {

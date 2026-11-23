@@ -28,6 +28,11 @@ import FinDeViaje from "../screens/FinDeViaje";
 import { buscarDirecciones } from "../services/actividadesApi";
 import type { SeccionViaje } from "../components/BarraInferior";
 import { rutaTrasLogin } from "../services/invitacionPendiente";
+import type { ResultadoEscaneo } from "../services/escaneoApi";
+
+// Escaneo que la cartera deja en el estado de la ruta al abrir un gasto o una actividad nuevos
+const escaneoDeLaRuta = (estado: unknown): ResultadoEscaneo | undefined =>
+  (estado as { escaneo?: ResultadoEscaneo } | null)?.escaneo;
 import AvisoNotificacion from "../components/AvisoNotificacion";
 
 interface AppRouterProps {
@@ -106,6 +111,7 @@ function RutaInicioViaje({ sesion }: { sesion: Sesion }) {
       onEditar={() => navigate(`/viajes/${viajeId}/editar`)}
       onInvitar={() => navigate(`/viajes/${viajeId}/invitar`)}
       onVotaciones={() => navigate(`/viajes/${viajeId}/votaciones`)}
+      onTareas={() => navigate(`/viajes/${viajeId}/documentos?pestana=tareas`)}
       onResumen={() => navigate(`/viajes/${viajeId}/resumen`)}
       onCambiarSeccion={(seccion) => navigate(rutaDeSeccion(viajeId, seccion))}
       onPendienteDestino={() => navigate(`/viajes/${viajeId}/destino`, { replace: true })}
@@ -227,12 +233,16 @@ function RutaAnadirActividad({ sesion }: { sesion: Sesion }) {
   const [parametros] = useSearchParams();
   const navigate = useNavigate();
   const fechaInicial = parametros.get("fecha") ?? "";
+  const location = useLocation();
+  const escaneo = escaneoDeLaRuta(location.state);
   return (
     <AnadirActividad
       key={viajeId}
       viajeId={viajeId}
       tokenSesion={sesion.token}
       fechaInicial={fechaInicial}
+      datosEscaneados={escaneo?.tipo === "actividad" ? escaneo.datos : undefined}
+      fotoRuta={escaneo?.foto_ruta}
       onVolver={() => navigate(rutaItinerario(viajeId, fechaInicial))}
       onGuardada={(fecha) => navigate(rutaItinerario(viajeId, fecha), { replace: true })}
       onBuscarDirecciones={(consulta) => buscarDirecciones(consulta, sesion.token).then((resultado) => resultado.direcciones)}
@@ -340,6 +350,13 @@ function RutaCarteraDocumentos({ sesion }: { sesion: Sesion }) {
       pestanaInicial={parametros.get("pestana") === "tareas" ? "tareas" : "cartera"}
       onVolver={() => navigate(`/viajes/${viajeId}`)}
       onCambiarSeccion={(seccion) => navigate(rutaDeSeccion(viajeId, seccion))}
+      // Un gasto o una actividad escaneados se confirman en su pantalla, con los datos ya leídos
+      onEscaneoConfirmar={(resultado) =>
+        navigate(
+          resultado.tipo === "gasto" ? `/viajes/${viajeId}/gastos/nuevo` : `/viajes/${viajeId}/actividades/nueva`,
+          { state: { escaneo: resultado } },
+        )
+      }
     />
   );
 }
@@ -400,6 +417,8 @@ function RutaChat({ sesion }: { sesion: Sesion }) {
 function RutaAnadirGasto({ sesion }: { sesion: Sesion }) {
   const { viajeId = "" } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const escaneo = escaneoDeLaRuta(location.state);
   const volverAControlGastos = () => navigate(`/viajes/${viajeId}/gastos`, { replace: true });
   return (
     <AnadirGasto
@@ -409,6 +428,8 @@ function RutaAnadirGasto({ sesion }: { sesion: Sesion }) {
       usuarioId={sesion.usuario.id}
       onVolver={volverAControlGastos}
       onRegistrado={volverAControlGastos}
+      datosEscaneados={escaneo?.tipo === "gasto" ? escaneo.datos : undefined}
+      fotoRuta={escaneo?.foto_ruta}
     />
   );
 }

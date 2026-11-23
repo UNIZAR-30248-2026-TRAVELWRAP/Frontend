@@ -7,8 +7,9 @@ import Icon from "../components/Icon"
 import IconoColor from "../components/IconoColor"
 import SectionLabel from "../components/SectionLabel"
 import { ApiError } from "../services/authApi"
-import { eliminarGasto, obtenerGasto, type DetalleGasto as Detalle } from "../services/gastosApi"
+import { eliminarGasto, obtenerGasto, urlFotoGasto, type DetalleGasto as Detalle } from "../services/gastosApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
+import { viajeEnCache } from "../services/viajesEnCache"
 import { estiloAlerta } from "../styles/formulario"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
@@ -41,7 +42,7 @@ export default function DetalleGasto({
   onModificar,
   onEliminado,
 }: DetalleGastoProps) {
-  const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
+  const [viaje, setViaje] = useState<ViajeDelUsuario | null>(() => viajeEnCache(viajeId))
   const [gasto, setGasto] = useState<Detalle | null>(null)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState("")
@@ -73,6 +74,21 @@ export default function DetalleGasto({
     const indice = miembros.findIndex((m) => m.usuario_id === usuarioDelGasto)
     return indice === -1 ? MIEMBRO_ABANDONADO : aMiembro(miembros[indice].nombre, indice)
   }
+  const [errorFoto, setErrorFoto] = useState("")
+
+  // Abre la foto del ticket en otra pestaña. El enlace caduca, así que se pide uno nuevo cada vez
+  const verFotoDelTicket = async () => {
+    setErrorFoto("")
+    const ventana = window.open("", "_blank")
+    try {
+      const { url } = await urlFotoGasto(viajeId, gastoId, tokenSesion)
+      if (ventana) ventana.location.href = url
+    } catch (e) {
+      ventana?.close()
+      setErrorFoto(e instanceof ApiError ? e.message : "No se ha podido abrir la foto del ticket")
+    }
+  }
+
   const categoria = gasto ? CATEGORIAS_GASTO.find((c) => c.categoria === gasto.categoria) : undefined
   // Solo quien registró el gasto y el creador del viaje lo modifican o eliminan, y solo con el viaje activo
   const puedeModificar = Boolean(
@@ -195,6 +211,34 @@ export default function DetalleGasto({
                   <dd style={{ margin: 0, color: C.navy }}>{fechaDelGasto(gasto.fecha)}</dd>
                 </dl>
               </section>
+
+              {gasto.tiene_foto && (
+                <div style={{ marginBottom: 16 }}>
+                  <button
+                    type="button"
+                    onClick={() => void verFotoDelTicket()}
+                    style={{
+                      width: "100%",
+                      minHeight: 44,
+                      borderRadius: RADIUS.lg,
+                      border: `1.5px solid ${C.border}`,
+                      background: "white",
+                      color: C.blue,
+                      fontFamily: NUNITO,
+                      fontSize: 14,
+                      fontWeight: 800,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Ver foto del ticket
+                  </button>
+                  {errorFoto && (
+                    <p role="alert" style={{ margin: "8px 0 0", fontSize: 12, fontWeight: 700, color: C.red }}>
+                      {errorFoto}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Reparto: la parte de cada miembro, la tuya resaltada */}
               <section aria-label="Reparto del gasto" style={{ marginBottom: 16 }}>

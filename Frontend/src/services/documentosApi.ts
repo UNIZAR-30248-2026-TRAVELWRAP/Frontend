@@ -1,6 +1,8 @@
 import { peticion } from "./authApi"
 
-export type TipoDocumento = "application/pdf" | "image/jpeg" | "image/png"
+// text/plain: resúmenes que la app guarda al escanear un documento que no es ni gasto ni actividad. Solo se muestran:
+// la subida normal sigue aceptando únicamente PDF e imágenes (TIPOS_DOCUMENTO)
+export type TipoDocumento = "application/pdf" | "image/jpeg" | "image/png" | "text/plain"
 
 export type Documento = {
   id: string
@@ -36,6 +38,10 @@ export const subirDocumento = (viajeId: string, archivo: File, tokenSesion: stri
   formulario.append("archivo", archivo)
   return peticion<Documento>(rutaDocumentos(viajeId), { metodo: "POST", formulario, token: tokenSesion })
 }
+
+// Guarda como .txt en la cartera el resumen de un documento escaneado que no es ni gasto ni actividad
+export const guardarResumen = (viajeId: string, texto: string, tokenSesion: string) =>
+  peticion<Documento>(`${rutaDocumentos(viajeId)}/texto`, { metodo: "POST", cuerpo: { texto }, token: tokenSesion })
 
 export type UrlDocumento = {
   // Enlace firmado de Supabase Storage; el archivo no pasa por el backend

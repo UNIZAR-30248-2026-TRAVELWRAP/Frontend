@@ -10,6 +10,7 @@ import VisorFotos from "../components/VisorFotos"
 import { ApiError } from "../services/authApi"
 import { borrarFoto, listarFotos, subirFoto, type Almacenamiento, type Foto } from "../services/fotosApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
+import { viajeEnCache } from "../services/viajesEnCache"
 import { estiloAlerta } from "../styles/formulario"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
@@ -40,7 +41,7 @@ type ChatGaleriaProps = {
 
 export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarSeccion, onAbrirChat }: ChatGaleriaProps) {
   const [pestana, setPestana] = useState<Pestana>("galeria")
-  const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
+  const [viaje, setViaje] = useState<ViajeDelUsuario | null>(() => viajeEnCache(viajeId))
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState("")
   const [fotos, setFotos] = useState<FotoVisible[]>([])

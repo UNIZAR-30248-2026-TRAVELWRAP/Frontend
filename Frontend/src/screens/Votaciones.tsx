@@ -8,6 +8,7 @@ import OpcionVotacion from "../components/OpcionVotacion"
 import ProponerOpcion from "../components/ProponerOpcion"
 import { ApiError } from "../services/authApi"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
+import { viajeEnCache } from "../services/viajesEnCache"
 import {
   cambiarTipoVotacion,
   cerrarVotacion,
@@ -47,7 +48,7 @@ type VotacionesProps = {
 }
 
 export default function Votaciones({ viajeId, tokenSesion, onVolver, onCrearVotacion }: VotacionesProps) {
-  const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
+  const [viaje, setViaje] = useState<ViajeDelUsuario | null>(() => viajeEnCache(viajeId))
   const [votaciones, setVotaciones] = useState<Votacion[] | null>(null)
   const [error, setError] = useState("")
   const [filtro, setFiltro] = useState<TipoVotacion | null>(null)

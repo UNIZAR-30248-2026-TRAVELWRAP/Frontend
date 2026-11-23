@@ -10,6 +10,7 @@ import { listarFotos, type Foto } from "../services/fotosApi"
 import { obtenerResumenDelViaje, type ResumenDelViaje } from "../services/resumenApi"
 import { elegirSello, obtenerSello, quitarSello, type DisenoSello, type Sello as SelloDelViaje } from "../services/sellosApi"
 import { archivarViaje, obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
+import { viajeEnCache } from "../services/viajesEnCache"
 import DialogoConfirmacion from "../components/DialogoConfirmacion"
 import { estiloAlerta } from "../styles/formulario"
 import Icon from "../components/Icon"
@@ -97,7 +98,7 @@ const estiloTarjeta: CSSProperties = {
 }
 
 export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar, onArchivado }: FinDeViajeProps) {
-  const [viaje, setViaje] = useState<ViajeDelUsuario | null>(null)
+  const [viaje, setViaje] = useState<ViajeDelUsuario | null>(() => viajeEnCache(viajeId))
   const [confirmandoArchivar, setConfirmandoArchivar] = useState(false)
   const [archivando, setArchivando] = useState(false)
   const [errorArchivar, setErrorArchivar] = useState("")

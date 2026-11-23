@@ -1,4 +1,5 @@
 import { peticion } from "./authApi"
+import { guardarViajeEnCache } from "./viajesEnCache"
 
 // Solo lo cambia el creador al finalizar: un viaje finalizado no vuelve a activo. Archivar es personal (ver archivado)
 export type EstadoViaje = "activo" | "finalizado"
@@ -57,8 +58,11 @@ export const listarViajes = (tokenSesion: string, opciones: OpcionesListarViajes
   })
 }
 
-export const obtenerViaje = (viajeId: string, tokenSesion: string) =>
-  peticion<ViajeDelUsuario>(`/viajes/${encodeURIComponent(viajeId)}`, { token: tokenSesion })
+export const obtenerViaje = async (viajeId: string, tokenSesion: string) => {
+  const viaje = await peticion<ViajeDelUsuario>(`/viajes/${encodeURIComponent(viajeId)}`, { token: tokenSesion })
+  guardarViajeEnCache(viaje)
+  return viaje
+}
 
 export const crearViaje = (viaje: NuevoViaje, tokenSesion: string) =>
   peticion<Viaje>("/viajes", { metodo: "POST", cuerpo: viaje, token: tokenSesion })

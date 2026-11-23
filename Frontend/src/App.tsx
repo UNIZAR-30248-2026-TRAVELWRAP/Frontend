@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
+import PantallaCarga from "./components/PantallaCarga"
 import AppRouter from "./router/AppRouter"
 import {
   ApiError,
@@ -150,7 +151,7 @@ export default function App() {
     setCerrandoSesion(false)
   }
 
-  if (comprobando) return null
+  if (comprobando) return <PantallaCarga />
 
   return (
     <AppRouter

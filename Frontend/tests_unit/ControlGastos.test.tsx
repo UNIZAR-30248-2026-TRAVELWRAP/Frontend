@@ -1,5 +1,8 @@
 // Test unitario para la pantalla Control de Gastos (total e historial)
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach as antesDeCadaPrueba } from 'vitest'
+import { olvidarViajes } from '../src/services/viajesEnCache'
+antesDeCadaPrueba(() => olvidarViajes())
 import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ControlGastos from '../src/screens/ControlGastos'
