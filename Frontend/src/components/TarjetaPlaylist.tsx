@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react"
 import { ApiError } from "../services/authApi"
 import { guardarPlaylist, obtenerPlaylist, quitarPlaylist, type PlaylistViaje } from "../services/playlistApi"
-import { C, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
+import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { urlEmbebida } from "../utils/playlistEmbebida"
 import Icon from "./Icon"
 
@@ -102,16 +102,16 @@ export default function TarjetaPlaylist({ viajeId, tokenSesion, activo }: Tarjet
     <section
       aria-label="Playlist del viaje"
       style={{
-        background: C.card,
+        background: GRADIENTS.success,
         borderRadius: RADIUS.lg,
         padding: 10,
         boxShadow: SHADOWS.cardSoft,
-        border: `1px solid ${C.border}`,
+        border: "1px solid transparent",
       }}
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: NUNITO, fontWeight: 800, color: C.navy, fontSize: 13 }}>
-          <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={C.green} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: NUNITO, fontWeight: 800, color: "white", fontSize: 13 }}>
+          <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
           Playlist del viaje
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -121,21 +121,21 @@ export default function TarjetaPlaylist({ viajeId, tokenSesion, activo }: Tarjet
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Abrir la playlist del viaje en Spotify"
-              style={{ fontFamily: NUNITO, fontSize: 12, fontWeight: 800, color: C.green, textDecoration: "none" }}
+              style={{ fontFamily: NUNITO, fontSize: 12, fontWeight: 800, color: "white", textDecoration: "none" }}
             >
               Abrir ↗
             </a>
           )}
           {activo && playlist && !editando && (
-            <button type="button" onClick={empezarACambiar} aria-label="Cambiar playlist" style={botonIcono(C.blue, C.lightBlue)}>
-              <Icon name="edit" size={14} color={C.blue} strokeWidth={2.2} />
+            <button type="button" onClick={empezarACambiar} aria-label="Cambiar playlist" style={botonIcono("white", "rgba(255,255,255,0.2)")}>
+              <Icon name="edit" size={14} color="white" strokeWidth={2.2} />
             </button>
           )}
         </div>
       </div>
 
       {cargando ? (
-        <p style={{ margin: 0, fontFamily: NUNITO, color: C.muted, fontSize: 12 }}>Cargando la playlist...</p>
+        <p style={{ margin: 0, fontFamily: NUNITO, color: "rgba(255,255,255,0.85)", fontSize: 12 }}>Cargando la playlist...</p>
       ) : reproductor && !editando ? (
         <iframe
           title="Reproductor de la playlist del viaje"
@@ -147,7 +147,7 @@ export default function TarjetaPlaylist({ viajeId, tokenSesion, activo }: Tarjet
           style={{ border: "none", borderRadius: 12, display: "block" }}
         />
       ) : !playlist && !activo ? (
-        <p style={{ margin: 0, fontFamily: NUNITO, color: C.muted, fontSize: 12 }}>Este viaje no tiene playlist.</p>
+        <p style={{ margin: 0, fontFamily: NUNITO, color: "rgba(255,255,255,0.85)", fontSize: 12 }}>Este viaje no tiene playlist.</p>
       ) : mostrarEdicion ? (
         <form onSubmit={guardar} noValidate>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -188,7 +188,7 @@ export default function TarjetaPlaylist({ viajeId, tokenSesion, activo }: Tarjet
               type="button"
               onClick={() => void quitar()}
               aria-label="Quitar playlist"
-              style={{ marginTop: 6, border: "none", background: "transparent", color: C.red, fontFamily: NUNITO, fontSize: 12, fontWeight: 700, cursor: "pointer", padding: 0 }}
+              style={{ marginTop: 6, border: "none", background: "transparent", color: "#FEB2B2", fontFamily: NUNITO, fontSize: 12, fontWeight: 700, cursor: "pointer", padding: 0 }}
             >
               Quitar playlist
             </button>
@@ -197,7 +197,7 @@ export default function TarjetaPlaylist({ viajeId, tokenSesion, activo }: Tarjet
       ) : null}
 
       {error && (
-        <p role="alert" style={{ margin: "8px 0 0", fontFamily: NUNITO, fontSize: 12, fontWeight: 700, color: C.red }}>
+        <p role="alert" style={{ margin: "8px 0 0", fontFamily: NUNITO, fontSize: 12, fontWeight: 700, color: "#FEB2B2" }}>
           {error}
         </p>
       )}

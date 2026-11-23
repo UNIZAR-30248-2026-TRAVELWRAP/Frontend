@@ -13,6 +13,10 @@ import { abandonarViaje, finalizarViaje, obtenerViaje, type ViajeDelUsuario } fr
 import { viajeEnCache } from "../services/viajesEnCache"
 import { obtenerBalance } from "../services/gastosApi"
 import { obtenerResumenDelViaje, type PresupuestoRestante } from "../services/resumenApi"
+import { listarActividades, type Actividad } from "../services/actividadesApi"
+import TarjetaProximaActividad from "../components/TarjetaProximaActividad"
+import { useAhora } from "../hooks/useAhora"
+import { proximaActividad } from "../utils/actividadEnCurso"
 import { listarTareas } from "../services/tareasApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { ESTILO_CON_PORTADA } from "../styles/portada"
@@ -94,6 +98,8 @@ export default function InicioViaje({
   const [errorAbandonar, setErrorAbandonar] = useState("")
   const [tareasPendientes, setTareasPendientes] = useState(0)
   const [presupuesto, setPresupuesto] = useState<PresupuestoRestante | null>(null)
+  const [actividades, setActividades] = useState<Actividad[]>([])
+  const ahora = useAhora()
 
   useEffect(() => {
     let vigente = true
@@ -138,6 +144,24 @@ export default function InicioViaje({
       vigente = false
     }
   }, [viajeId, tokenSesion])
+
+  // Actividades del viaje para la próxima actividad; si no se pueden cargar, la tarjeta no se muestra
+  useEffect(() => {
+    let vigente = true
+    listarActividades(viajeId, tokenSesion)
+      .then((respuesta) => {
+        if (vigente) setActividades(respuesta.actividades ?? [])
+      })
+      .catch(() => {
+        if (vigente) setActividades([])
+      })
+    return () => {
+      vigente = false
+    }
+  }, [viajeId, tokenSesion])
+
+  // Solo un viaje activo tiene una próxima actividad que enseñar
+  const proxima = viaje?.estado === "activo" ? proximaActividad(actividades, ahora) : null
 
   // Porcentaje del presupuesto ya gastado, sin pasar del 100 %; sin presupuesto no hay barra
   const porcentajeGastado =
@@ -400,6 +424,7 @@ export default function InicioViaje({
         </div>
 
         <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+          {proxima && <TarjetaProximaActividad actividad={proxima} ahora={ahora} />}
           {viaje && <TarjetaPlaylist viajeId={viajeId} tokenSesion={tokenSesion} activo={viaje.estado === "activo"} />}
           {error && (
             <div

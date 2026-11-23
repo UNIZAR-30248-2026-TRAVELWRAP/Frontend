@@ -35,6 +35,8 @@ import { viajeEnCache } from "../services/viajesEnCache"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro, diasDelItinerario, fechaDeHoy, formatearFechasActivo } from "../utils/formatoViaje"
 import { moverActividad, ordenarAgenda, puedeReordenarse } from "../utils/ordenActividades"
+import { actividadEnCurso } from "../utils/actividadEnCurso"
+import { useAhora } from "../hooks/useAhora"
 import { estiloAlerta } from "../styles/formulario"
 
 const MapaActividades = lazy(() => import("../components/MapaActividades"))
@@ -110,6 +112,7 @@ export default function Itinerario({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
   const [rutaCargada, setRutaCargada] = useState<{ clave: string; datos: RutaDelDia | null } | null>(null)
+  const ahora = useAhora()
 
   useEffect(() => {
     let vigente = true
@@ -176,6 +179,8 @@ export default function Itinerario({
   const fueraDeLasFechas =
     viaje?.fecha_inicio && viaje.fecha_fin && dia !== "" ? dia < viaje.fecha_inicio || dia > viaje.fecha_fin : false
   const delDia = ordenarAgenda(actividades.filter((actividad) => actividad.fecha === dia))
+  // La actividad en curso solo existe si el día elegido es hoy: avanza con la hora y se resalta en naranja
+  const enCursoId = actividadEnCurso(delDia, ahora)?.id
   const tituloDe = (id: string | number) => delDia.find((actividad) => actividad.id === id)?.titulo ?? "la actividad"
   const alSoltar = async ({ active, over }: DragEndEvent) => {
     if (!over || guardandoOrden || !viaje) return
@@ -671,8 +676,8 @@ export default function Itinerario({
                         },
                       }}
                     >
-                      {delDia.map((actividad, indice) => {
-                        const primera = indice === 0
+                      {delDia.map((actividad) => {
+                        const enCurso = actividad.id === enCursoId
                         const solapadas = solapadasCon(actividad)
                         const arrastrable = hayQueOrdenar && puedeReordenarse(delDia, actividad.id)
                         const contenido = (asa: AsaDeArrastre | null) => (
@@ -685,7 +690,7 @@ export default function Itinerario({
                                 height: 40,
                                 borderRadius: "50%",
                                 background: "white",
-                                border: `2.5px solid ${primera ? C.accent : C.blue}`,
+                                border: `2.5px solid ${enCurso ? C.accent : C.blue}`,
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
@@ -704,7 +709,7 @@ export default function Itinerario({
                                 borderRadius: 16,
                                 padding: "12px 14px",
                                 boxShadow: SHADOWS.card,
-                                border: `1.5px solid ${primera ? `${C.accent}50` : C.border}`,
+                                border: `1.5px solid ${enCurso ? `${C.accent}50` : C.border}`,
                               }}
                             >
                               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
@@ -781,8 +786,8 @@ export default function Itinerario({
                                 >
                                   <div>
                                     {actividad.hora_inicio && (
-                                      <Badge bg={primera ? C.lightAccent : C.lightBlue} color={primera ? C.accent : C.blue}>
-                                        <Icon name="clock" size={11} color={primera ? C.accent : C.blue} strokeWidth={2} />
+                                      <Badge bg={enCurso ? C.lightAccent : C.lightBlue} color={enCurso ? C.accent : C.blue}>
+                                        <Icon name="clock" size={11} color={enCurso ? C.accent : C.blue} strokeWidth={2} />
                                         {actividad.hora_inicio.slice(0, 5)}
                                         {actividad.hora_fin ? ` – ${actividad.hora_fin.slice(0, 5)}` : ""} h
                                       </Badge>
