@@ -60,7 +60,7 @@ Característica: Foto de portada del viaje (PB-53)
   Escenario: Un miembro que no es el creador también puede cambiar la portada
     Dado que soy miembro, pero no creador, del viaje activo "Lisboa 2027"
     Cuando abro el viaje "Lisboa 2027" desde mis viajes
-    Y pulso el botón "Cambiar portada"
+    Y pulso el botón "Editar viaje"
     Y elijo la foto de portada "lisboa.png" de tipo "image/png"
     Y pulso el botón "Guardar cambios"
     Entonces estoy en el inicio del viaje
