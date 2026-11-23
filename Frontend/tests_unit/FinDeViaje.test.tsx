@@ -1,7 +1,12 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, configure, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import FinDeViaje from '../src/screens/FinDeViaje'
+
+vi.mock('../src/utils/imagenResumen', async (importarOriginal) => ({
+  ...(await importarOriginal<typeof import('../src/utils/imagenResumen')>()),
+  crearImagenResumen: vi.fn(async () => new Blob(['png'], { type: 'image/png' })),
+}))
 import { calcularTransferencias, listaDeNombres, textoDeDias, textoDeVotos } from '../src/utils/resumen'
 
 configure({ asyncUtilTimeout: 5000 })
@@ -79,6 +84,11 @@ const siguiente = async (veces = 1) => {
   for (let i = 0; i < veces; i++) await usuario.keyboard('{ArrowRight}')
 }
 
+beforeEach(() => {
+  URL.createObjectURL = vi.fn(() => 'blob:resumen')
+  URL.revokeObjectURL = vi.fn()
+})
+
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
@@ -89,7 +99,7 @@ const SELLO_MAPA = { id: 's1', viaje_id: VIAJE_ID, diseno: 'mapa', destino: 'Rom
 const abrirUltima = async (opciones = {}) => {
   simularBackend(opciones)
   await abrir()
-  await siguiente(4)
+  await siguiente(5)
 }
 
 const llamadasA = (fin: string, metodo: string) =>
@@ -166,11 +176,11 @@ describe('FinDeViaje: sello', () => {
 })
 
 describe('FinDeViaje: diapositivas', () => {
-  it('recorre las cinco diapositivas con sus datos', async () => {
+  it('recorre las seis diapositivas con sus datos', async () => {
     simularBackend()
     await abrir()
     expect(screen.getByRole('heading', { name: 'Roma' })).toBeTruthy()
-    expect(screen.getByRole('region').getAttribute('aria-label')).toBe('Resumen del viaje, 1 de 5: Portada')
+    expect(screen.getByRole('region').getAttribute('aria-label')).toBe('Resumen del viaje, 1 de 6: Portada')
 
     await siguiente()
     expect(screen.getByText('días de aventura')).toBeTruthy()
@@ -187,13 +197,52 @@ describe('FinDeViaje: diapositivas', () => {
     await siguiente()
     expect(screen.getByText('1 foto')).toBeTruthy()
     expect(screen.getByAltText('coliseo.jpg')).toBeTruthy()
+
+    await siguiente()
+    expect(screen.getByRole('region').getAttribute('aria-label')).toBe('Resumen del viaje, 6 de 6: Resumen')
+    expect((await screen.findByAltText('Resumen del viaje a Roma')).getAttribute('src')).toBe('blob:resumen')
+  })
+
+  it('el resumen final se crea al llegar a él y no antes, y una sola vez', async () => {
+    const { crearImagenResumen } = await import('../src/utils/imagenResumen')
+    vi.mocked(crearImagenResumen).mockClear()
+    simularBackend()
+    await abrir()
+    await siguiente(4)
+    expect(crearImagenResumen).not.toHaveBeenCalled()
+
+    await siguiente()
+    await screen.findByAltText('Resumen del viaje a Roma')
+    await siguiente()
+    expect(crearImagenResumen).toHaveBeenCalledTimes(1)
+  })
+
+  it('si una foto no carga el resumen se crea sin fotos y lo avisa', async () => {
+    const { crearImagenResumen, ErrorDeImagen } = await import('../src/utils/imagenResumen')
+    vi.mocked(crearImagenResumen).mockRejectedValueOnce(new ErrorDeImagen('No se ha podido cargar alguna de las fotos para crear la imagen'))
+    simularBackend()
+    await abrir()
+    await siguiente(5)
+
+    await screen.findByAltText('Resumen del viaje a Roma')
+    expect((await screen.findByRole('status')).textContent).toBe('No se han podido incluir las fotos en la imagen')
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(vi.mocked(crearImagenResumen).mock.calls.at(-1)?.[0].fotos).toEqual([])
+  })
+
+  it('con solo portada y días no hay diapositiva de resumen', async () => {
+    simularBackend({ resumen: RESUMEN_VACIO, fotos: [] })
+    await abrir()
+    await siguiente(3)
+    expect(diapositivaActual()).toBe('Resumen del viaje, 2 de 2: Tiempo juntos')
+    expect(screen.queryByText('Tu resumen')).toBeNull()
   })
 
   it('ya no enseña los gastos ni el balance y no pide el balance', async () => {
     simularBackend()
     await abrir()
     const titulos: string[] = []
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 6; i++) {
       titulos.push(screen.getByRole('region').getAttribute('aria-label') ?? '')
       await siguiente()
     }
@@ -233,7 +282,7 @@ describe('FinDeViaje: diapositivas', () => {
     const alTerminar = vi.fn()
     await abrir({ onTerminar: alTerminar })
 
-    await siguiente(4)
+    await siguiente(5)
     await userEvent.setup().click(screen.getByRole('button', { name: 'Ir a Mis viajes' }))
 
     expect(alTerminar).toHaveBeenCalledTimes(1)
@@ -243,13 +292,13 @@ describe('FinDeViaje: diapositivas', () => {
     simularBackend({ datosViaje: { rol: 'creador' } })
     await abrir()
     expect(screen.queryByRole('button', { name: 'Archivar viaje' })).toBeNull()
-    await siguiente(4)
+    await siguiente(5)
     expect(screen.getByRole('button', { name: 'Archivar viaje' })).toBeTruthy()
     cleanup()
 
     simularBackend({ datosViaje: { rol: 'creador', archivado: true } })
     await abrir()
-    await siguiente(4)
+    await siguiente(5)
     expect(screen.getByRole('button', { name: 'Ir a Mis viajes' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Archivar viaje' })).toBeNull()
   })
@@ -258,7 +307,7 @@ describe('FinDeViaje: diapositivas', () => {
     simularBackend({ datosViaje: { rol: 'miembro' } })
     const alArchivar = vi.fn()
     await abrir({ onArchivado: alArchivar })
-    await siguiente(4)
+    await siguiente(5)
     const usuario = userEvent.setup()
 
     await usuario.click(screen.getByRole('button', { name: 'Archivar viaje' }))
@@ -271,7 +320,7 @@ describe('FinDeViaje: diapositivas', () => {
     simularBackend({ datosViaje: { rol: 'creador' } })
     const alArchivar = vi.fn()
     await abrir({ onArchivado: alArchivar })
-    await siguiente(4)
+    await siguiente(5)
     const usuario = userEvent.setup()
 
     await usuario.click(screen.getByRole('button', { name: 'Archivar viaje' }))
@@ -298,7 +347,7 @@ describe('FinDeViaje: diapositivas', () => {
     })
     const alArchivar = vi.fn()
     await abrir({ onArchivado: alArchivar })
-    await siguiente(4)
+    await siguiente(5)
     const usuario = userEvent.setup()
 
     await usuario.click(screen.getByRole('button', { name: 'Archivar viaje' }))
@@ -318,10 +367,10 @@ describe('FinDeViaje: diapositivas', () => {
     expect(screen.queryByRole('button', { name: 'Ir a Mis viajes' })).toBeNull()
 
     await usuario.keyboard('{ArrowRight}')
-    expect(screen.getByRole('region').getAttribute('aria-label')).toContain('2 de 5')
+    expect(screen.getByRole('region').getAttribute('aria-label')).toContain('2 de 6')
     await usuario.keyboard('{ArrowLeft}')
     await usuario.keyboard('{ArrowLeft}')
-    expect(screen.getByRole('region').getAttribute('aria-label')).toContain('1 de 5')
+    expect(screen.getByRole('region').getAttribute('aria-label')).toContain('1 de 6')
   })
 
   it('un viaje sin datos solo muestra la portada y el tiempo juntos', async () => {
@@ -340,23 +389,23 @@ describe('FinDeViaje: diapositivas', () => {
   it('oculta cada diapositiva que no tiene datos y deja las demás', async () => {
     simularBackend({ resumen: { ...RESUMEN, actividad_mas_votada: null }, fotos: [] })
     await abrir()
-    expect(diapositivaActual()).toContain('1 de 3')
+    expect(diapositivaActual()).toContain('1 de 4')
     await siguiente(2)
-    expect(diapositivaActual()).toBe('Resumen del viaje, 3 de 3: El alma del grupo')
+    expect(diapositivaActual()).toBe('Resumen del viaje, 3 de 4: El alma del grupo')
     cleanup()
 
     simularBackend({ resumen: { ...RESUMEN, alma_del_grupo: null } })
     await abrir()
-    expect(diapositivaActual()).toContain('1 de 4')
+    expect(diapositivaActual()).toContain('1 de 5')
     await siguiente(3)
-    expect(diapositivaActual()).toBe('Resumen del viaje, 4 de 4: Fotos')
+    expect(diapositivaActual()).toBe('Resumen del viaje, 4 de 5: Fotos')
     cleanup()
 
     simularBackend({ resumen: { ...RESUMEN, dias: 0 } })
     await abrir()
-    expect(diapositivaActual()).toContain('1 de 4')
+    expect(diapositivaActual()).toContain('1 de 5')
     await siguiente()
-    expect(diapositivaActual()).toBe('Resumen del viaje, 2 de 4: El momento estrella')
+    expect(diapositivaActual()).toBe('Resumen del viaje, 2 de 5: El momento estrella')
   })
 
   it('en el alma del grupo solo salen los contadores mayores que cero', async () => {
@@ -389,9 +438,9 @@ describe('FinDeViaje: diapositivas', () => {
     )
     await abrir()
 
-    expect(diapositivaActual()).toContain('1 de 4')
+    expect(diapositivaActual()).toContain('1 de 5')
     await siguiente(3)
-    expect(diapositivaActual()).toBe('Resumen del viaje, 4 de 4: El alma del grupo')
+    expect(diapositivaActual()).toBe('Resumen del viaje, 4 de 5: El alma del grupo')
     expect(screen.queryByText('0 fotos')).toBeNull()
   })
 
@@ -426,14 +475,14 @@ describe('FinDeViaje: como las historias', () => {
 
     toque(300)
     toque(300)
-    expect(diapositivaActual()).toContain('3 de 5')
+    expect(diapositivaActual()).toContain('3 de 6')
 
     toque(50)
-    expect(diapositivaActual()).toContain('2 de 5')
+    expect(diapositivaActual()).toContain('2 de 6')
 
     toque(50)
     toque(50)
-    expect(diapositivaActual()).toContain('1 de 5')
+    expect(diapositivaActual()).toContain('1 de 6')
   })
 
   it('una pulsación larga pausa la barra y no cambia de diapositiva', async () => {
@@ -448,7 +497,7 @@ describe('FinDeViaje: como las historias', () => {
     ahora.mockReturnValue(1800)
     soltar(300)
 
-    expect(diapositivaActual()).toContain('1 de 5')
+    expect(diapositivaActual()).toContain('1 de 6')
     expect(screen.getByTestId('progreso-activo').style.animationPlayState).toBe('running')
     ahora.mockRestore()
   })
@@ -465,7 +514,7 @@ describe('FinDeViaje: como las historias', () => {
     expect(screen.getByText('Coliseo', { exact: false }).closest('[aria-hidden="true"]')).not.toBeNull()
     soltar(150)
 
-    await waitFor(() => expect(diapositivaActual()).toContain('3 de 5'))
+    await waitFor(() => expect(diapositivaActual()).toContain('3 de 6'))
     expect(document.querySelector('[style*="preserve-3d"]')).toBeNull()
   })
 
@@ -494,7 +543,7 @@ describe('FinDeViaje: como las historias', () => {
     mover(300)
     soltar(300)
 
-    await waitFor(() => expect(diapositivaActual()).toContain('2 de 5'))
+    await waitFor(() => expect(diapositivaActual()).toContain('2 de 6'))
   })
 
   it('si se vuelve a la posición normal o se arrastra poco no se cambia', async () => {
@@ -506,13 +555,13 @@ describe('FinDeViaje: como las historias', () => {
     mover(300)
     soltar(300)
     await waitFor(() => expect(document.querySelector('[style*="preserve-3d"]')).toBeNull())
-    expect(diapositivaActual()).toContain('1 de 5')
+    expect(diapositivaActual()).toContain('1 de 6')
 
     pulsar(300)
     mover(260)
     soltar(260)
     await waitFor(() => expect(document.querySelector('[style*="preserve-3d"]')).toBeNull())
-    expect(diapositivaActual()).toContain('1 de 5')
+    expect(diapositivaActual()).toContain('1 de 6')
   })
 
   it('en los extremos no hay vecina a la que ir', async () => {
@@ -523,14 +572,14 @@ describe('FinDeViaje: como las historias', () => {
     mover(350)
     soltar(350)
     await waitFor(() => expect(document.querySelector('[style*="preserve-3d"]')).toBeNull())
-    expect(diapositivaActual()).toContain('1 de 5')
+    expect(diapositivaActual()).toContain('1 de 6')
 
-    await siguiente(4)
+    await siguiente(5)
     pulsar(300)
     mover(50)
     soltar(50)
     await waitFor(() => expect(document.querySelector('[style*="preserve-3d"]')).toBeNull())
-    expect(diapositivaActual()).toContain('5 de 5')
+    expect(diapositivaActual()).toContain('6 de 6')
   })
 
   it('la barra se pausa mientras la pestaña está oculta y sigue al volver', async () => {
@@ -545,7 +594,7 @@ describe('FinDeViaje: como las historias', () => {
     await waitFor(() => expect(screen.getByTestId('progreso-activo').style.animationPlayState).toBe('paused'))
     ocultar(false)
     await waitFor(() => expect(screen.getByTestId('progreso-activo').style.animationPlayState).toBe('running'))
-    expect(diapositivaActual()).toContain('1 de 5')
+    expect(diapositivaActual()).toContain('1 de 6')
     delete (document as unknown as Record<string, unknown>).hidden
   })
 
@@ -555,11 +604,11 @@ describe('FinDeViaje: como las historias', () => {
     await abrir({ onTerminar: alTerminar })
 
     terminarBarra()
-    expect(diapositivaActual()).toContain('2 de 5')
+    expect(diapositivaActual()).toContain('2 de 6')
 
-    await siguiente(3)
+    await siguiente(4)
     terminarBarra()
-    expect(diapositivaActual()).toContain('5 de 5')
+    expect(diapositivaActual()).toContain('6 de 6')
     expect(alTerminar).not.toHaveBeenCalled()
   })
 
@@ -570,13 +619,13 @@ describe('FinDeViaje: como las historias', () => {
 
     expect(screen.queryByTestId('progreso-activo')).toBeNull()
     toque(300)
-    expect(diapositivaActual()).toContain('2 de 5')
+    expect(diapositivaActual()).toContain('2 de 6')
 
     pulsar(300)
     mover(100)
     expect(document.querySelector('[style*="preserve-3d"]')).toBeNull()
     soltar(100)
-    expect(diapositivaActual()).toContain('3 de 5')
+    expect(diapositivaActual()).toContain('3 de 6')
   })
 })
 

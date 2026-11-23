@@ -21,6 +21,9 @@ Característica: Resumen de fin de viaje (PB-42)
     Entonces veo el texto "Pagó la cuenta más veces"
     Cuando paso a la diapositiva siguiente
     Entonces veo el texto "1 foto"
+    Cuando paso a la diapositiva siguiente
+    Entonces veo la diapositiva "Resumen"
+    Y veo la imagen del resumen
     Y no veo el texto "El gasto más alto"
     Y no veo el texto "Balance final"
 
@@ -42,20 +45,23 @@ Característica: Resumen de fin de viaje (PB-42)
     Y no veo el texto "Nadie votó actividades en este viaje"
     Y no veo el texto "0 fotos"
 
-  Escenario: Se descarga una imagen con el resumen del viaje
+  Escenario: Se descarga la imagen que se ve en el resumen final
     Dado que soy miembro, pero no creador, del viaje activo "Roma 2027"
     Y que el resumen del viaje "Roma 2027" tiene el Coliseo como actividad más votada y a Berta como alma del grupo
     Cuando abro el resumen del viaje "Roma 2027"
     Y paso a la última diapositiva
-    Y pulso «Descargar imagen»
+    Entonces veo la diapositiva "Resumen"
+    Y veo la imagen del resumen
+    Cuando pulso «Descargar imagen»
     Entonces se descarga la imagen "TravelWrap-Roma-2027.png" de 1080 píxeles de ancho
 
-  Escenario: Si no se puede cargar una foto no se descarga la imagen
+  Escenario: Si no se puede cargar una foto el resumen se crea sin fotos y se avisa
     Dado que soy miembro, pero no creador, del viaje activo "Roma 2027"
     Y que el resumen del viaje "Roma 2027" tiene el Coliseo como actividad más votada y a Berta como alma del grupo
     Y que las fotos del resumen del viaje "Roma 2027" no se pueden cargar
     Cuando abro el resumen del viaje "Roma 2027"
     Y paso a la última diapositiva
-    Y pulso «Descargar imagen»
-    Entonces veo un error que contiene "No se ha podido cargar alguna de las fotos para crear la imagen"
-    Y no se ha descargado ninguna imagen
+    Entonces veo la imagen del resumen
+    Y veo el estado "No se han podido incluir las fotos en la imagen"
+    Cuando pulso «Descargar imagen»
+    Entonces se descarga la imagen "TravelWrap-Roma-2027.png" de 1080 píxeles de ancho

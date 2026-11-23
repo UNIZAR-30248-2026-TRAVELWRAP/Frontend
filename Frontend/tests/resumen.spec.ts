@@ -93,14 +93,14 @@ const sinDesbordamiento = (page: Page) =>
 test.describe('Resumen de fin de viaje (Wrap)', () => {
   test.use({ reducedMotion: 'reduce' });
 
-  test('recorre las cinco diapositivas y termina en Mis viajes', async ({ page }) => {
+  test('recorre las seis diapositivas y termina en Mis viajes', async ({ page }) => {
     await entrarConSesion(page);
     await simularBackend(page);
 
     await page.goto(`/viajes/${VIAJE_ID}/resumen`);
 
     await expect(page.getByRole('heading', { name: 'Roma' })).toBeVisible();
-    await expect(page.getByRole('region')).toHaveAccessibleName(/1 de 5: Portada/);
+    await expect(page.getByRole('region')).toHaveAccessibleName(/1 de 6: Portada/);
 
     await page.keyboard.press('ArrowRight');
     await expect(page.getByText('días de aventura')).toBeVisible();
@@ -113,6 +113,10 @@ test.describe('Resumen de fin de viaje (Wrap)', () => {
 
     await page.keyboard.press('ArrowRight');
     await expect(page.getByAltText('coliseo.jpg')).toBeVisible();
+
+    await page.keyboard.press('ArrowRight');
+    await expect(page.getByRole('region')).toHaveAccessibleName(/6 de 6: Resumen/);
+    await expect(page.getByAltText('Resumen del viaje a Roma')).toBeVisible();
 
     await page.getByRole('button', { name: 'Ir a Mis viajes' }).click();
     await expect(page).toHaveURL(/\/$/);
@@ -149,13 +153,13 @@ test.describe('Resumen de fin de viaje (Wrap)', () => {
     await expect(page.getByRole('heading', { name: 'Roma' })).toBeVisible();
     for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowRight');
 
-    await expect(page.getByRole('region')).toHaveAccessibleName(/5 de 5: Fotos/);
+    await expect(page.getByRole('region')).toHaveAccessibleName(/6 de 6: Resumen/);
     await expect(page.getByText('Balance final')).toHaveCount(0);
     await expect(page.getByText('Cena Trastevere')).toHaveCount(0);
     expect(pidioElBalance).toBe(false);
   });
 
-  test('«Descargar imagen» crea un PNG vertical y lo descarga con el nombre del viaje', async ({ page }) => {
+  test('la última diapositiva enseña la imagen del resumen y «Descargar imagen» baja ese mismo PNG vertical', async ({ page }) => {
     await entrarConSesion(page);
     await page.route('https://storage.test/**', (route) =>
       route.fulfill({ status: 200, contentType: 'image/png', body: PNG_1X1, headers: { 'access-control-allow-origin': '*' } }),
@@ -164,7 +168,12 @@ test.describe('Resumen de fin de viaje (Wrap)', () => {
 
     await page.goto(`/viajes/${VIAJE_ID}/resumen`);
     await expect(page.getByRole('heading', { name: 'Roma' })).toBeVisible();
-    for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowRight');
+    for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowRight');
+
+    const imagen = page.getByAltText('Resumen del viaje a Roma');
+    await expect(imagen).toBeVisible();
+    const proporcion = await imagen.evaluate((el) => (el as HTMLImageElement).naturalHeight / (el as HTMLImageElement).naturalWidth);
+    expect(proporcion).toBeGreaterThanOrEqual(1920 / 1080 - 0.01);
     const descarga = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Descargar imagen' }).click();
 
@@ -178,23 +187,40 @@ test.describe('Resumen de fin de viaje (Wrap)', () => {
     expect(bytes.readUInt32BE(20)).toBeGreaterThanOrEqual(1920);
     await expect(page.getByRole('button', { name: 'Descargar imagen' })).toBeEnabled();
     await expect(page.getByRole('alert')).toHaveCount(0);
+    await expect(page.getByRole('status')).toHaveCount(0);
   });
 
-  test('si una foto no se puede cargar avisa y no descarga nada', async ({ page }) => {
+  test('si una foto no se puede cargar el resumen se crea sin fotos y se avisa', async ({ page }) => {
     await entrarConSesion(page);
     await page.route('https://storage.test/**', (route) => route.fulfill({ status: 403, body: 'denegado' }));
     await simularBackend(page);
-    let descargas = 0;
-    page.on('download', () => descargas++);
 
     await page.goto(`/viajes/${VIAJE_ID}/resumen`);
     await expect(page.getByRole('heading', { name: 'Roma' })).toBeVisible();
-    for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowRight');
-    await page.getByRole('button', { name: 'Descargar imagen' }).click();
+    for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowRight');
 
-    await expect(page.getByRole('alert')).toContainText('No se ha podido cargar alguna de las fotos');
-    await expect(page.getByRole('button', { name: 'Descargar imagen' })).toBeEnabled();
-    expect(descargas).toBe(0);
+    await expect(page.getByAltText('Resumen del viaje a Roma')).toBeVisible();
+    await expect(page.getByRole('status')).toContainText('No se han podido incluir las fotos en la imagen');
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    const descarga = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Descargar imagen' }).click();
+    expect((await descarga).suggestedFilename()).toBe('TravelWrap-Roma-2027.png');
+  });
+
+  test('un viaje sin votos ni alma ni fotos no tiene diapositiva de resumen pero se puede descargar la imagen', async ({ page }) => {
+    await entrarConSesion(page);
+    await simularBackend(page, { resumen: { dias: 4, actividad_mas_votada: null, alma_del_grupo: null }, fotos: false });
+
+    await page.goto(`/viajes/${VIAJE_ID}/resumen`);
+    await expect(page.getByText('TravelWrap · Resumen')).toBeVisible();
+    await expect(async () => {
+      await page.keyboard.press('ArrowRight');
+      await expect(page.getByRole('region')).toHaveAccessibleName(/2 de 2/, { timeout: 1000 });
+    }).toPass();
+    await expect(page.getByAltText('Resumen del viaje a Roma')).toHaveCount(0);
+    const descarga = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Descargar imagen' }).click();
+    expect((await descarga).suggestedFilename()).toBe('TravelWrap-Roma-2027.png');
   });
 
   test('en 320 px ninguna diapositiva desborda y los botones siguen visibles', async ({ page }) => {
@@ -205,7 +231,7 @@ test.describe('Resumen de fin de viaje (Wrap)', () => {
     await page.goto(`/viajes/${VIAJE_ID}/resumen`);
     await expect(page.getByRole('heading', { name: 'Roma' })).toBeVisible();
 
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 6; i++) {
       expect(await sinDesbordamiento(page)).toBe(true);
       await page.keyboard.press('ArrowRight');
     }
@@ -239,13 +265,13 @@ test.describe('Resumen de fin de viaje (Wrap)', () => {
 
       const derecha = await punto(page, 0.85);
       await page.mouse.click(derecha.x, derecha.y);
-      await expect(page.getByRole('region')).toHaveAccessibleName(/2 de 5/);
+      await expect(page.getByRole('region')).toHaveAccessibleName(/2 de 6/);
 
       const izquierda = await punto(page, 0.1);
       await page.mouse.click(izquierda.x, izquierda.y);
-      await expect(page.getByRole('region')).toHaveAccessibleName(/1 de 5/);
+      await expect(page.getByRole('region')).toHaveAccessibleName(/1 de 6/);
 
-      await expect(page.getByRole('region')).toHaveAccessibleName(/2 de 5/, { timeout: 12000 });
+      await expect(page.getByRole('region')).toHaveAccessibleName(/2 de 6/, { timeout: 12000 });
     });
 
     test('al mantener pulsado y arrastrar se ve la historia vecina; al soltar se cambia, y si se devuelve a su sitio no', async ({ page }) => {
@@ -264,13 +290,14 @@ test.describe('Resumen de fin de viaje (Wrap)', () => {
       await expect(page.getByText('días de aventura')).toBeAttached();
       await page.mouse.move(inicio.x, inicio.y, { steps: 8 });
       await page.mouse.up();
-      await expect(page.getByRole('region')).toHaveAccessibleName(/1 de 5/);
+      await expect(page.getByRole('region')).toHaveAccessibleName(/1 de 6/);
+      await expect(page.locator('[style*="preserve-3d"]')).toHaveCount(0);
 
       await page.mouse.move(inicio.x, inicio.y);
       await page.mouse.down();
       await page.mouse.move(fin.x, fin.y, { steps: 8 });
       await page.mouse.up();
-      await expect(page.getByRole('region')).toHaveAccessibleName(/2 de 5/);
+      await expect(page.getByRole('region')).toHaveAccessibleName(/2 de 6/);
       await expect(page.getByText('días de aventura')).toBeVisible();
     });
   });

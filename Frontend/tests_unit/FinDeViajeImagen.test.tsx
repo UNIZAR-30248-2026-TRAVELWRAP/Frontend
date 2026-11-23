@@ -67,7 +67,7 @@ const abrirUltima = async () => {
   render(<FinDeViaje viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
   await screen.findByText('TravelWrap · Resumen')
   const usuario = userEvent.setup()
-  for (let i = 0; i < 4; i++) await usuario.keyboard('{ArrowRight}')
+  for (let i = 0; i < 5; i++) await usuario.keyboard('{ArrowRight}')
   return usuario
 }
 
@@ -75,6 +75,8 @@ beforeEach(() => {
   mocks.crearImagenResumen.mockReset()
   mocks.descargarArchivo.mockReset()
   mocks.crearImagenResumen.mockResolvedValue(new Blob(['png'], { type: 'image/png' }))
+  URL.createObjectURL = vi.fn(() => 'blob:resumen')
+  URL.revokeObjectURL = vi.fn()
 })
 
 afterEach(() => {
@@ -82,32 +84,46 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-describe('FinDeViaje: descargar imagen', () => {
-  it('el botón solo aparece en la última diapositiva', async () => {
+describe('FinDeViaje: resumen final y descarga de la imagen', () => {
+  it('la última diapositiva enseña la imagen creada y el botón de descargar', async () => {
+    simular()
+    await abrirUltima()
+
+    const imagen = await screen.findByAltText('Resumen del viaje a Roma, Italia')
+    expect(imagen.getAttribute('src')).toBe('blob:resumen')
+    expect(screen.getByRole('button', { name: 'Descargar imagen' })).toBeTruthy()
+    expect(mocks.crearImagenResumen).toHaveBeenCalledTimes(1)
+  })
+
+  it('el botón no aparece antes de la última diapositiva y la imagen no se crea antes de llegar', async () => {
     simular()
     render(<FinDeViaje viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
     await screen.findByText('TravelWrap · Resumen')
-    expect(screen.queryByRole('button', { name: 'Descargar imagen' })).toBeNull()
-
     const usuario = userEvent.setup()
     for (let i = 0; i < 4; i++) await usuario.keyboard('{ArrowRight}')
+    expect(screen.queryByRole('button', { name: 'Descargar imagen' })).toBeNull()
+    expect(mocks.crearImagenResumen).not.toHaveBeenCalled()
+
+    await usuario.keyboard('{ArrowRight}')
     expect(screen.getByRole('button', { name: 'Descargar imagen' })).toBeTruthy()
   })
 
-  it('crea la imagen con los datos del viaje y la descarga con nombre TravelWrap-lugar-año.png', async () => {
+  it('descarga la imagen ya creada con los datos del viaje y el nombre TravelWrap-lugar-año.png', async () => {
     simular()
     const usuario = await abrirUltima()
+    await screen.findByAltText('Resumen del viaje a Roma, Italia')
 
     await usuario.click(screen.getByRole('button', { name: 'Descargar imagen' }))
 
     await waitFor(() => expect(mocks.descargarArchivo).toHaveBeenCalledTimes(1))
+    expect(mocks.crearImagenResumen).toHaveBeenCalledTimes(1)
     const datos = mocks.crearImagenResumen.mock.calls[0][0]
     expect(datos.lugar).toBe('Roma, Italia')
     expect(datos.anio).toBe('2027')
     expect(datos.dias).toEqual({ numero: 4, texto: 'días de aventura' })
     expect(datos.estrella).toEqual({ titulo: 'Coliseo', votos: '3 votos' })
     expect(datos.alma.nombre).toBe('Berta')
-    expect(datos.alma.estadisticas.map((dato: { etiqueta: string }) => dato.etiqueta)).toHaveLength(2)
+    expect(datos.alma.estadisticas).toHaveLength(2)
     expect(datos.fotos).toHaveLength(6)
     expect(datos.totalFotos).toBe(8)
 
@@ -116,16 +132,15 @@ describe('FinDeViaje: descargar imagen', () => {
     expect(archivo.type).toBe('image/png')
   })
 
-  it('lo que no tiene datos viaja como null y no se pasan fotos', async () => {
+  it('lo que no tiene datos viaja como null', async () => {
     simular({ resumen: { dias: 0, actividad_mas_votada: null, alma_del_grupo: null }, fotos: [fotos[0]] })
     render(<FinDeViaje viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
     await screen.findByText('TravelWrap · Resumen')
     const usuario = userEvent.setup()
     await usuario.keyboard('{ArrowRight}')
+    await usuario.keyboard('{ArrowRight}')
 
-    await usuario.click(screen.getByRole('button', { name: 'Descargar imagen' }))
-
-    await waitFor(() => expect(mocks.descargarArchivo).toHaveBeenCalled())
+    await screen.findByAltText('Resumen del viaje a Roma, Italia')
     const datos = mocks.crearImagenResumen.mock.calls[0][0]
     expect(datos.dias).toBeNull()
     expect(datos.estrella).toBeNull()
@@ -133,47 +148,62 @@ describe('FinDeViaje: descargar imagen', () => {
     expect(datos.fotos).toEqual(['https://storage.test/foto0.jpg'])
   })
 
-  it('mientras se crea muestra «Creando la imagen...», se bloquea y no se lanza dos veces', async () => {
+  it('mientras se crea enseña «Creando tu resumen...» y el botón se bloquea', async () => {
     simular()
     let terminar: (blob: Blob) => void = () => {}
     mocks.crearImagenResumen.mockImplementation(() => new Promise<Blob>((resolver) => (terminar = resolver)))
     const usuario = await abrirUltima()
 
-    await usuario.click(screen.getByRole('button', { name: 'Descargar imagen' }))
-    const ocupado = await screen.findByRole('button', { name: 'Creando la imagen...' })
+    expect(await screen.findByText('Creando tu resumen...')).toBeTruthy()
+    const ocupado = screen.getByRole('button', { name: 'Creando la imagen...' })
     expect(ocupado.getAttribute('aria-busy')).toBe('true')
     expect((ocupado as HTMLButtonElement).disabled).toBe(true)
     await usuario.click(ocupado)
     expect(mocks.crearImagenResumen).toHaveBeenCalledTimes(1)
 
     terminar(new Blob(['png'], { type: 'image/png' }))
-    await screen.findByRole('button', { name: 'Descargar imagen' })
-    expect(mocks.descargarArchivo).toHaveBeenCalledTimes(1)
+    await screen.findByAltText('Resumen del viaje a Roma, Italia')
+    expect(screen.getByRole('button', { name: 'Descargar imagen' })).toBeTruthy()
+    expect(mocks.descargarArchivo).not.toHaveBeenCalled()
   })
 
-  it('si una foto no se puede cargar enseña el aviso del error, no descarga y deja reintentar', async () => {
+  it('si una foto no se puede cargar crea el resumen sin fotos y lo avisa', async () => {
     simular()
     const { ErrorDeImagen } = await import('../src/utils/imagenResumen')
     mocks.crearImagenResumen.mockRejectedValueOnce(new ErrorDeImagen('No se ha podido cargar alguna de las fotos para crear la imagen'))
     const usuario = await abrirUltima()
 
+    await screen.findByAltText('Resumen del viaje a Roma, Italia')
+    expect((await screen.findByRole('status')).textContent).toBe('No se han podido incluir las fotos en la imagen')
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(mocks.crearImagenResumen.mock.calls[1][0].fotos).toEqual([])
+
     await usuario.click(screen.getByRole('button', { name: 'Descargar imagen' }))
+    await waitFor(() => expect(mocks.descargarArchivo).toHaveBeenCalledTimes(1))
+  })
+
+  it('si no se puede crear ni sin fotos avisa, no descarga y deja reintentar', async () => {
+    simular()
+    const { ErrorDeImagen } = await import('../src/utils/imagenResumen')
+    mocks.crearImagenResumen.mockRejectedValueOnce(new ErrorDeImagen('Tu navegador no puede crear la imagen'))
+    mocks.crearImagenResumen.mockRejectedValueOnce(new ErrorDeImagen('Tu navegador no puede crear la imagen'))
+    const usuario = await abrirUltima()
 
     const alerta = await screen.findByRole('alert')
-    expect(alerta.textContent).toBe('No se ha podido cargar alguna de las fotos para crear la imagen')
+    expect(alerta.textContent).toBe('Tu navegador no puede crear la imagen')
+    expect(screen.getByText('Pulsa «Descargar imagen» para volver a intentarlo')).toBeTruthy()
     expect(mocks.descargarArchivo).not.toHaveBeenCalled()
 
     await usuario.click(screen.getByRole('button', { name: 'Descargar imagen' }))
     await waitFor(() => expect(mocks.descargarArchivo).toHaveBeenCalledTimes(1))
     expect(screen.queryByRole('alert')).toBeNull()
+    expect(await screen.findByAltText('Resumen del viaje a Roma, Italia')).toBeTruthy()
   })
 
   it('un fallo inesperado muestra un aviso genérico', async () => {
     simular()
     mocks.crearImagenResumen.mockRejectedValueOnce(new Error('boom'))
-    const usuario = await abrirUltima()
-
-    await usuario.click(screen.getByRole('button', { name: 'Descargar imagen' }))
+    await abrirUltima()
 
     expect((await screen.findByRole('alert')).textContent).toBe('No se ha podido crear la imagen')
   })
@@ -181,9 +211,24 @@ describe('FinDeViaje: descargar imagen', () => {
   it('también se puede descargar con el viaje archivado', async () => {
     simular({ datosViaje: { archivado: true } })
     const usuario = await abrirUltima()
+    await screen.findByAltText('Resumen del viaje a Roma, Italia')
 
     await usuario.click(screen.getByRole('button', { name: 'Descargar imagen' }))
 
     await waitFor(() => expect(mocks.descargarArchivo).toHaveBeenCalledTimes(1))
+  })
+
+  it('sin diapositiva de resumen el botón crea la imagen al pulsarlo', async () => {
+    simular({ resumen: { dias: 4, actividad_mas_votada: null, alma_del_grupo: null }, fotos: [] })
+    render(<FinDeViaje viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
+    await screen.findByText('TravelWrap · Resumen')
+    const usuario = userEvent.setup()
+    await usuario.keyboard('{ArrowRight}')
+    expect(mocks.crearImagenResumen).not.toHaveBeenCalled()
+
+    await usuario.click(screen.getByRole('button', { name: 'Descargar imagen' }))
+
+    await waitFor(() => expect(mocks.descargarArchivo).toHaveBeenCalledTimes(1))
+    expect(mocks.crearImagenResumen).toHaveBeenCalledTimes(1)
   })
 })

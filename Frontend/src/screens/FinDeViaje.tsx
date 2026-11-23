@@ -105,6 +105,11 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
   const [eligiendoSello, setEligiendoSello] = useState(false)
   const [generandoImagen, setGenerandoImagen] = useState(false)
   const [errorImagen, setErrorImagen] = useState("")
+  const [avisoImagen, setAvisoImagen] = useState("")
+  const [imagen, setImagen] = useState<{ blob: Blob; url: string } | null>(null)
+  const imagenEnCurso = useRef<Promise<Blob | null> | null>(null)
+  const imagenIntentada = useRef(false)
+  const urlDeLaImagen = useRef<string | null>(null)
   const [resumen, setResumen] = useState<ResumenDelViaje | null>(null)
   const [fotos, setFotos] = useState<Foto[]>([])
   const [error, setError] = useState("")
@@ -209,19 +214,46 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
         }
       : null
 
+  const generarImagen = (): Promise<Blob | null> => {
+    if (!datosImagen) return Promise.resolve(null)
+    if (imagenEnCurso.current) return imagenEnCurso.current
+    imagenIntentada.current = true
+    const tarea = (async () => {
+      setGenerandoImagen(true)
+      setErrorImagen("")
+      setAvisoImagen("")
+      try {
+        let blob: Blob
+        try {
+          blob = await crearImagenResumen(datosImagen)
+        } catch (e) {
+          if (!(e instanceof ErrorDeImagen) || datosImagen.fotos.length === 0) throw e
+          blob = await crearImagenResumen({ ...datosImagen, fotos: [] })
+          setAvisoImagen("No se han podido incluir las fotos en la imagen")
+        }
+        const url = URL.createObjectURL(blob)
+        if (urlDeLaImagen.current) URL.revokeObjectURL(urlDeLaImagen.current)
+        urlDeLaImagen.current = url
+        setImagen({ blob, url })
+        return blob
+      } catch (e) {
+        setErrorImagen(e instanceof ErrorDeImagen ? e.message : "No se ha podido crear la imagen")
+        return null
+      } finally {
+        setGenerandoImagen(false)
+        imagenEnCurso.current = null
+      }
+    })()
+    imagenEnCurso.current = tarea
+    return tarea
+  }
+
   const handleDescargarImagen = async () => {
-    if (!datosImagen || generandoImagen) return
-    setGenerandoImagen(true)
-    setErrorImagen("")
-    try {
-      const imagen = await crearImagenResumen(datosImagen)
-      const nombreDelArchivo = `TravelWrap-${[lugar, anio].filter(Boolean).join("-").replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "")}.png`
-      descargarArchivo(new File([imagen], nombreDelArchivo, { type: "image/png" }))
-    } catch (e) {
-      setErrorImagen(e instanceof ErrorDeImagen ? e.message : "No se ha podido crear la imagen")
-    } finally {
-      setGenerandoImagen(false)
-    }
+    if (generandoImagen) return
+    const blob = imagen?.blob ?? (await generarImagen())
+    if (!blob) return
+    const nombreDelArchivo = `TravelWrap-${[lugar, anio].filter(Boolean).join("-").replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "")}.png`
+    descargarArchivo(new File([blob], nombreDelArchivo, { type: "image/png" }))
   }
 
   const diapositivas: { titulo: string; visible: boolean; contenido: ReactNode }[] =
@@ -364,12 +396,53 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
               </>
             ),
           },
+          {
+            titulo: "Resumen",
+            visible: resumen.actividad_mas_votada !== null || alma !== null || fotos.length > 0,
+            contenido: (
+              <>
+                <p style={estiloEtiqueta}>Tu resumen</p>
+                {imagen ? (
+                  <img
+                    src={imagen.url}
+                    alt={`Resumen del viaje a ${lugar}`}
+                    draggable={false}
+                    style={{
+                      display: "block",
+                      maxWidth: "100%",
+                      maxHeight: "min(560px, max(200px, calc(100dvh - 420px)))",
+                      objectFit: "contain",
+                      borderRadius: 16,
+                      border: "1px solid rgba(255,255,255,0.3)",
+                      boxShadow: "0 12px 32px rgba(0,0,0,0.35)",
+                    }}
+                  />
+                ) : (
+                  <p style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
+                    {errorImagen ? "Pulsa «Descargar imagen» para volver a intentarlo" : "Creando tu resumen..."}
+                  </p>
+                )}
+              </>
+            ),
+          },
         ].filter((diapositiva) => diapositiva.visible)
       : []
 
   const total = diapositivas.length
+  const enElResumen = total > 0 && diapositivas[pagina]?.titulo === "Resumen"
   const hayAnterior = pagina > 0
   const haySiguiente = pagina < total - 1
+
+  useEffect(() => {
+    if (enElResumen && !imagen && !imagenIntentada.current) void generarImagen()
+  })
+
+  useEffect(
+    () => () => {
+      if (urlDeLaImagen.current) URL.revokeObjectURL(urlDeLaImagen.current)
+    },
+    [],
+  )
 
   useEffect(() => {
     if (total === 0) return
@@ -590,6 +663,11 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
             {errorImagen && (
               <div role="alert" style={estiloAlerta}>
                 {errorImagen}
+              </div>
+            )}
+            {avisoImagen && (
+              <div role="status" style={{ ...estiloTarjeta, padding: "10px 12px", fontSize: 13, fontWeight: 700, textAlign: "center" }}>
+                {avisoImagen}
               </div>
             )}
             <button

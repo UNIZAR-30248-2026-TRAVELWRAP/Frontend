@@ -8,16 +8,12 @@ type DatosDelResumen = { actividad: string | null; alma: string | null; fotos: b
 
 let datos: DatosDelResumen | null = null;
 let fotosRotas = false;
-let descargas = 0;
 let ultimaDescarga: Download | null = null;
-let escuchando = false;
 
 Before(() => {
   datos = null;
   fotosRotas = false;
-  descargas = 0;
   ultimaDescarga = null;
-  escuchando = false;
 });
 
 const json = (status: number, cuerpo: unknown) => ({ status, contentType: 'application/json', body: JSON.stringify(cuerpo) });
@@ -77,10 +73,6 @@ When('abro el resumen del viaje {string}', async (viaje: string) => {
   expect(datos, 'faltan los datos del resumen').not.toBeNull();
   await paginaActual().emulateMedia({ reducedMotion: 'reduce' });
   await simularResumen(id as string, datos as DatosDelResumen);
-  paginaActual().on('download', () => {
-    descargas++;
-  });
-  escuchando = true;
   await paginaActual().goto(new URL(`/viajes/${id}/resumen`, paginaActual().url()).toString());
   await expect(paginaActual().getByRole('heading', { name: 'Roma' })).toBeVisible();
 });
@@ -95,7 +87,7 @@ When('paso a la diapositiva siguiente', async () => {
 });
 
 When('paso a la última diapositiva', async () => {
-  for (let i = 0; i < 5; i++) await tocarLaDerecha();
+  for (let i = 0; i < 6; i++) await tocarLaDerecha();
 });
 
 Then('veo la diapositiva {string}', async (titulo: string) => {
@@ -104,10 +96,6 @@ Then('veo la diapositiva {string}', async (titulo: string) => {
 
 When('pulso «Descargar imagen»', async () => {
   const boton = paginaActual().getByRole('button', { name: 'Descargar imagen' });
-  if (fotosRotas) {
-    await boton.click();
-    return;
-  }
   const descarga = paginaActual().waitForEvent('download');
   await boton.click();
   ultimaDescarga = await descarga;
@@ -122,9 +110,12 @@ Then('se descarga la imagen {string} de {int} píxeles de ancho', async (nombre:
   expect(bytes.readUInt32BE(16)).toBe(ancho);
 });
 
-Then('no se ha descargado ninguna imagen', async () => {
-  expect(escuchando).toBe(true);
-  expect(descargas).toBe(0);
+Then('veo la imagen del resumen', async () => {
+  await expect(paginaActual().getByRole('img', { name: /^Resumen del viaje a / })).toBeVisible();
+});
+
+Then('veo el estado {string}', async (texto: string) => {
+  await expect(paginaActual().getByRole('status')).toContainText(texto);
 });
 
 Then('estoy en mis viajes', async () => {
