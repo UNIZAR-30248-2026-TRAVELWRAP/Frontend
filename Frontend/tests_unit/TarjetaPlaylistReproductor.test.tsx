@@ -1,7 +1,8 @@
 // Test unitario del reproductor embebido de la playlist del viaje (PB-56): la URL de incrustación de Spotify
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
-import TarjetaPlaylist, { urlEmbebida } from '../src/components/TarjetaPlaylist'
+import TarjetaPlaylist from '../src/components/TarjetaPlaylist'
+import { urlEmbebida } from '../src/utils/playlistEmbebida'
 
 const VIAJE_ID = '123e4567-e89b-12d3-a456-426614174000'
 const ID = '37i9dQZF1DXcBWIGoYBM5M'

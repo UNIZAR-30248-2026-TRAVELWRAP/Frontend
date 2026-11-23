@@ -68,7 +68,8 @@ describe('TarjetaPlaylist', () => {
     await screen.findByRole('link', { name: 'Abrir la playlist del viaje en Spotify' })
     const guardado = fetchMock.mock.calls.find(([, opciones]) => opciones?.method === 'PUT')
     expect(guardado).toBeDefined()
-    expect(JSON.parse((guardado?.[1] as RequestInit).body as string)).toEqual({ url: `https://open.spotify.com/playlist/${ID}` })
+    const [, opciones] = guardado as unknown as [string, RequestInit]
+    expect(JSON.parse(opciones.body as string)).toEqual({ url: `https://open.spotify.com/playlist/${ID}` })
   })
 
   it('no envía un enlace vacío', async () => {

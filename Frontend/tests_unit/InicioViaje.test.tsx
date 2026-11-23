@@ -37,11 +37,6 @@ const viaje = (datos: Record<string, unknown> = {}) => ({
   ...datos,
 })
 
-// GET devuelve el viaje y POST /finalizar lo devuelve finalizado (o la respuesta indicada)
-const simularBackend = (datos: Record<string, unknown> = {}, finalizar = () => respuesta(200, viaje({ ...datos, estado: 'finalizado' }))) => {
-  const fetchMock = vi.fn((url: string, opciones?: RequestInit) =>
-    url.endsWith('/playlist') ? respuesta(200, { playlist: null }) : opciones?.method === 'POST' && url.endsWith('/finalizar') ? finalizar() : respuesta(200, viaje(datos)),
-  )
 const tarea = (id: string, responsable: string | null, hecha = false) => ({
   id,
   texto: `Tarea ${id}`,
@@ -59,6 +54,7 @@ const simularBackend = (
   const fetchMock = vi.fn((url: string, opciones?: RequestInit) => {
     if (opciones?.method === 'POST' && url.endsWith('/finalizar')) return finalizar()
     if (url.endsWith('/tareas')) return respuesta(200, { tareas })
+    if (url.endsWith('/playlist')) return respuesta(200, { playlist: null })
     return respuesta(200, viaje(datos))
   })
   vi.stubGlobal('fetch', fetchMock)
@@ -232,7 +228,8 @@ describe('InicioViaje · finalizar viaje con confirmación', () => {
     await user.click(within(ventana).getByRole('button', { name: 'Cancelar' }))
 
     expect(dialogo()).toBeNull()
-    expect(fetchMock.mock.calls.filter(([url]) => !String(url).endsWith('/playlist'))).toHaveLength(1)
+    // Solo se cargan datos: ninguna petición de cambio (POST) hasta confirmar
+    expect(fetchMock.mock.calls.some(([, opciones]) => opciones?.method === 'POST')).toBe(false)
   })
 
   it('al confirmar finaliza el viaje y avisa con el viaje finalizado', async () => {

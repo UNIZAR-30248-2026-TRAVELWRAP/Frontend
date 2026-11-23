@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react"
 import { ApiError } from "../services/authApi"
 import { guardarPlaylist, obtenerPlaylist, quitarPlaylist, type PlaylistViaje } from "../services/playlistApi"
 import { C, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
+import { urlEmbebida } from "../utils/playlistEmbebida"
 import Icon from "./Icon"
 
 type TarjetaPlaylistProps = {
@@ -12,13 +13,6 @@ type TarjetaPlaylistProps = {
 }
 
 const mensajeDeError = (e: unknown, porDefecto: string) => (e instanceof ApiError ? e.message : porDefecto)
-
-// Spotify incrusta una playlist con su URL de embed: el mismo enlace con /embed delante de /playlist.
-// Devuelve null si el enlace no es el de una playlist de Spotify
-export const urlEmbebida = (url: string): string | null => {
-  const coincidencia = url.match(/^https:\/\/open\.spotify\.com\/playlist\/([A-Za-z0-9]+)$/)
-  return coincidencia ? `https://open.spotify.com/embed/playlist/${coincidencia[1]}` : null
-}
 
 // Botón redondo solo con icono (con nombre accesible)
 const botonIcono = (color: string, fondo: string) =>
