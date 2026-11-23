@@ -122,3 +122,32 @@ Then('no veo mi foto de perfil', async () => {
 Then('veo mi inicial {string}', async (inicial: string) => {
   await expect(paginaActual().getByRole('button', { name: 'Cambiar foto de perfil' })).toContainText(inicial);
 });
+
+// ── Eliminar la cuenta (PB-47) ───────────────────────────────────────────────
+
+let eliminacionesRecibidas = 0;
+
+Before(() => {
+  eliminacionesRecibidas = 0;
+});
+
+const simularEliminacion = async (status: number, cuerpo?: unknown) => {
+  const pagina = paginaActual();
+  await pagina.route(/\/api\/perfil$/, (route) => {
+    eliminacionesRecibidas += 1;
+    return cuerpo === undefined ? route.fulfill({ status }) : route.fulfill(responder(cuerpo, status));
+  });
+  await pagina.route('**/api/perfil/sellos', (route) => route.fulfill(responder({ sellos: [] })));
+};
+
+Given('que el servidor elimina correctamente las cuentas', async () => {
+  await simularEliminacion(204);
+});
+
+Given('que el servidor no puede eliminar las cuentas', async () => {
+  await simularEliminacion(502, { error: { codigo: 'error_cuenta', mensaje: 'No se ha podido eliminar la cuenta' } });
+});
+
+Then('el servidor ha recibido {int} petición de eliminar la cuenta', (cantidad: number) => {
+  expect(eliminacionesRecibidas).toBe(cantidad);
+});

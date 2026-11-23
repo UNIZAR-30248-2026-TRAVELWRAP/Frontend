@@ -64,3 +64,13 @@ describe('aMiembro con foto', () => {
     expect(aMiembro('Daniel', 0, null).imageUrl).toBeNull()
   })
 })
+
+describe('aMiembro con la cuenta eliminada (PB-47)', () => {
+  it('quien eliminó su cuenta se ve con un «?» en gris y sin foto', () => {
+    const miembro = aMiembro('Un antiguo miembro', 2, FOTO)
+
+    expect(miembro.name).toBe('Un antiguo miembro')
+    expect(miembro.initial).toBe('?')
+    expect(miembro.imageUrl).toBeNull()
+  })
+})
