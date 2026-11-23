@@ -12,6 +12,7 @@ import { ApiError } from "../services/authApi"
 import { abandonarViaje, finalizarViaje, obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { viajeEnCache } from "../services/viajesEnCache"
 import { obtenerBalance } from "../services/gastosApi"
+import { obtenerResumenDelViaje, type PresupuestoRestante } from "../services/resumenApi"
 import { listarTareas } from "../services/tareasApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { ESTILO_CON_PORTADA } from "../styles/portada"
@@ -105,6 +106,7 @@ export default function InicioViaje({
   const [abandonando, setAbandonando] = useState(false)
   const [errorAbandonar, setErrorAbandonar] = useState("")
   const [tareasPendientes, setTareasPendientes] = useState(0)
+  const [presupuesto, setPresupuesto] = useState<PresupuestoRestante | null>(null)
 
   useEffect(() => {
     let vigente = true
@@ -134,6 +136,25 @@ export default function InicioViaje({
       vigente = false
     }
   }, [viajeId, tokenSesion, usuarioId])
+
+  // Lo que queda del presupuesto según los gastos; si no se puede cargar, la cifra simplemente no se muestra
+  useEffect(() => {
+    let vigente = true
+    obtenerResumenDelViaje(viajeId, tokenSesion)
+      .then((resumen) => {
+        if (vigente) setPresupuesto(resumen.presupuesto)
+      })
+      .catch(() => {
+        if (vigente) setPresupuesto(null)
+      })
+    return () => {
+      vigente = false
+    }
+  }, [viajeId, tokenSesion])
+
+  // Porcentaje del presupuesto ya gastado, sin pasar del 100 %; sin presupuesto no hay barra
+  const porcentajeGastado =
+    presupuesto && presupuesto.total > 0 ? Math.min(100, Math.round((presupuesto.gastado / presupuesto.total) * 100)) : 0
 
   // Un viaje pendiente de destino solo muestra la votación del destino
   const pendiente = viaje?.pendiente_destino === true
@@ -352,11 +373,41 @@ export default function InicioViaje({
                 Presupuesto
               </div>
               <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                <div style={{ fontFamily: NUNITO, fontSize: 40, fontWeight: 900, color: "white", lineHeight: 1 }}>
+                <div style={{ fontFamily: NUNITO, fontSize: 44, fontWeight: 900, color: "white", lineHeight: 1 }}>
                   {formatearImporte(viaje.presupuesto, viaje.moneda)}
                 </div>
                 <div style={{ fontFamily: NUNITO, fontSize: 13, color: "rgba(255,255,255,0.55)" }}>total</div>
               </div>
+              {presupuesto && (
+                <div data-testid="presupuesto-progreso" style={{ marginTop: 10 }}>
+                  <div style={{ background: "rgba(255,255,255,0.15)", borderRadius: 6, height: 6 }}>
+                    <div
+                      style={{
+                        background: porcentajeGastado > 90 ? C.red : C.accent,
+                        borderRadius: 6,
+                        height: 6,
+                        width: `${porcentajeGastado}%`,
+                        transition: "width 0.4s",
+                      }}
+                    />
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 5 }}>
+                    <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, fontFamily: NUNITO }}>
+                      Gastado {formatearImporte(presupuesto.gastado, viaje.moneda)}
+                    </span>
+                    <span
+                      style={{
+                        color: porcentajeGastado > 90 ? "#FC8181" : C.accent,
+                        fontSize: 11,
+                        fontFamily: NUNITO,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {porcentajeGastado}%
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
