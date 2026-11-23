@@ -116,26 +116,27 @@ test.describe('Resumen de fin de viaje (Wrap)', () => {
 
     await page.keyboard.press('ArrowRight');
     await expect(page.getByRole('region')).toHaveAccessibleName(/6 de 6: Resumen/);
-    await expect(page.getByAltText('Resumen del viaje a Roma')).toBeVisible();
+    await expect(page.getByAltText('Resumen del viaje a Roma')).toBeVisible({ timeout: 15000 });
 
     await page.getByRole('button', { name: 'Ir a Mis viajes' }).click();
     await expect(page).toHaveURL(/\/$/);
   });
 
-  test('un viaje sin datos solo enseña la portada y el tiempo juntos', async ({ page }) => {
+  test('un viaje sin datos solo enseña la portada, el tiempo juntos y el resumen', async ({ page }) => {
     await entrarConSesion(page);
     await simularBackend(page, { resumen: { dias: 4, actividad_mas_votada: null, alma_del_grupo: null }, fotos: false });
 
     await page.goto(`/viajes/${VIAJE_ID}/resumen`);
 
-    await expect(page.getByRole('region')).toHaveAccessibleName(/1 de 2: Portada/);
+    await expect(page.getByRole('region')).toHaveAccessibleName(/1 de 3: Portada/);
     await expect(page.getByText('TravelWrap · Resumen')).toBeVisible();
     await expect(async () => {
-      await page.keyboard.press('ArrowRight');
-      await expect(page.getByRole('region')).toHaveAccessibleName(/2 de 2: Tiempo juntos/, { timeout: 1000 });
+      if (/1 de 3/.test((await page.getByRole('region').getAttribute('aria-label')) ?? '')) await page.keyboard.press('ArrowRight');
+      await expect(page.getByRole('region')).toHaveAccessibleName(/2 de 3: Tiempo juntos/, { timeout: 1000 });
     }).toPass();
     await page.keyboard.press('ArrowRight');
-    await expect(page.getByRole('region')).toHaveAccessibleName(/2 de 2/);
+    await expect(page.getByRole('region')).toHaveAccessibleName(/3 de 3: Resumen/);
+    await expect(page.getByAltText('Resumen del viaje a Roma')).toBeVisible({ timeout: 15000 });
     await expect(page.getByText('Nadie votó actividades en este viaje')).toHaveCount(0);
     await expect(page.getByText('0 fotos')).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Ir a Mis viajes' })).toBeVisible();
@@ -199,7 +200,7 @@ test.describe('Resumen de fin de viaje (Wrap)', () => {
     await expect(page.getByRole('heading', { name: 'Roma' })).toBeVisible();
     for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowRight');
 
-    await expect(page.getByAltText('Resumen del viaje a Roma')).toBeVisible();
+    await expect(page.getByAltText('Resumen del viaje a Roma')).toBeVisible({ timeout: 15000 });
     await expect(page.getByRole('status')).toContainText('No se han podido incluir las fotos en la imagen');
     await expect(page.getByRole('alert')).toHaveCount(0);
     const descarga = page.waitForEvent('download');
@@ -207,7 +208,7 @@ test.describe('Resumen de fin de viaje (Wrap)', () => {
     expect((await descarga).suggestedFilename()).toBe('TravelWrap-Roma-2027.png');
   });
 
-  test('un viaje sin votos ni alma ni fotos no tiene diapositiva de resumen pero se puede descargar la imagen', async ({ page }) => {
+  test('un viaje sin votos ni alma ni fotos también enseña la imagen del resumen y se puede descargar', async ({ page }) => {
     await entrarConSesion(page);
     await simularBackend(page, { resumen: { dias: 4, actividad_mas_votada: null, alma_del_grupo: null }, fotos: false });
 
@@ -215,9 +216,9 @@ test.describe('Resumen de fin de viaje (Wrap)', () => {
     await expect(page.getByText('TravelWrap · Resumen')).toBeVisible();
     await expect(async () => {
       await page.keyboard.press('ArrowRight');
-      await expect(page.getByRole('region')).toHaveAccessibleName(/2 de 2/, { timeout: 1000 });
+      await expect(page.getByRole('region')).toHaveAccessibleName(/3 de 3: Resumen/, { timeout: 1000 });
     }).toPass();
-    await expect(page.getByAltText('Resumen del viaje a Roma')).toHaveCount(0);
+    await expect(page.getByAltText('Resumen del viaje a Roma')).toBeVisible({ timeout: 15000 });
     const descarga = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Descargar imagen' }).click();
     expect((await descarga).suggestedFilename()).toBe('TravelWrap-Roma-2027.png');

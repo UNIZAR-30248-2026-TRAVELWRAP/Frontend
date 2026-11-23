@@ -111,7 +111,7 @@ Then('se descarga la imagen {string} de {int} píxeles de ancho', async (nombre:
 });
 
 Then('veo la imagen del resumen', async () => {
-  await expect(paginaActual().getByRole('img', { name: /^Resumen del viaje a / })).toBeVisible();
+  await expect(paginaActual().getByRole('img', { name: /^Resumen del viaje a / })).toBeVisible({ timeout: 15000 });
 });
 
 Then('veo el estado {string}', async (texto: string) => {

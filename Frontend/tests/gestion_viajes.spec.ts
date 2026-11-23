@@ -197,8 +197,8 @@ test.describe('Inicio del viaje y su gestión', () => {
     await page.goto('/viajes/roma/resumen');
     // Las teclas solo cuentan cuando el resumen ya ha cargado
     await expect(page.getByText('TravelWrap · Resumen')).toBeVisible();
-    for (let i = 0; i < 2; i++) await page.keyboard.press('ArrowRight');
-    await expect(page.getByRole('region')).toHaveAccessibleName(/2 de 2: Tiempo juntos/);
+    for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight');
+    await expect(page.getByRole('region')).toHaveAccessibleName(/3 de 3: Resumen/);
     await page.getByRole('button', { name: 'Archivar viaje' }).click();
     const dialogo = page.getByRole('dialog');
     await expect(dialogo).toContainText('¿Archivar este viaje?');

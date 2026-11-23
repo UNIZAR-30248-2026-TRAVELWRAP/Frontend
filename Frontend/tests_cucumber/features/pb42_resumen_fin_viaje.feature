@@ -44,6 +44,9 @@ Característica: Resumen de fin de viaje (PB-42)
     Entonces veo la diapositiva "Tiempo juntos"
     Y no veo el texto "Nadie votó actividades en este viaje"
     Y no veo el texto "0 fotos"
+    Cuando paso a la diapositiva siguiente
+    Entonces veo la diapositiva "Resumen"
+    Y veo la imagen del resumen
 
   Escenario: Se descarga la imagen que se ve en el resumen final
     Dado que soy miembro, pero no creador, del viaje activo "Roma 2027"

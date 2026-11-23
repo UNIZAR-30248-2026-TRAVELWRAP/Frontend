@@ -102,7 +102,7 @@ const simularBackend = async (page: Page, sellos: Sello[] = []) => {
 const llegarALaUltima = async (page: Page) => {
   await page.goto(`/viajes/${VIAJE_ID}/resumen`);
   await expect(page.getByText('TravelWrap · Resumen')).toBeVisible();
-  for (let i = 0; i < 2; i++) await page.keyboard.press('ArrowRight');
+  for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight');
   await expect(page.getByRole('button', { name: 'Sellar' })).toBeVisible();
 };
 

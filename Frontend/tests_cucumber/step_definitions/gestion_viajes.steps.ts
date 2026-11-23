@@ -268,7 +268,7 @@ When('abro el inicio del viaje {string}', async (nombre: string) => {
 When('llego a la última diapositiva del resumen del viaje {string}', async (nombre: string) => {
   await irA(`/viajes/${idDelViaje(nombre)}/resumen`);
   await expect(paginaActual().getByText('TravelWrap · Resumen')).toBeVisible();
-  const ultima = paginaActual().getByText('días de aventura');
+  const ultima = paginaActual().getByRole('button', { name: 'Ir a Mis viajes' });
   // Las pulsaciones pueden perderse si el listener aún no está registrado (CI lenta):
   // se avanza de una en una hasta que la diapositiva final sea visible.
   for (let i = 0; i < 12 && !(await ultima.isVisible()); i++) {

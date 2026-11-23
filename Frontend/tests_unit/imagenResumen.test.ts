@@ -146,6 +146,30 @@ describe('crearImagenResumen', () => {
     await expect(crearImagenResumen(completos)).rejects.toBeInstanceOf(ErrorDeImagen)
   })
 
+  it('no espera indefinidamente a la fuente: pasados unos segundos dibuja con la de reserva', async () => {
+    vi.useFakeTimers()
+    Object.defineProperty(document, 'fonts', { configurable: true, value: { load: () => new Promise(() => {}) } })
+    try {
+      const resultado = crearImagenResumen(sinDatos)
+      await vi.advanceTimersByTimeAsync(2600)
+      expect((await resultado).type).toBe('image/png')
+    } finally {
+      vi.useRealTimers()
+      delete (document as unknown as Record<string, unknown>).fonts
+    }
+  })
+
+  it('si la fuente carga antes del límite no se espera más', async () => {
+    const cargar = vi.fn(async () => [])
+    Object.defineProperty(document, 'fonts', { configurable: true, value: { load: cargar } })
+    try {
+      await crearImagenResumen(sinDatos)
+      expect(cargar).toHaveBeenCalledTimes(2)
+    } finally {
+      delete (document as unknown as Record<string, unknown>).fonts
+    }
+  })
+
   it('falla si el navegador no puede crear el lienzo o el PNG', async () => {
     devolverBlob = null
     await expect(crearImagenResumen(completos)).rejects.toThrow('No se ha podido crear la imagen')

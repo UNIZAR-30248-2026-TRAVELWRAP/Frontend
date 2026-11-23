@@ -399,7 +399,7 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
           },
           {
             titulo: "Resumen",
-            visible: resumen.actividad_mas_votada !== null || alma !== null || fotos.length > 0,
+            visible: true,
             contenido: (
               <>
                 <p style={estiloEtiqueta}>Tu resumen</p>

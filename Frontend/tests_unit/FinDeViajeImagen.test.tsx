@@ -218,13 +218,18 @@ describe('FinDeViaje: resumen final y descarga de la imagen', () => {
     await waitFor(() => expect(mocks.descargarArchivo).toHaveBeenCalledTimes(1))
   })
 
-  it('sin diapositiva de resumen el botón crea la imagen al pulsarlo', async () => {
-    simular({ resumen: { dias: 4, actividad_mas_votada: null, alma_del_grupo: null }, fotos: [] })
+  it('un viaje sin datos también enseña el resumen y se descarga', async () => {
+    simular({ resumen: { dias: 0, actividad_mas_votada: null, alma_del_grupo: null }, fotos: [] })
     render(<FinDeViaje viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
     await screen.findByText('TravelWrap · Resumen')
     const usuario = userEvent.setup()
     await usuario.keyboard('{ArrowRight}')
-    expect(mocks.crearImagenResumen).not.toHaveBeenCalled()
+    expect(await screen.findByAltText('Resumen del viaje a Roma, Italia')).toBeTruthy()
+    const datos = mocks.crearImagenResumen.mock.calls[0][0]
+    expect(datos.dias).toBeNull()
+    expect(datos.estrella).toBeNull()
+    expect(datos.alma).toBeNull()
+    expect(datos.fotos).toEqual([])
 
     await usuario.click(screen.getByRole('button', { name: 'Descargar imagen' }))
 

@@ -230,12 +230,13 @@ describe('FinDeViaje: diapositivas', () => {
     expect(vi.mocked(crearImagenResumen).mock.calls.at(-1)?.[0].fotos).toEqual([])
   })
 
-  it('con solo portada y días no hay diapositiva de resumen', async () => {
+  it('un viaje sin datos también termina con la diapositiva de resumen', async () => {
     simularBackend({ resumen: RESUMEN_VACIO, fotos: [] })
     await abrir()
-    await siguiente(3)
-    expect(diapositivaActual()).toBe('Resumen del viaje, 2 de 2: Tiempo juntos')
-    expect(screen.queryByText('Tu resumen')).toBeNull()
+    await siguiente(5)
+    expect(diapositivaActual()).toBe('Resumen del viaje, 3 de 3: Resumen')
+    expect(screen.getByText('Tu resumen')).toBeTruthy()
+    expect((await screen.findByAltText('Resumen del viaje a Roma')).getAttribute('src')).toBe('blob:resumen')
   })
 
   it('ya no enseña los gastos ni el balance y no pide el balance', async () => {
@@ -373,13 +374,13 @@ describe('FinDeViaje: diapositivas', () => {
     expect(screen.getByRole('region').getAttribute('aria-label')).toContain('1 de 6')
   })
 
-  it('un viaje sin datos solo muestra la portada y el tiempo juntos', async () => {
+  it('un viaje sin datos solo muestra la portada, el tiempo juntos y el resumen', async () => {
     simularBackend({ resumen: RESUMEN_VACIO, fotos: [] })
     await abrir()
-    expect(diapositivaActual()).toContain('1 de 2')
+    expect(diapositivaActual()).toContain('1 de 3')
 
     await siguiente()
-    expect(diapositivaActual()).toBe('Resumen del viaje, 2 de 2: Tiempo juntos')
+    expect(diapositivaActual()).toBe('Resumen del viaje, 2 de 3: Tiempo juntos')
     expect(screen.queryByText('Nadie votó actividades en este viaje')).toBeNull()
     expect(screen.queryByText('Nadie registró pagos en este viaje')).toBeNull()
     expect(screen.queryByText('Nadie subió fotos a la galería')).toBeNull()

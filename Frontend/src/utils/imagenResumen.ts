@@ -27,9 +27,17 @@ const HUECO_FOTOS = 12
 
 const fuente = (peso: number, tamano: number) => `${peso} ${tamano}px ${FUENTE}`
 
+const ESPERA_MAXIMA_FUENTES_MS = 2500
+
 const cargarFuentes = async () => {
   if (!document.fonts?.load) return
-  await Promise.all([800, 900].map((peso) => document.fonts.load(fuente(peso, 40)).catch(() => [])))
+  const carga = Promise.all([800, 900].map((peso) => document.fonts.load(fuente(peso, 40)).catch(() => [])))
+  let temporizador: ReturnType<typeof setTimeout> | undefined
+  const limite = new Promise<void>((resolver) => {
+    temporizador = setTimeout(resolver, ESPERA_MAXIMA_FUENTES_MS)
+  })
+  await Promise.race([carga, limite])
+  clearTimeout(temporizador)
 }
 
 const cargarFoto = async (url: string) => {
