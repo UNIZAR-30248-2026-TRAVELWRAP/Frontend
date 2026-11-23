@@ -163,7 +163,7 @@ describe('InicioViaje', () => {
     simularBackend({ estado: 'finalizado', rol: 'miembro' })
     renderizar()
 
-    expect(await screen.findByText(/Este viaje está finalizado/)).toBeTruthy()
+    expect(await screen.findByText('Finalizado')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Cambiar portada' })).toBeNull()
   })
 
@@ -182,8 +182,7 @@ describe('InicioViaje', () => {
     simularBackend({ estado: 'finalizado' })
     renderizar()
 
-    expect(await screen.findByText(/Este viaje está finalizado/)).toBeTruthy()
-    expect(screen.getByText('Finalizado')).toBeTruthy()
+    expect(await screen.findByText('Finalizado')).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Editar viaje/ })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Finalizar viaje' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Invitar' })).toBeNull()

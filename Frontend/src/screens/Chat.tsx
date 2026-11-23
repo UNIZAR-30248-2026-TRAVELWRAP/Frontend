@@ -200,12 +200,6 @@ export default function Chat({ viajeId, tokenSesion, usuarioId, onVolver, onAbri
 
           {cargando && <p style={{ fontFamily: NUNITO, color: C.muted, fontSize: 13, textAlign: "center" }}>Cargando mensajes...</p>}
 
-          {viaje && !activo && (
-            <p style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, textAlign: "center", margin: 0 }}>
-              El viaje está finalizado: el chat es de solo lectura.
-            </p>
-          )}
-
           {hayAnteriores && (
             <button
               type="button"
@@ -294,7 +288,7 @@ export default function Chat({ viajeId, tokenSesion, usuarioId, onVolver, onAbri
               onChange={(e) => setTexto(e.target.value)}
               maxLength={MAX_TEXTO}
               disabled={!activo || enviando}
-              placeholder={activo ? "Escribe un mensaje" : "El viaje está finalizado"}
+              placeholder={activo ? "Escribe un mensaje" : "Solo lectura"}
               style={{ flex: 1, minWidth: 0, border: `1.5px solid ${C.border}`, borderRadius: RADIUS.md, padding: "10px 12px", fontFamily: NUNITO, fontSize: 14, background: "white" }}
             />
             <button

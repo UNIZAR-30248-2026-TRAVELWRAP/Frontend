@@ -529,11 +529,7 @@ export default function ControlGastos({
                   <Icon name="plus" size={16} color="white" strokeWidth={2.5} />
                   Añadir Gasto
                 </button>
-              ) : (
-                <p style={{ fontFamily: NUNITO, color: C.muted, fontSize: 13, margin: "0 0 20px" }}>
-                  El viaje está finalizado: se pueden consultar sus gastos, pero ya no se pueden añadir.
-                </p>
-              )}
+              ) : null}
 
               <SectionLabel>Historial de gastos</SectionLabel>
               {gastos.length === 0 ? (
