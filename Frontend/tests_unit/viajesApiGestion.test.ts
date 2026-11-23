@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../src/services/authApi'
-import { abandonarViaje, archivarViaje, desarchivarViaje, editarViaje, eliminarViaje, finalizarViaje } from '../src/services/viajesApi'
+import { abandonarViaje, archivarViaje, desarchivarViaje, editarViaje, eliminarViaje, finalizarViaje, reabrirViaje } from '../src/services/viajesApi'
 
 const VIAJE_ID = '123e4567-e89b-12d3-a456-426614174000'
 
@@ -73,6 +73,32 @@ describe('viajesApi · editar, archivar y eliminar', () => {
     expect(opciones.method).toBe('POST')
     expect(opciones.headers.Authorization).toBe('Bearer token-acceso')
     expect(opciones.body).toBeUndefined()
+  })
+
+  it('reabre el viaje con POST a /reabrir y devuelve el viaje activo', async () => {
+    const fetchMock = vi.fn(() => respuesta(200, { id: VIAJE_ID, estado: 'activo', archivado: false }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const viaje = await reabrirViaje(VIAJE_ID, 'token-acceso')
+
+    expect(viaje.estado).toBe('activo')
+    const [url, opciones] = llamada(fetchMock)
+    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/reabrir$`))
+    expect(opciones.method).toBe('POST')
+    expect(opciones.headers.Authorization).toBe('Bearer token-acceso')
+    expect(opciones.body).toBeUndefined()
+  })
+
+  it('al reabrir lanza ApiError con el mensaje del servidor si el viaje no está finalizado', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => respuesta(409, { error: { codigo: 'viaje_no_finalizado', mensaje: 'Solo se pueden reabrir viajes finalizados' } })),
+    )
+
+    await expect(reabrirViaje(VIAJE_ID, 'token-acceso')).rejects.toMatchObject({
+      constructor: ApiError,
+      message: 'Solo se pueden reabrir viajes finalizados',
+    })
   })
 
   it('elimina el viaje con DELETE y acepta la respuesta 204 sin cuerpo', async () => {

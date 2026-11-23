@@ -27,13 +27,16 @@ Característica: Resumen de fin de viaje (PB-42)
     Y no veo el texto "El gasto más alto"
     Y no veo el texto "Balance final"
 
-  Escenario: Al terminar el resumen se vuelve a Mis viajes
-    Dado que soy miembro, pero no creador, del viaje activo "Roma 2027"
+  Escenario: Un viaje finalizado termina con una diapositiva de acciones tras la del resumen
+    Dado que soy miembro, pero no creador, del viaje finalizado "Roma 2027"
     Y que el resumen del viaje "Roma 2027" tiene el Coliseo como actividad más votada y a Berta como alma del grupo
     Cuando abro el resumen del viaje "Roma 2027"
     Y paso a la última diapositiva
-    Y pulso el botón "Ir a Mis viajes"
-    Entonces estoy en mis viajes
+    Entonces veo la diapositiva "Acciones"
+    Y veo el botón "Sellar"
+    Y veo el botón "Archivar viaje"
+    Y veo el botón "Reabrir viaje"
+    Y no veo el botón "Ir a Mis viajes"
 
   Escenario: Un viaje sin datos solo enseña lo que tiene
     Dado que soy miembro, pero no creador, del viaje activo "Roma 2027"

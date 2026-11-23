@@ -15,6 +15,8 @@ let finalizados = 0;
 let archivados = 0;
 let desarchivados = 0;
 let fallaDesarchivar = false;
+let reabiertos = 0;
+let fallaReabrir = false;
 let eliminados: string[] = [];
 let fallaEliminar = false;
 // Saldo de cada viaje (por nombre) y los viajes de los que el usuario ha abandonado
@@ -40,6 +42,8 @@ Before(() => {
   archivados = 0;
   desarchivados = 0;
   fallaDesarchivar = false;
+  reabiertos = 0;
+  fallaReabrir = false;
   eliminados = [];
   fallaEliminar = false;
   saldos = new Map();
@@ -151,6 +155,15 @@ const simularBackend = async () => {
       viaje.estado = 'finalizado';
       return route.fulfill(responder(viaje));
     }
+    if (accion === 'reabrir' && metodo === 'POST') {
+      if (fallaReabrir) {
+        return route.fulfill(responder({ error: { codigo: 'error_viaje', mensaje: 'No se ha podido reabrir el viaje' } }, 502));
+      }
+      reabiertos += 1;
+      viaje.estado = 'activo';
+      viaje.archivado = false;
+      return route.fulfill(responder(viaje));
+    }
     if (accion === 'archivar' && metodo === 'POST') {
       archivados += 1;
       viaje.archivado = true;
@@ -246,6 +259,10 @@ Given('que soy miembro, pero no creador, del viaje archivado {string}', async (n
   await simularBackend();
 });
 
+Given('que el servidor no puede reabrir viajes', () => {
+  fallaReabrir = true;
+});
+
 Given('que el servidor no puede desarchivar viajes', () => {
   fallaDesarchivar = true;
 });
@@ -268,7 +285,7 @@ When('abro el inicio del viaje {string}', async (nombre: string) => {
 When('llego a la última diapositiva del resumen del viaje {string}', async (nombre: string) => {
   await irA(`/viajes/${idDelViaje(nombre)}/resumen`);
   await expect(paginaActual().getByText('TravelWrap · Resumen')).toBeVisible();
-  const ultima = paginaActual().getByRole('button', { name: 'Ir a Mis viajes' });
+  const ultima = paginaActual().getByRole('button', { name: 'Reabrir viaje' });
   // Las pulsaciones pueden perderse si el listener aún no está registrado (CI lenta):
   // se avanza de una en una hasta que la diapositiva final sea visible.
   for (let i = 0; i < 12 && !(await ultima.isVisible()); i++) {
@@ -330,6 +347,10 @@ Then('el servidor ha finalizado {int} viaje', (cantidad: number) => {
 
 Then('el servidor ha archivado {int} viaje', (cantidad: number) => {
   expect(archivados).toBe(cantidad);
+});
+
+Then('el servidor ha reabierto {int} viaje', (cantidad: number) => {
+  expect(reabiertos).toBe(cantidad);
 });
 
 Then('el servidor ha desarchivado {int} viaje', (cantidad: number) => {

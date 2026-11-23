@@ -120,7 +120,7 @@ test.describe('Sellos de viaje', () => {
       await llegarALaUltima(page);
       await expect(page.getByRole('img', { name: 'Sello de Roma 2027' })).toBeVisible();
 
-      for (const nombre of ['Descargar imagen', 'Compartir', 'Sellar', 'Archivar viaje', 'Ir a Mis viajes']) {
+      for (const nombre of ['Sellar', 'Archivar viaje', 'Reabrir viaje']) {
         await expect(page.getByRole('button', { name: nombre })).toBeInViewport({ ratio: 1 });
       }
       expect(await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true);
