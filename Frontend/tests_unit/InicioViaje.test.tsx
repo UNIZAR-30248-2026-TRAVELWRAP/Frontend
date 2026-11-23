@@ -55,11 +55,20 @@ const simularBackend = (
     if (opciones?.method === 'POST' && url.endsWith('/finalizar')) return finalizar()
     if (url.endsWith('/tareas')) return respuesta(200, { tareas })
     if (url.endsWith('/playlist')) return respuesta(200, { playlist: null })
+    if (url.endsWith('/resumen')) return respuesta(200, resumen())
     return respuesta(200, viaje(datos))
   })
   vi.stubGlobal('fetch', fetchMock)
   return fetchMock
 }
+
+// Resumen del viaje con el presupuesto restante (1240 de presupuesto, 300 gastados)
+const resumen = (presupuesto: Record<string, number> = { total: 1240, gastado: 300, restante: 940 }) => ({
+  dias: 4,
+  actividad_mas_votada: null,
+  alma_del_grupo: null,
+  presupuesto,
+})
 
 const renderizar = (props: Partial<Parameters<typeof InicioViaje>[0]> = {}) =>
   render(<InicioViaje viajeId={VIAJE_ID} tokenSesion="token-acceso" usuarioId="u1" {...props} />)
@@ -422,5 +431,39 @@ describe('InicioViaje · tareas pendientes propias', () => {
 
     await user.click(await screen.findByRole('button', { name: /Tareas pendientes/ }))
     expect(onTareas).toHaveBeenCalledTimes(1)
+  })
+
+  it('muestra lo gastado y el porcentaje del presupuesto, como el prototipo', async () => {
+    simularBackend()
+    renderizar()
+
+    const progreso = await screen.findByTestId('presupuesto-progreso')
+    expect(progreso.textContent).toContain('Gastado 300 €')
+    expect(progreso.textContent).toContain('24%')
+  })
+
+  it('si se supera el presupuesto la barra llega al 100 % y lo gastado sigue en euros', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) => (url.endsWith('/resumen') ? respuesta(200, resumen({ total: 1240, gastado: 1300, restante: -60 })) : respuesta(200, viaje()))),
+    )
+    renderizar()
+
+    const progreso = await screen.findByTestId('presupuesto-progreso')
+    expect(progreso.textContent).toContain('Gastado 1.300 €')
+    expect(progreso.textContent).toContain('100%')
+  })
+
+  it('si el resumen no se puede cargar no muestra la barra y la pantalla sigue funcionando', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) => (url.endsWith('/resumen') ? respuesta(502, { error: 'error_resumen', mensaje: 'Fallo' }) : respuesta(200, viaje()))),
+    )
+    renderizar()
+
+    await screen.findByText('Roma')
+    await new Promise((r) => setTimeout(r, 0))
+    expect(screen.queryByTestId('presupuesto-progreso')).toBeNull()
+    expect(screen.getByText('Presupuesto')).toBeTruthy()
   })
 })
