@@ -434,7 +434,7 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
                     style={{
                       display: "block",
                       maxWidth: "100%",
-                      maxHeight: "min(560px, max(200px, calc(100dvh - 420px)))",
+                      maxHeight: `min(560px, max(200px, calc(100dvh - ${puedeSellar && sello ? 400 : 330}px)))`,
                       objectFit: "contain",
                       borderRadius: 16,
                       border: "1px solid rgba(255,255,255,0.3)",
@@ -706,73 +706,88 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onTerminar,
         </div>
 
         {total > 0 && !haySiguiente && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "12px 20px 20px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "10px 20px 16px" }}>
             {errorImagen && (
               <div role="alert" style={estiloAlerta}>
                 {errorImagen}
               </div>
             )}
             {avisoImagen && (
-              <div role="status" style={{ ...estiloTarjeta, padding: "10px 12px", fontSize: 13, fontWeight: 700, textAlign: "center" }}>
+              <div role="status" style={{ ...estiloTarjeta, padding: "8px 12px", fontSize: 13, fontWeight: 700, textAlign: "center" }}>
                 {avisoImagen}
               </div>
             )}
-            <button
-              type="button"
-              onClick={handleDescargarImagen}
-              disabled={generandoImagen}
-              aria-busy={generandoImagen}
-              style={{ ...estiloBotonControl(!generandoImagen), flex: "none" }}
-            >
-              <Icon name="download" size={20} color="white" strokeWidth={2.2} />
-              {generandoImagen ? "Creando la imagen..." : "Descargar imagen"}
-            </button>
             {avisoCompartir && (
-              <div role="status" style={{ ...estiloTarjeta, padding: "10px 12px", fontSize: 13, fontWeight: 700, textAlign: "center" }}>
+              <div role="status" style={{ ...estiloTarjeta, padding: "8px 12px", fontSize: 13, fontWeight: 700, textAlign: "center" }}>
                 {avisoCompartir}
               </div>
             )}
-            <button
-              type="button"
-              onClick={handleCompartirImagen}
-              disabled={generandoImagen}
-              style={{ ...estiloBotonControl(!generandoImagen), flex: "none" }}
-            >
-              <Icon name="share" size={20} color="white" strokeWidth={2.2} />
-              Compartir
-            </button>
             {puedeSellar && sello && (
-              <div style={{ width: 130, alignSelf: "center", marginBottom: 4 }}>
+              <div style={{ width: 120, alignSelf: "center", margin: "2px 0 6px" }}>
                 <Sello diseno={sello.diseno} destino={sello.destino} anio={sello.anio} compacto />
               </div>
             )}
-            {puedeSellar && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
               <button
                 type="button"
-                onClick={() => setEligiendoSello(true)}
-                style={{ ...estiloBotonControl(true), flex: "none", background: "white", border: "none", color: C.navy }}
+                onClick={handleDescargarImagen}
+                disabled={generandoImagen}
+                aria-busy={generandoImagen}
+                aria-label={generandoImagen ? "Creando la imagen..." : "Descargar imagen"}
+                style={{ ...estiloBotonControl(!generandoImagen), flex: "none" }}
               >
-                <IconoColor name="medal" size={22} />
-                Sellar
+                <Icon name="download" size={18} color="white" strokeWidth={2.2} />
+                {generandoImagen ? "Creando..." : "Descargar"}
               </button>
-            )}
-            {puedeArchivar && (
               <button
                 type="button"
-                onClick={() => {
-                  setErrorArchivar("")
-                  setConfirmandoArchivar(true)
-                }}
-                style={{ ...estiloBotonControl(true), flex: "none", background: C.accent, border: "none" }}
+                onClick={handleCompartirImagen}
+                disabled={generandoImagen}
+                style={{ ...estiloBotonControl(!generandoImagen), flex: "none" }}
               >
-                <IconoColor name="finish" size={22} />
-                Archivar viaje
+                <Icon name="share" size={18} color="white" strokeWidth={2.2} />
+                Compartir
               </button>
-            )}
-            <button type="button" onClick={onTerminar} style={{ ...estiloBotonControl(true), flex: "none" }}>
-              <IconoColor name="finish" size={22} />
-              Ir a Mis viajes
-            </button>
+              {puedeSellar && (
+                <button
+                  type="button"
+                  onClick={() => setEligiendoSello(true)}
+                  style={{
+                    ...estiloBotonControl(true),
+                    flex: "none",
+                    background: "white",
+                    border: "none",
+                    color: C.navy,
+                    gridColumn: puedeArchivar ? undefined : "1 / -1",
+                  }}
+                >
+                  <IconoColor name="medal" size={20} />
+                  Sellar
+                </button>
+              )}
+              {puedeArchivar && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setErrorArchivar("")
+                    setConfirmandoArchivar(true)
+                  }}
+                  style={{
+                    ...estiloBotonControl(true),
+                    flex: "none",
+                    background: C.accent,
+                    border: "none",
+                  }}
+                >
+                  <IconoColor name="finish" size={20} />
+                  Archivar viaje
+                </button>
+              )}
+              <button type="button" onClick={onTerminar} style={{ ...estiloBotonControl(true), flex: "none", gridColumn: "1 / -1" }}>
+                <IconoColor name="finish" size={20} />
+                Ir a Mis viajes
+              </button>
+            </div>
           </div>
         )}
         {eligiendoSello && (

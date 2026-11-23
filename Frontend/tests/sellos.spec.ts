@@ -109,6 +109,24 @@ const llegarALaUltima = async (page: Page) => {
 test.describe('Sellos de viaje', () => {
   test.use({ reducedMotion: 'reduce' });
 
+  for (const [ancho, alto] of [[360, 640], [320, 568]]) {
+    test(`con el sello puesto la última diapositiva cabe entera sin scroll en ${ancho}x${alto}`, async ({ page }) => {
+      await page.setViewportSize({ width: ancho, height: alto });
+      await entrarConSesion(page);
+      await simularBackend(page, [
+        { id: 's1', viaje_id: VIAJE_ID, diseno: 'ruta', destino: 'Roma', anio: 2027, elegido_en: '2027-05-16T10:00:00Z' },
+      ]);
+
+      await llegarALaUltima(page);
+      await expect(page.getByRole('img', { name: 'Sello de Roma 2027' })).toBeVisible();
+
+      for (const nombre of ['Descargar imagen', 'Compartir', 'Sellar', 'Archivar viaje', 'Ir a Mis viajes']) {
+        await expect(page.getByRole('button', { name: nombre })).toBeInViewport({ ratio: 1 });
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true);
+    });
+  }
+
   test('elegir el sello en el resumen lo deja en la colección del perfil', async ({ page }) => {
     await entrarConSesion(page);
     const sellos = await simularBackend(page);
