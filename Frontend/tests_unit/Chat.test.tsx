@@ -175,3 +175,19 @@ describe('Chat · historial', () => {
     expect(screen.queryByRole('button', { name: 'Ver mensajes anteriores' })).toBeNull()
   })
 })
+
+describe('Chat · cabecera fija', () => {
+  it('la cabecera con las pestañas queda fija arriba al desplazarse por los mensajes', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) => (url.includes('/mensajes') ? json(200, { mensajes: [] }) : json(200, viaje()))),
+    )
+    render(<Chat viajeId={VIAJE_ID} tokenSesion="token-acceso" usuarioId={ADRIANA} />)
+
+    let cabecera: HTMLElement | null = await screen.findByRole('tablist')
+    while (cabecera && cabecera.style.position !== 'sticky') cabecera = cabecera.parentElement
+
+    expect(cabecera).not.toBeNull()
+    expect(cabecera?.style.top).toBe('0px')
+  })
+})
