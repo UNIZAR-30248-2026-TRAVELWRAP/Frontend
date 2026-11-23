@@ -152,12 +152,12 @@ describe('EditarViaje', () => {
     expect(onGuardado).not.toHaveBeenCalled()
   })
 
-  it('a quien no es el creador solo le muestra la portada, y en un viaje finalizado no muestra el formulario', async () => {
+  it('a un miembro que no es el creador le muestra el formulario completo, y en un viaje finalizado no', async () => {
     simularBackend({ rol: 'miembro' })
     const { unmount } = renderizar()
     expect(await screen.findByRole('group', { name: 'Foto de portada' })).toBeTruthy()
-    expect(screen.queryByLabelText('Nombre del viaje')).toBeNull()
-    expect(screen.queryByLabelText('Presupuesto total (€)')).toBeNull()
+    expect(screen.getByLabelText('Nombre del viaje')).toBeTruthy()
+    expect(screen.getByLabelText('Presupuesto total (€)')).toBeTruthy()
     unmount()
 
     simularBackend({ estado: 'finalizado' })
@@ -358,13 +358,13 @@ describe('EditarViaje: foto de portada', () => {
     expect(onGuardado).not.toHaveBeenCalled()
   })
 
-  it('un miembro que no es el creador cambia la portada sin enviar los datos del viaje', async () => {
+  it('un miembro que no es el creador cambia la portada y, sin tocar los datos, no los envía', async () => {
     const user = userEvent.setup()
     const fetchMock = simularBackendPortada({ rol: 'miembro' })
     const onGuardado = vi.fn()
     renderizar({ onGuardado })
 
-    expect(await screen.findByText('Cambiar portada')).toBeTruthy()
+    expect(await screen.findByLabelText('Nombre del viaje')).toBeTruthy()
     elegirFoto(foto())
     await user.click(botonGuardar())
 

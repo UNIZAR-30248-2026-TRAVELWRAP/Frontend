@@ -138,11 +138,11 @@ describe('Votaciones', () => {
     expect(screen.getByRole('dialog').textContent).toContain('Hay un empate entre 12 – 15 mayo, 19 – 22 mayo y 26 – 29 mayo')
   })
 
-  it('quien no es el creador vota pero no puede cerrar la votación', async () => {
+  it('un miembro que no es el creador también vota y ve el botón de cerrar la votación', async () => {
     await abrir({ viaje: { ...viajeConDestino, rol: 'miembro' }, votaciones: [fechas()] })
 
     expect(screen.getByRole('button', { name: 'Emitir voto' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Cerrar votación' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Cerrar votación' })).toBeTruthy()
   })
 
   it('el botón de crear y el de volver avisan a la ruta', async () => {

@@ -128,11 +128,11 @@ describe('ElegirDestino', () => {
     expect(screen.getByRole('button', { name: 'Confirmar sorteo' })).toBeTruthy()
   })
 
-  it('quien no es el creador no puede fijar el destino', async () => {
+  it('cualquier miembro, aunque no sea el creador, ve el botón de fijar el destino', async () => {
     await abrir({ viaje: viajeDePrueba({ rol: 'miembro' }) })
 
-    expect(screen.getByText(/El creador del viaje fijará el destino/)).toBeTruthy()
-    expect(screen.queryByRole('button', { name: /Fijar/ })).toBeNull()
+    expect(screen.getByRole('button', { name: /Fijar/ })).toBeTruthy()
+    expect(screen.queryByText(/El creador del viaje fijará el destino/)).toBeNull()
   })
 
   it('si el viaje ya tiene destino pasa directamente al inicio del viaje', async () => {

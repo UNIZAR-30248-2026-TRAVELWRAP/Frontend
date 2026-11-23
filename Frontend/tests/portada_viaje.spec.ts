@@ -181,17 +181,16 @@ test.describe('Foto de portada del viaje', () => {
     await expect(page.getByRole('button', { name: 'Guardar cambios' })).toBeEnabled();
   });
 
-  test('un miembro que no es el creador la ve y puede cambiarla, pero no edita los datos del viaje', async ({ page }) => {
+  test('un miembro que no es el creador la ve y puede cambiarla, y también edita los datos del viaje', async ({ page }) => {
     await entrarConSesion(page);
     const { portadas } = await simularBackend(page, viaje({ rol: 'miembro', portada_url: PORTADA }));
 
     await page.goto('/viajes/roma');
     await expect(portadaVisible(page)).toHaveAttribute('src', PORTADA);
-    await expect(page.getByRole('button', { name: /Editar viaje/ })).toHaveCount(0);
-    await page.getByRole('button', { name: 'Cambiar portada' }).click();
+    await page.getByRole('button', { name: /Editar viaje/ }).click();
 
     await expect(page).toHaveURL(/\/viajes\/roma\/editar$/);
-    await expect(page.getByLabel('Nombre del viaje')).toHaveCount(0);
+    await expect(page.getByLabel('Nombre del viaje')).toBeVisible();
     await page.getByLabel('Elegir foto de portada').setInputFiles(FOTO_PEQUENA);
     await page.getByRole('button', { name: 'Guardar cambios' }).click();
 

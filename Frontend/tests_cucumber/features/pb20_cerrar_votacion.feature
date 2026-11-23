@@ -51,13 +51,13 @@ Característica: Cerrar una votación (PB-20)
     Y el servidor ha cerrado 0 votaciones
     Y la opción "12 – 15 mayo" de "¿Qué fin de semana salimos?" tiene 2 votos (100 %)
 
-  Escenario: Solo el creador del viaje puede cerrar votaciones
+  Escenario: Cualquier miembro, aunque no sea el creador, puede cerrar votaciones
     Dado que Berta ha creado el viaje "Roma 2027" con destino "Roma" y yo soy miembro
     Y que el viaje tiene la votación de fechas "¿Qué fin de semana salimos?" con las opciones "12 – 15 mayo" y "19 – 22 mayo"
     Y que ya he votado "12 – 15 mayo" en "¿Qué fin de semana salimos?"
     Y que Berta ya ha votado "12 – 15 mayo" en "¿Qué fin de semana salimos?"
     Cuando entro en las votaciones del viaje
-    Entonces no veo el botón «Cerrar votación» en "¿Qué fin de semana salimos?"
+    Entonces veo el botón «Cerrar votación» en "¿Qué fin de semana salimos?"
 
   Escenario: Los demás miembros ven la votación cerrada sin recargar
     Dado que Berta ha creado el viaje "Roma 2027" con destino "Roma" y yo soy miembro

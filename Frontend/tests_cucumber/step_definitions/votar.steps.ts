@@ -157,7 +157,6 @@ const responder = async (route: Route) => {
   }
   if (accion === 'cerrar' && metodo === 'POST') {
     cierresRecibidos += 1;
-    if (v.rol !== 'creador') return error(route, 403, 'no_creador', 'Solo el creador del viaje puede cerrar votaciones');
     const { hubo_empate, destino } = cerrar(votacion);
     return json(route, 200, { votacion: formatear(votacion), hubo_empate, destino });
   }
@@ -349,6 +348,10 @@ Then('veo la opción {string} en {string}', async (texto: string, titulo: string
 
 Then('el botón «Cerrar votación» de {string} está desactivado', async (titulo: string) => {
   await expect(region(titulo).getByRole('button', { name: 'Cerrar votación' })).toBeDisabled();
+});
+
+Then('veo el botón «Cerrar votación» en {string}', async (titulo: string) => {
+  await expect(region(titulo).getByRole('button', { name: 'Cerrar votación' })).toBeVisible();
 });
 
 Then('no veo el botón «Cerrar votación» en {string}', async (titulo: string) => {

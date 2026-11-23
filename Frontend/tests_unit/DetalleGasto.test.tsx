@@ -132,12 +132,15 @@ describe('DetalleGasto', () => {
     expect(screen.getByRole('button', { name: 'Eliminar' })).toBeTruthy()
   })
 
-  it('quien no registró el gasto ni es el creador no ve los botones', async () => {
-    simularBackend({ gasto: () => json(200, detalle({ creado_por: BERTA })) })
+  it('cualquier miembro ve los botones aunque no registrara el gasto ni sea el creador', async () => {
+    simularBackend({
+      gasto: () => json(200, detalle({ creado_por: BERTA })),
+      viaje: () => json(200, { id: VIAJE_ID, nombre: 'Roma 2027', estado: 'activo', rol: 'miembro', miembros }),
+    })
     await abrir({ onModificar: vi.fn() })
 
-    expect(screen.queryByRole('button', { name: 'Modificar' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Eliminar' })).toBeNull()
+    expect(await screen.findByRole('button', { name: 'Modificar' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Eliminar' })).toBeTruthy()
   })
 
   it('en un viaje archivado no hay botones aunque lo registrara quien usa la app', async () => {

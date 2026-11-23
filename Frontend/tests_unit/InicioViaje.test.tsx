@@ -127,15 +127,15 @@ describe('InicioViaje', () => {
     expect(onEditar).toHaveBeenCalledTimes(1)
   })
 
-  it('a un miembro que no es el creador no le deja editar los datos, pero sí cambiar la portada', async () => {
+  it('un miembro que no es el creador también puede editar el viaje', async () => {
     const user = userEvent.setup()
     simularBackend({ rol: 'miembro' })
     const onEditar = vi.fn()
     renderizar({ onEditar })
 
     expect(await screen.findByRole('button', { name: 'Invitar' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: /Editar viaje/ })).toBeNull()
-    await user.click(screen.getByRole('button', { name: 'Cambiar portada' }))
+    expect(screen.queryByRole('button', { name: 'Cambiar portada' })).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Editar viaje' }))
     expect(onEditar).toHaveBeenCalledTimes(1)
   })
 
@@ -167,7 +167,7 @@ describe('InicioViaje', () => {
     expect(screen.queryByRole('button', { name: 'Cambiar portada' })).toBeNull()
   })
 
-  it('solo el creador puede finalizar el viaje', async () => {
+  it('cualquier miembro puede finalizar el viaje, sea o no el creador', async () => {
     simularBackend()
     const { unmount } = renderizar()
     expect(await screen.findByRole('button', { name: 'Finalizar viaje' })).toBeTruthy()
@@ -175,8 +175,7 @@ describe('InicioViaje', () => {
 
     simularBackend({ rol: 'miembro' })
     renderizar()
-    expect(await screen.findByRole('button', { name: 'Invitar' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Finalizar viaje' })).toBeNull()
+    expect(await screen.findByRole('button', { name: 'Finalizar viaje' })).toBeTruthy()
   })
 
   it('un viaje finalizado es de solo lectura', async () => {
@@ -296,12 +295,12 @@ const simularAbandono = ({
 }
 
 describe('InicioViaje · abandonar el viaje', () => {
-  it('el creador no ve «Abandonar viaje»', async () => {
+  it('el creador también ve «Abandonar»: no tiene más privilegios que los demás', async () => {
     simularAbandono({ rol: 'creador' })
     renderizar()
 
     await screen.findByRole('button', { name: 'Editar viaje' })
-    expect(screen.queryByRole('button', { name: 'Abandonar' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Abandonar' })).toBeTruthy()
   })
 
   it('a un miembro que no es el creador le aparece «Abandonar» en la cabecera', async () => {
