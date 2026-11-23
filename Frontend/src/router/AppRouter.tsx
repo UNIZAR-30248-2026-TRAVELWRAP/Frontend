@@ -48,6 +48,7 @@ interface AppRouterProps {
   handleSesionGoogle: (sesion: Sesion) => void;
   handleErrorGoogle: (mensaje: string) => void;
   handleCerrarSesion: () => void;
+  handleCuentaEliminada: () => void;
   actualizarUsuario: (usuario: Usuario) => void;
   cerrandoSesion: boolean;
   error: string;
@@ -463,6 +464,7 @@ export default function AppRouter({
   handleSesionGoogle,
   handleErrorGoogle,
   handleCerrarSesion,
+  handleCuentaEliminada,
   actualizarUsuario,
   cerrandoSesion,
   error,
@@ -521,6 +523,7 @@ export default function AppRouter({
                 token={session.token}
                 onPerfilActualizado={actualizarUsuario}
                 onCerrarSesion={handleCerrarSesion}
+                onCuentaEliminada={handleCuentaEliminada}
                 cerrandoSesion={cerrandoSesion}
               />
             ) : (

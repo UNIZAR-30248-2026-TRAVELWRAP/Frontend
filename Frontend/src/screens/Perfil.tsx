@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react"
 import Avatar from "../components/Avatar"
+import DialogoConfirmacion from "../components/DialogoConfirmacion"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import IconoColor from "../components/IconoColor"
@@ -7,7 +8,7 @@ import OpcionNotificaciones from "../components/OpcionNotificaciones"
 import PasaporteViajes from "../components/PasaporteViajes"
 import SectionLabel from "../components/SectionLabel"
 import type { Usuario } from "../services/authApi"
-import { actualizarNombre, quitarAvatar, subirAvatar } from "../services/perfilApi"
+import { actualizarNombre, eliminarCuenta, quitarAvatar, subirAvatar } from "../services/perfilApi"
 import {
   cambiarDisenoSello,
   listarMisSellos,
@@ -40,6 +41,8 @@ type PerfilProps = {
   onVolver?: () => void
   onVerArchivados?: () => void
   onCerrarSesion?: () => void
+  // Se llama cuando el servidor ya ha eliminado la cuenta, para cerrar la sesión guardada
+  onCuentaEliminada?: () => void
   cerrandoSesion?: boolean
   error?: string
 }
@@ -53,10 +56,14 @@ export default function Perfil({
   onVolver,
   onVerArchivados,
   onCerrarSesion,
+  onCuentaEliminada,
   cerrandoSesion = false,
   error,
 }: PerfilProps) {
   const [confirmando, setConfirmando] = useState(false)
+  const [confirmandoEliminar, setConfirmandoEliminar] = useState(false)
+  const [eliminandoCuenta, setEliminandoCuenta] = useState(false)
+  const [errorEliminar, setErrorEliminar] = useState("")
   const selectorFoto = useRef<HTMLInputElement>(null)
   const [hojaFoto, setHojaFoto] = useState(false)
   const [confirmandoQuitar, setConfirmandoQuitar] = useState(false)
@@ -160,6 +167,29 @@ export default function Perfil({
       setErrorFoto(mensajeErrorPerfil(error))
     } finally {
       setProcesandoFoto(null)
+    }
+  }
+
+  const handleAbrirEliminarCuenta = () => {
+    setErrorEliminar("")
+    setConfirmandoEliminar(true)
+  }
+
+  const handleCancelarEliminarCuenta = () => {
+    setConfirmandoEliminar(false)
+    setErrorEliminar("")
+  }
+
+  // Si el servidor no la elimina, se queda el diálogo con el error y la cuenta sigue como estaba
+  const handleEliminarCuenta = async () => {
+    setEliminandoCuenta(true)
+    setErrorEliminar("")
+    try {
+      await eliminarCuenta(token)
+      onCuentaEliminada?.()
+    } catch (error) {
+      setErrorEliminar(mensajeErrorPerfil(error))
+      setEliminandoCuenta(false)
     }
   }
 
@@ -589,11 +619,68 @@ export default function Perfil({
               </div>
             </div>
           </button>
+
+          <button
+            type="button"
+            onClick={handleAbrirEliminarCuenta}
+            disabled={cerrandoSesion || eliminandoCuenta}
+            style={{
+              width: "100%",
+              marginTop: 12,
+              background: C.redBg,
+              border: `1.5px solid ${C.red}30`,
+              borderRadius: 18,
+              padding: "16px 20px",
+              cursor: cerrandoSesion || eliminandoCuenta ? "not-allowed" : "pointer",
+              opacity: cerrandoSesion || eliminandoCuenta ? 0.7 : 1,
+              display: "flex",
+              alignItems: "center",
+              gap: 14,
+            }}
+          >
+            <div
+              style={{
+                width: 46,
+                height: 46,
+                borderRadius: 13,
+                background: "white",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <Icon name="user_x" size={22} color={C.red} strokeWidth={1.8} />
+            </div>
+            <div style={{ flex: 1, textAlign: "left" }}>
+              <div style={{ fontFamily: NUNITO, fontWeight: 800, color: C.red, fontSize: 14 }}>Eliminar cuenta</div>
+              <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, marginTop: 2 }}>
+                Esta acción es permanente
+              </div>
+            </div>
+          </button>
         </div>
       </div>
 
       {pasaporte && (
         <PasaporteViajes sellos={sellos} onGuardarSello={handleGuardarSello} onCerrar={() => setPasaporte(false)} />
+      )}
+
+      {confirmandoEliminar && (
+        <DialogoConfirmacion
+          titulo="¿Eliminar tu cuenta?"
+          icono="user_x"
+          color={C.red}
+          colorFondo={C.redBg}
+          textoConfirmar="Eliminar cuenta"
+          textoConfirmando="Eliminando..."
+          ocupado={eliminandoCuenta}
+          error={errorEliminar}
+          onConfirmar={handleEliminarCuenta}
+          onCancelar={handleCancelarEliminarCuenta}
+        >
+          Se eliminarán tu perfil y tus datos personales. Esta acción no se puede deshacer.
+        </DialogoConfirmacion>
       )}
 
       {confirmando && (

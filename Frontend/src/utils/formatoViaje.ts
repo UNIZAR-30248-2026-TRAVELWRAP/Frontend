@@ -97,9 +97,14 @@ export const formatearImporte = (cantidad: number, moneda = "EUR") => {
   return `${entero} ${SIMBOLOS_MONEDA[moneda] ?? moneda}`
 }
 
-// Miembro del viaje → avatar con su inicial y un color según su posición
+// Nombre que el servidor deja en el perfil de quien eliminó su cuenta (PB-47)
+export const NOMBRE_CUENTA_ELIMINADA = "Un antiguo miembro"
+
+// Miembro del viaje → avatar con su inicial y un color según su posición.
+// Quien eliminó su cuenta sigue en el viaje con un «?» en gris, sin foto
 export const aMiembro = (nombre: string | null, indice: number, avatarUrl?: string | null): Miembro => {
   const texto = nombre?.trim() || "?"
+  if (texto === NOMBRE_CUENTA_ELIMINADA) return { name: texto, initial: "?", color: "#718096", imageUrl: null }
   return {
     name: texto,
     initial: texto.charAt(0).toUpperCase(),

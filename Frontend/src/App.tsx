@@ -151,6 +151,12 @@ export default function App() {
     setCerrandoSesion(false)
   }
 
+  // La cuenta ya se ha eliminado en el servidor: solo queda olvidar la sesión guardada en el móvil
+  const handleCuentaEliminada = () => {
+    borrarSesion()
+    setSesion(null)
+  }
+
   if (comprobando) return <PantallaCarga />
 
   return (
@@ -169,6 +175,7 @@ export default function App() {
       handleSesionGoogle={handleSesionGoogle}
       handleErrorGoogle={handleErrorGoogle}
       handleCerrarSesion={handleCerrarSesion}
+      handleCuentaEliminada={handleCuentaEliminada}
       actualizarUsuario={actualizarUsuario}
       cerrandoSesion={cerrandoSesion}
       error={error}

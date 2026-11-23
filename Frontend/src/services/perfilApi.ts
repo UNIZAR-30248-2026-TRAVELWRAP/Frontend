@@ -15,6 +15,11 @@ export const subirAvatar = (archivo: Blob, tokenSesion: string) => {
   )
 }
 
+// Elimina la cuenta del usuario de la sesión: borra sus datos personales y su usuario de Supabase Auth.
+// No se puede deshacer; el token deja de valer cuando responde bien
+export const eliminarCuenta = (tokenSesion: string) =>
+  peticion<null>("/perfil", { metodo: "DELETE", token: tokenSesion }).then(() => undefined)
+
 // Quita la foto de perfil: avatar_url queda en null
 export const quitarAvatar = (tokenSesion: string) =>
   peticion<RespuestaPerfil>("/perfil/avatar", { metodo: "DELETE", token: tokenSesion }).then((r) => r.usuario)
