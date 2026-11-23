@@ -125,9 +125,8 @@ export default function EditarViaje({ viajeId, tokenSesion, onVolver, onGuardado
   const cambiar = (campo: keyof Formulario) => (valor: string) =>
     setFormulario((actual) => (actual ? { ...actual, [campo]: valor } : actual))
 
-  // Cualquier miembro cambia la portada; los datos del viaje solo los edita el creador
+  // Cualquier miembro edita los datos y la portada del viaje, mientras está activo
   const editable = viaje?.estado === "activo"
-  const esCreador = viaje?.rol === "creador"
 
   // Las fechas en formato AAAA-MM-DD se pueden comparar como texto
   const avisoFechas =
@@ -138,14 +137,13 @@ export default function EditarViaje({ viajeId, tokenSesion, onVolver, onGuardado
   const valido =
     formulario !== null &&
     viaje !== null &&
-    (!esCreador ||
-      (formulario.nombre.trim() !== "" &&
-        formulario.presupuesto.trim() !== "" &&
-        Number(formulario.presupuesto) >= 0 &&
-        avisoFechas === "" &&
-        (viaje.destino === null || formulario.destino.trim() !== "")))
+    formulario.nombre.trim() !== "" &&
+    formulario.presupuesto.trim() !== "" &&
+    Number(formulario.presupuesto) >= 0 &&
+    avisoFechas === "" &&
+    (viaje.destino === null || formulario.destino.trim() !== "")
 
-  const cambios = viaje && formulario && esCreador ? calcularCambios(viaje, formulario) : {}
+  const cambios = viaje && formulario ? calcularCambios(viaje, formulario) : {}
   const portadaActual = quitarFoto ? null : (portadaElegida?.vista ?? viaje?.portada_url ?? null)
   const cambiaPortada = portadaElegida !== null || (quitarFoto && Boolean(viaje?.portada_url))
   const hayCambios = Object.keys(cambios).length > 0 || cambiaPortada
@@ -183,10 +181,10 @@ export default function EditarViaje({ viajeId, tokenSesion, onVolver, onGuardado
             <BotonVolver onClick={onVolver} />
             <div>
               <Heading size={22} color="white">
-                {esCreador === false ? "Cambiar portada" : "Editar viaje"}
+                Editar viaje
               </Heading>
               <div style={{ color: "rgba(255,255,255,0.65)", fontFamily: NUNITO, fontSize: 12, marginTop: 2 }}>
-                {esCreador === false ? "Elige la foto del viaje" : "Actualiza los datos principales"}
+                Actualiza los datos principales
               </div>
             </div>
           </div>
@@ -295,93 +293,89 @@ export default function EditarViaje({ viajeId, tokenSesion, onVolver, onGuardado
                 )}
               </div>
 
-              {esCreador && (
-                <>
-                  <div>
-                    <label htmlFor="editar-nombre" style={estiloEtiqueta}>
-                      Nombre del viaje
-                    </label>
-                    <input
-                      id="editar-nombre"
-                      value={formulario.nombre}
-                      onChange={(event) => cambiar("nombre")(event.target.value)}
-                      placeholder="Ej. Escapada de primavera"
-                      style={estiloCampo}
-                    />
-                  </div>
+              <div>
+                <label htmlFor="editar-nombre" style={estiloEtiqueta}>
+                  Nombre del viaje
+                </label>
+                <input
+                  id="editar-nombre"
+                  value={formulario.nombre}
+                  onChange={(event) => cambiar("nombre")(event.target.value)}
+                  placeholder="Ej. Escapada de primavera"
+                  style={estiloCampo}
+                />
+              </div>
 
-                  {viaje.destino !== null && (
-                    <div>
-                      <label htmlFor="editar-destino" style={estiloEtiqueta}>
-                        Destino
-                      </label>
-                      <input
-                        id="editar-destino"
-                        value={formulario.destino}
-                        onChange={(event) => cambiar("destino")(event.target.value)}
-                        placeholder="Ciudad o país"
-                        style={estiloCampo}
-                      />
-                    </div>
-                  )}
-
-                  <div>
-                    <div style={{ display: "flex", gap: 10 }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <label htmlFor="editar-fecha-inicio" style={estiloEtiqueta}>
-                          Fecha de inicio
-                        </label>
-                        <input
-                          id="editar-fecha-inicio"
-                          type="date"
-                          value={formulario.fechaInicio}
-                          onChange={(event) => cambiar("fechaInicio")(event.target.value)}
-                          style={{ ...estiloCampo, padding: "13px 10px" }}
-                        />
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <label htmlFor="editar-fecha-fin" style={estiloEtiqueta}>
-                          Fecha de fin
-                        </label>
-                        <input
-                          id="editar-fecha-fin"
-                          type="date"
-                          value={formulario.fechaFin}
-                          min={formulario.fechaInicio || undefined}
-                          onChange={(event) => cambiar("fechaFin")(event.target.value)}
-                          aria-invalid={avisoFechas !== ""}
-                          aria-describedby={avisoFechas ? "editar-fechas-aviso" : undefined}
-                          style={{ ...estiloCampo, padding: "13px 10px" }}
-                        />
-                      </div>
-                    </div>
-                    {avisoFechas && (
-                      <div
-                        id="editar-fechas-aviso"
-                        role="alert"
-                        style={{ fontFamily: NUNITO, color: C.red, fontSize: 12, fontWeight: 700, marginTop: 6 }}
-                      >
-                        {avisoFechas}
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <label htmlFor="editar-presupuesto" style={estiloEtiqueta}>
-                      Presupuesto total (€)
-                    </label>
-                    <input
-                      id="editar-presupuesto"
-                      type="number"
-                      min={0}
-                      value={formulario.presupuesto}
-                      onChange={(event) => cambiar("presupuesto")(event.target.value)}
-                      placeholder="0"
-                      style={estiloCampo}
-                    />
-                  </div>
-                </>
+              {viaje.destino !== null && (
+                <div>
+                  <label htmlFor="editar-destino" style={estiloEtiqueta}>
+                    Destino
+                  </label>
+                  <input
+                    id="editar-destino"
+                    value={formulario.destino}
+                    onChange={(event) => cambiar("destino")(event.target.value)}
+                    placeholder="Ciudad o país"
+                    style={estiloCampo}
+                  />
+                </div>
               )}
+
+              <div>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <label htmlFor="editar-fecha-inicio" style={estiloEtiqueta}>
+                      Fecha de inicio
+                    </label>
+                    <input
+                      id="editar-fecha-inicio"
+                      type="date"
+                      value={formulario.fechaInicio}
+                      onChange={(event) => cambiar("fechaInicio")(event.target.value)}
+                      style={{ ...estiloCampo, padding: "13px 10px" }}
+                    />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <label htmlFor="editar-fecha-fin" style={estiloEtiqueta}>
+                      Fecha de fin
+                    </label>
+                    <input
+                      id="editar-fecha-fin"
+                      type="date"
+                      value={formulario.fechaFin}
+                      min={formulario.fechaInicio || undefined}
+                      onChange={(event) => cambiar("fechaFin")(event.target.value)}
+                      aria-invalid={avisoFechas !== ""}
+                      aria-describedby={avisoFechas ? "editar-fechas-aviso" : undefined}
+                      style={{ ...estiloCampo, padding: "13px 10px" }}
+                    />
+                  </div>
+                </div>
+                {avisoFechas && (
+                  <div
+                    id="editar-fechas-aviso"
+                    role="alert"
+                    style={{ fontFamily: NUNITO, color: C.red, fontSize: 12, fontWeight: 700, marginTop: 6 }}
+                  >
+                    {avisoFechas}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label htmlFor="editar-presupuesto" style={estiloEtiqueta}>
+                  Presupuesto total (€)
+                </label>
+                <input
+                  id="editar-presupuesto"
+                  type="number"
+                  min={0}
+                  value={formulario.presupuesto}
+                  onChange={(event) => cambiar("presupuesto")(event.target.value)}
+                  placeholder="0"
+                  style={estiloCampo}
+                />
+              </div>
 
               <div
                 style={{

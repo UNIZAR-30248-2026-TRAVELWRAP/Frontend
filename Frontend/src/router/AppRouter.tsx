@@ -628,7 +628,7 @@ export default function AppRouter({
           element={session ? <RutaElegirDestino sesion={session} /> : <Navigate to="/login" replace />}
         />
 
-        {/* Editar los datos del viaje: solo el creador y mientras está activo (privada) */}
+        {/* Editar los datos del viaje: cualquier miembro y mientras está activo (privada) */}
         <Route
           path="/viajes/:viajeId/editar"
           element={session ? <RutaEditarViaje sesion={session} /> : <Navigate to="/login" replace />}

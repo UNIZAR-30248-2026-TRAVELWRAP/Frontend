@@ -208,7 +208,6 @@ export default function InicioViaje({
   }
 
   const activo = viaje?.estado === "activo"
-  const esCreador = viaje?.rol === "creador"
   const miembros = (viaje?.miembros ?? []).map((m, i) => aMiembro(m.nombre, i, m.avatar_url))
 
   if (pendiente) return null
@@ -292,7 +291,9 @@ export default function InicioViaje({
               )}
             </div>
 
-            {viaje && activo && esCreador && (
+            {/* Cualquier miembro puede finalizar el viaje o abandonarlo */}
+            {viaje && activo && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
               <button
                 type="button"
                 onClick={() => {
@@ -318,8 +319,6 @@ export default function InicioViaje({
                 <Icon name="finish" size={13} color="rgba(255,255,255,0.9)" strokeWidth={2.5} />
                 Finalizar viaje
               </button>
-            )}
-            {viaje && activo && !esCreador && (
               <button
                 type="button"
                 onClick={handlePedirAbandonar}
@@ -341,6 +340,7 @@ export default function InicioViaje({
                   {comprobandoSaldo ? "Comprobando..." : "Abandonar"}
                 </span>
               </button>
+              </div>
             )}
             {viaje && !activo && (
               <Badge bg="rgba(255,255,255,0.2)" color="white">
@@ -500,12 +500,12 @@ export default function InicioViaje({
                       <span style={{ fontFamily: NUNITO, fontWeight: 800, fontSize: 11, color: C.navy }}>Votaciones</span>
                     </button>
                   )}
-                  {/* El creador edita los datos del viaje; cualquier miembro puede cambiar su portada */}
+                  {/* Cualquier miembro edita los datos y la portada del viaje */}
                   {activo && (
                     <button type="button" onClick={onEditar} style={botonCuadradoStyle}>
-                      <Icon name={esCreador ? "settings" : "camera"} size={26} color={C.blue} strokeWidth={1.8} />
+                      <Icon name="settings" size={26} color={C.blue} strokeWidth={1.8} />
                       <span style={{ fontFamily: NUNITO, fontWeight: 800, fontSize: 11, color: C.navy }}>
-                        {esCreador ? "Editar viaje" : "Cambiar portada"}
+                        Editar viaje
                       </span>
                     </button>
                   )}

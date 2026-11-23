@@ -99,7 +99,6 @@ export default function ElegirDestino({ viajeId, tokenSesion, onVolver, onInvita
   }, [viaje, conDestino, onDestinoFijado])
 
   const miembros = (viaje?.miembros ?? []).map((m, i) => aMiembro(m.nombre, i, m.avatar_url))
-  const esCreador = viaje?.rol === "creador"
 
   const conVotos = conPorcentajes(votacion?.opciones ?? [])
   const ganadoras = opcionesGanadoras(conVotos)
@@ -259,7 +258,7 @@ export default function ElegirDestino({ viajeId, tokenSesion, onVolver, onInvita
               >
                 <Icon name="info" size={18} color={C.blue} strokeWidth={2} />
                 <span style={{ fontFamily: NUNITO, fontSize: 13, color: C.blue, lineHeight: 1.5 }}>
-                  Vota el destino del viaje. Cuando hayan votado todos los miembros, el creador podrá fijar el más votado
+                  Vota el destino del viaje. Cuando hayan votado todos los miembros, cualquiera podrá fijar el más votado
                   como destino oficial y se desbloqueará el resto de funciones.
                 </span>
               </div>
@@ -342,14 +341,8 @@ export default function ElegirDestino({ viajeId, tokenSesion, onVolver, onInvita
                 )}
               </section>
 
-              {/* Fijar destino: solo el creador */}
-              {!esCreador && (
-                <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, textAlign: "center", lineHeight: 1.5 }}>
-                  El creador del viaje fijará el destino cuando hayan votado todos los miembros.
-                </div>
-              )}
-
-              {esCreador && !confirmando && (
+              {/* Fijar destino: cualquier miembro, cuando han votado todos */}
+              {!confirmando && (
                 <button
                   type="button"
                   onClick={() => setConfirmando(true)}
@@ -380,13 +373,13 @@ export default function ElegirDestino({ viajeId, tokenSesion, onVolver, onInvita
                 </button>
               )}
 
-              {esCreador && !confirmando && !todosHanVotado && (
+              {!confirmando && !todosHanVotado && (
                 <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, textAlign: "center", lineHeight: 1.5, marginTop: 8 }}>
                   Podrás fijar el destino cuando hayan votado todos los miembros.
                 </div>
               )}
 
-              {esCreador && confirmando && (
+              {confirmando && (
                 <div
                   role="dialog"
                   aria-label="Confirmar destino"

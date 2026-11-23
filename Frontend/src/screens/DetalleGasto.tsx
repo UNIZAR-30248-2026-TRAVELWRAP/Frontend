@@ -90,10 +90,8 @@ export default function DetalleGasto({
   }
 
   const categoria = gasto ? CATEGORIAS_GASTO.find((c) => c.categoria === gasto.categoria) : undefined
-  // Solo quien registró el gasto y el creador del viaje lo modifican o eliminan, y solo con el viaje activo
-  const puedeModificar = Boolean(
-    viaje && gasto && viaje.estado === "activo" && (gasto.creado_por === usuarioId || viaje.rol === "creador"),
-  )
+  // Cualquier miembro modifica o elimina los gastos, y solo con el viaje activo
+  const puedeModificar = Boolean(viaje && gasto && viaje.estado === "activo")
 
   const handleEliminar = async () => {
     setEliminando(true)

@@ -119,7 +119,6 @@ export default function Votaciones({ viajeId, tokenSesion, onVolver, onCrearVota
   }
 
   const editable = viaje?.estado === "activo"
-  const esCreador = viaje?.rol === "creador"
 
   const visibles = (votaciones ?? []).filter((v) => filtro === null || v.tipo === filtro)
   const abiertas = visibles.filter((v) => v.estado === "abierta")
@@ -291,8 +290,8 @@ export default function Votaciones({ viajeId, tokenSesion, onVolver, onCrearVota
                     </Badge>
                   </div>
                   <Heading size={15}>{votacion.titulo}</Heading>
-                  {/* El creador del viaje puede cambiar el tipo mientras la votación está abierta (la de destino no) */}
-                  {editable && esCreador && votacion.tipo !== "destino" && (
+                  {/* Cualquier miembro puede cambiar el tipo mientras la votación está abierta (la de destino no) */}
+                  {editable && votacion.tipo !== "destino" && (
                     <select
                       aria-label={`Tipo de la votación ${votacion.titulo}`}
                       value={votacion.tipo === "presupuesto" ? "" : votacion.tipo}
@@ -406,36 +405,34 @@ export default function Votaciones({ viajeId, tokenSesion, onVolver, onCrearVota
                       )}
                       {!enviando && !yaVotado && (votacion.mi_voto ? "Cambiar voto" : "Emitir voto")}
                     </button>
-                    {esCreador && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setErrorCierre("")
-                          setPorCerrar(votacion)
-                        }}
-                        disabled={!votacion.todos_han_votado}
-                        style={{
-                          flex: 1,
-                          background: C.redBg,
-                          color: C.red,
-                          border: `1.5px solid ${C.red}`,
-                          borderRadius: 12,
-                          padding: 12,
-                          fontFamily: NUNITO,
-                          fontWeight: 800,
-                          fontSize: 13,
-                          cursor: votacion.todos_han_votado ? "pointer" : "not-allowed",
-                          opacity: votacion.todos_han_votado ? 1 : 0.5,
-                        }}
-                      >
-                        Cerrar votación
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setErrorCierre("")
+                        setPorCerrar(votacion)
+                      }}
+                      disabled={!votacion.todos_han_votado}
+                      style={{
+                        flex: 1,
+                        background: C.redBg,
+                        color: C.red,
+                        border: `1.5px solid ${C.red}`,
+                        borderRadius: 12,
+                        padding: 12,
+                        fontFamily: NUNITO,
+                        fontWeight: 800,
+                        fontSize: 13,
+                        cursor: votacion.todos_han_votado ? "pointer" : "not-allowed",
+                        opacity: votacion.todos_han_votado ? 1 : 0.5,
+                      }}
+                    >
+                      Cerrar votación
+                    </button>
                   </div>
                 )}
 
                 {/* RF9: solo se cierra cuando han votado todos los miembros */}
-                {editable && esCreador && !votacion.todos_han_votado && (
+                {editable && !votacion.todos_han_votado && (
                   <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 12, marginTop: 10, textAlign: "center" }}>
                     Podrás cerrarla cuando hayan votado todos los miembros.
                   </div>

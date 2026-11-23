@@ -1,7 +1,7 @@
 import { peticion } from "./authApi"
 import { guardarViajeEnCache } from "./viajesEnCache"
 
-// Solo lo cambia el creador al finalizar: un viaje finalizado no vuelve a activo. Archivar es personal (ver archivado)
+// Lo cambia cualquier miembro al finalizar: un viaje finalizado no vuelve a activo. Archivar es personal (ver archivado)
 export type EstadoViaje = "activo" | "finalizado"
 
 export type MiembroDelViaje = {
@@ -9,6 +9,8 @@ export type MiembroDelViaje = {
   nombre: string | null
   avatar_url: string | null
   rol: "creador" | "miembro"
+  // Eliminó su cuenta: sigue en el viaje como «Un antiguo miembro»
+  cuenta_eliminada?: boolean
 }
 
 export type Viaje = {
