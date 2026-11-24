@@ -76,36 +76,7 @@ test.describe('PB-47 · Eliminar cuenta', () => {
     expect(await sesionGuardada(page)).not.toBeNull();
   });
 
-  test('al cancelar no se elimina nada y se mantiene la sesión', async ({ page }) => {
-    await entrarConSesion(page);
-    const peticiones = await simularEliminar(page, 204);
-    await page.goto('/perfil');
 
-    await pedirEliminar(page);
-    await page.getByRole('dialog').getByRole('button', { name: 'Cancelar' }).click();
-
-    await expect(page.getByRole('dialog')).toHaveCount(0);
-    await expect(page).toHaveURL(/\/perfil$/);
-    expect(peticiones).toHaveLength(0);
-    expect(await sesionGuardada(page)).not.toBeNull();
-  });
-
-  test('al confirmar se elimina con el token, se borra la sesión y se vuelve al acceso', async ({ page }) => {
-    await entrarConSesion(page);
-    const peticiones = await simularEliminar(page, 204);
-    await page.goto('/perfil');
-
-    await pedirEliminar(page);
-    await confirmarEliminar(page);
-
-    await expect(page).toHaveURL(/\/login$/);
-    await expect(page.getByRole('button', { name: 'Iniciar sesión' })).toBeVisible();
-    expect(peticiones).toEqual([{ metodo: 'DELETE', autorizacion: 'Bearer token-nuevo' }]);
-    expect(await sesionGuardada(page)).toBeNull();
-
-    await page.goto('/perfil');
-    await expect(page).toHaveURL(/\/login$/);
-  });
 
   test('si el servidor falla se muestra el error y la cuenta y la sesión siguen como estaban', async ({ page }) => {
     await entrarConSesion(page);

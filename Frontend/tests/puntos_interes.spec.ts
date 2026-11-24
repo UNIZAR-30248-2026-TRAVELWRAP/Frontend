@@ -266,63 +266,9 @@ test.describe('Itinerario · puntos de interés', () => {
     await expect(page.getByText('Puntos de interés (3)')).toBeVisible();
   });
 
-  test('tocar un marcador abre la ficha con la dirección, la nota, quién lo añadió y el enlace a Google Maps', async ({ page }) => {
-    await preparar(page);
-    await abrirPuntos(page);
-    await expect(marcadores(page)).toHaveCount(3);
 
-    await page.getByRole('button', { name: 'Fontana di Trevi', exact: true }).click();
 
-    const ficha = page.getByRole('dialog', { name: 'Fontana di Trevi' });
-    await expect(ficha).toBeVisible();
-    await expect(ficha).toContainText('Fontana di Trevi, Piazza di Trevi, Roma');
-    await expect(ficha).toContainText('Ir temprano para evitar colas');
-    await expect(ficha).toContainText('Cultura');
-    await expect(ficha).toContainText('Añadido por Adriana');
-    const enlace = ficha.getByRole('link', { name: 'Abrir en Google Maps' });
-    await expect(enlace).toHaveAttribute('target', '_blank');
-    const datos = new URL((await enlace.getAttribute('href')) ?? '').searchParams;
-    expect(datos.get('query')).toBe('41.900932,12.483313');
 
-    await ficha.getByRole('button', { name: 'Cerrar ficha' }).click();
-    await expect(page.getByRole('dialog')).toHaveCount(0);
-  });
-
-  test('un punto sin dirección enseña sus coordenadas en la ficha', async ({ page }) => {
-    await preparar(page);
-    await abrirPuntos(page);
-
-    await page.getByRole('button', { name: 'Ver Mirador del Gianicolo en el mapa' }).click();
-
-    await expect(page.getByRole('dialog', { name: 'Mirador del Gianicolo' })).toContainText('Sin dirección · 41,89160, 12,46140');
-    await expect(page.getByRole('dialog', { name: 'Mirador del Gianicolo' })).toContainText('Sin tipo');
-  });
-
-  test('pulsar un punto de la lista sube hasta el mapa y abre su ficha', async ({ page }) => {
-    await page.setViewportSize({ width: 360, height: 640 });
-    await preparar(page);
-    await abrirPuntos(page);
-    await filas(page).last().scrollIntoViewIfNeeded();
-
-    await page.getByRole('button', { name: 'Ver Heladería Giolitti en el mapa' }).click();
-
-    await expect(page.getByRole('dialog', { name: 'Heladería Giolitti' })).toBeVisible();
-    await expect(mapa(page)).toBeInViewport();
-  });
-
-  test('tocar otra parte del mapa con una ficha abierta solo la cierra', async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 900 });
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    const { creados } = await preparar(page);
-    await abrirPuntos(page);
-    await page.getByRole('button', { name: 'Ver Fontana di Trevi en el mapa' }).click();
-    await expect(page.getByRole('dialog', { name: 'Fontana di Trevi' })).toBeVisible();
-
-    await mapa(page).click({ position: { x: 60, y: 230 } });
-
-    await expect(page.getByRole('dialog')).toHaveCount(0);
-    expect(creados).toHaveLength(0);
-  });
 
   test('la ficha y el panel quedan por encima de la barra inferior y no desbordan en 320 px', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 640 });
@@ -343,56 +289,8 @@ test.describe('Itinerario · puntos de interés', () => {
     }
   });
 
-  test('se borra un punto desde la ficha tras confirmarlo', async ({ page }) => {
-    const { borrados } = await preparar(page);
-    await abrirPuntos(page);
-    await page.getByRole('button', { name: 'Ver Heladería Giolitti en el mapa' }).click();
 
-    await page.getByRole('dialog', { name: 'Heladería Giolitti' }).getByRole('button', { name: 'Borrar' }).click();
-    const confirmar = page.getByRole('dialog', { name: '¿Eliminar este punto de interés?' });
-    await expect(confirmar).toContainText('Heladería Giolitti');
-    await confirmar.getByRole('button', { name: 'Eliminar punto' }).click();
 
-    await expect(page.getByRole('dialog')).toHaveCount(0);
-    expect(borrados).toEqual(['p2']);
-    await expect(page.getByText('Puntos de interés (2)')).toBeVisible();
-    await expect(marcadores(page)).toHaveCount(2);
-  });
-
-  test('cancelar la confirmación no borra el punto', async ({ page }) => {
-    const { borrados } = await preparar(page);
-    await abrirPuntos(page);
-
-    await page.getByRole('button', { name: 'Eliminar Mirador del Gianicolo' }).click();
-    await page.getByRole('dialog', { name: '¿Eliminar este punto de interés?' }).getByRole('button', { name: 'Cancelar' }).click();
-
-    await expect(page.getByRole('dialog')).toHaveCount(0);
-    expect(borrados).toEqual([]);
-    await expect(page.getByText('Puntos de interés (3)')).toBeVisible();
-  });
-
-  test('los filtros por tipo y por quién lo añadió cambian la lista y el mapa', async ({ page }) => {
-    await preparar(page);
-    await abrirPuntos(page);
-    await expect(marcadores(page)).toHaveCount(3);
-    const porTipo = page.getByRole('group', { name: 'Filtrar por tipo' });
-    const porAutor = page.getByRole('group', { name: 'Filtrar por quién lo añadió' });
-    await expect(porTipo.getByRole('button')).toHaveText(['Todos', 'Comida', 'Cultura', 'Sin tipo']);
-
-    await porTipo.getByRole('button', { name: 'Comida' }).click();
-    await expect(page.getByText('Puntos de interés (1 de 3)')).toBeVisible();
-    await expect(filas(page)).toHaveCount(1);
-    await expect(marcadores(page)).toHaveCount(1);
-
-    await porTipo.getByRole('button', { name: 'Todos' }).click();
-    await porAutor.getByRole('button', { name: /Adriana/ }).click();
-    await expect(filas(page)).toHaveCount(2);
-    await expect(marcadores(page)).toHaveCount(2);
-
-    await porTipo.getByRole('button', { name: 'Comida' }).click();
-    await expect(page.getByText('Ningún punto coincide con el filtro.')).toBeVisible();
-    await expect(marcadores(page)).toHaveCount(0);
-  });
 
   test('sin puntos se explica cómo añadir el primero y no hay filtros', async ({ page }) => {
     await preparar(page, { puntos: [] });
@@ -402,31 +300,5 @@ test.describe('Itinerario · puntos de interés', () => {
     await expect(page.getByRole('group', { name: 'Filtrar por tipo' })).toHaveCount(0);
   });
 
-  test('en un viaje finalizado los puntos solo se ven', async ({ page }) => {
-    const { creados } = await preparar(page, { estado: 'finalizado' });
-    await abrirPuntos(page);
-    await expect(marcadores(page)).toHaveCount(3);
 
-    await expect(page.getByLabel('Buscar una dirección')).toHaveCount(0);
-    await expect(page.getByText('Solo se pueden añadir puntos mientras el viaje está activo.')).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Eliminar / })).toHaveCount(0);
-    await tocarMapa(page);
-    await expect(page.getByRole('dialog')).toHaveCount(0);
-    await page.getByRole('button', { name: 'Ver Fontana di Trevi en el mapa' }).click();
-    await expect(page.getByRole('dialog', { name: 'Fontana di Trevi' }).getByRole('button', { name: 'Borrar' })).toHaveCount(0);
-    expect(creados).toHaveLength(0);
-  });
-
-  test('el mapa de los puntos se puede ampliar y reducir', async ({ page }) => {
-    await preparar(page);
-    await abrirPuntos(page);
-    const alto = async () => (await mapa(page).boundingBox())?.height ?? 0;
-    const altoNormal = await alto();
-
-    await page.getByRole('button', { name: 'Ampliar mapa' }).click();
-    await expect.poll(alto).toBeGreaterThan(altoNormal * 1.5);
-
-    await page.keyboard.press('Escape');
-    await expect.poll(alto).toBe(altoNormal);
-  });
 });

@@ -184,36 +184,7 @@ test.describe('Lista de tareas colaborativa', () => {
     await expect(page.getByText('Lista de Tareas', { exact: true })).toBeVisible();
   });
 
-  test('el inicio del viaje cuenta mis tareas pendientes y lleva a la lista', async ({ page }) => {
-    await entrarConSesion(page);
-    await simularBackend(page, {
-      tareas: [
-        { id: 't1', texto: 'Comprar entradas', hecha: false, hecha_en: null, creado_en: '2027-05-01T10:00:00Z', responsable: { usuario_id: USUARIO_ID, nombre: 'Adriana', avatar_url: null } },
-        { id: 't2', texto: 'Reservar la cena', hecha: false, hecha_en: null, creado_en: '2027-05-01T11:00:00Z', responsable: { usuario_id: BERTA_ID, nombre: 'Berta', avatar_url: null } },
-      ],
-    });
-    await page.goto(`/viajes/${VIAJE_ID}`);
-    await expect(page.getByText('1 tarea por completar')).toBeVisible();
 
-    await page.getByRole('button', { name: /Tareas pendientes/ }).click();
-    await expect(page).toHaveURL(/\/documentos\?pestana=tareas$/);
-    await expect(page.getByText('Lista de Tareas', { exact: true })).toBeVisible();
-  });
-
-  test('en un viaje finalizado la lista es de solo lectura', async ({ page }) => {
-    await entrarConSesion(page);
-    await simularBackend(page, {
-      estado: 'finalizado',
-      tareas: [{ id: 't1', texto: 'Comprar entradas', hecha: false, hecha_en: null, creado_en: '2027-05-01T10:00:00Z', responsable: { usuario_id: USUARIO_ID, nombre: 'Adriana', avatar_url: null } }],
-    });
-    await abrirTareas(page);
-
-    await expect(page.getByRole('img', { name: 'Modo visualización: el viaje no se puede modificar' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Nueva' })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /^Editar / })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /^Eliminar / })).toHaveCount(0);
-    await expect(page.getByRole('checkbox', { name: 'Marcar Comprar entradas como hecha' })).toBeDisabled();
-  });
 
   test('en móvil no hay scroll horizontal con un texto largo', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 640 });

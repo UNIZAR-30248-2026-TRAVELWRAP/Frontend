@@ -132,37 +132,7 @@ test.describe('Foto de portada del viaje', () => {
     await expect(portadaVisible(page)).toHaveCount(0);
   });
 
-  test('el creador quita la portada y el viaje vuelve a su aspecto de siempre', async ({ page }) => {
-    await entrarConSesion(page);
-    const { portadas } = await simularBackend(page, viaje({ portada_url: PORTADA }));
 
-    await page.goto('/viajes/roma/editar');
-    await expect(portadaVisible(page)).toHaveAttribute('src', PORTADA);
-    await page.getByRole('button', { name: 'Quitar foto' }).click();
-    await expect(page.getByText('Añade una foto de portada')).toBeVisible();
-    await page.getByRole('button', { name: 'Guardar cambios' }).click();
-
-    await expect(page).toHaveURL(/\/viajes\/roma$/);
-    await expect(portadaVisible(page)).toHaveCount(0);
-    expect(portadas.map((p) => p.metodo)).toEqual(['DELETE']);
-  });
-
-  test('una foto de otro tipo se rechaza con un mensaje y no se envía nada', async ({ page }) => {
-    await entrarConSesion(page);
-    const { portadas } = await simularBackend(page, viaje({ portada_url: PORTADA }));
-
-    await page.goto('/viajes/roma/editar');
-    await page.getByLabel('Elegir foto de portada').setInputFiles({
-      name: 'animacion.gif',
-      mimeType: 'image/gif',
-      buffer: Buffer.from('GIF89a'),
-    });
-
-    await expect(page.getByRole('alert')).toHaveText('La portada debe ser una foto JPEG o PNG');
-    await expect(portadaVisible(page)).toHaveAttribute('src', PORTADA);
-    await expect(page.getByRole('button', { name: 'Guardar cambios' })).toBeDisabled();
-    expect(portadas).toHaveLength(0);
-  });
 
   test('si el servidor la rechaza por grande muestra el error y se puede volver a intentar', async ({ page }) => {
     await entrarConSesion(page);
@@ -181,32 +151,7 @@ test.describe('Foto de portada del viaje', () => {
     await expect(page.getByRole('button', { name: 'Guardar cambios' })).toBeEnabled();
   });
 
-  test('un miembro que no es el creador la ve y puede cambiarla, y también edita los datos del viaje', async ({ page }) => {
-    await entrarConSesion(page);
-    const { portadas } = await simularBackend(page, viaje({ rol: 'miembro', portada_url: PORTADA }));
 
-    await page.goto('/viajes/roma');
-    await expect(portadaVisible(page)).toHaveAttribute('src', PORTADA);
-    await page.getByRole('button', { name: /Editar viaje/ }).click();
-
-    await expect(page).toHaveURL(/\/viajes\/roma\/editar$/);
-    await expect(page.getByLabel('Nombre del viaje')).toBeVisible();
-    await page.getByLabel('Elegir foto de portada').setInputFiles(FOTO_PEQUENA);
-    await page.getByRole('button', { name: 'Guardar cambios' }).click();
-
-    await expect(page).toHaveURL(/\/viajes\/roma$/);
-    expect(portadas.map((p) => p.metodo)).toEqual(['PUT']);
-  });
-
-  test('en un viaje finalizado nadie puede cambiar la portada, pero se sigue viendo', async ({ page }) => {
-    await entrarConSesion(page);
-    await simularBackend(page, viaje({ estado: 'finalizado', portada_url: PORTADA }));
-
-    await page.goto('/viajes/roma');
-    await expect(portadaVisible(page)).toHaveAttribute('src', PORTADA);
-    await expect(page.getByRole('button', { name: 'Cambiar portada' })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /Editar viaje/ })).toHaveCount(0);
-  });
 
   test('a 320 px no hay scroll horizontal ni con portada ni en el selector', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 640 });

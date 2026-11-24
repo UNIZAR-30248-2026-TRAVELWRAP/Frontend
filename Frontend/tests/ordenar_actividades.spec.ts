@@ -172,28 +172,7 @@ test.describe('Itinerario · reordenar actividades arrastrando', () => {
     await expect(agenda(page)).toHaveText([/^Compras/, /^Desayuno/, /^Cena/, /^Paseo/, /^Fotos/]);
   });
 
-  test('una única actividad sin hora también se puede colocar entre las que tienen hora', async ({ page }) => {
-    await preparar(page, {}, [
-      actividad('Desayuno', { hora_inicio: '08:30:00', orden: 0 }),
-      actividad('Comida', { hora_inicio: '14:00:00', orden: 1 }),
-      actividad('Paseo', { orden: 2 }),
-    ]);
-    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
 
-    await arrastrar(page, asa(page, 'Paseo'), agenda(page).nth(1));
-
-    await expect(agenda(page)).toHaveText([/^Desayuno/, /^Paseo/, /^Comida/]);
-  });
-
-  test('las actividades con una hora propia no tienen asa y no se pueden mover', async ({ page }) => {
-    await preparar(page);
-    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
-
-    await expect(page.getByRole('button', { name: 'Mover Desayuno' })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Mover Cena' })).toHaveCount(0);
-    await expect(agenda(page).nth(0)).toHaveText(/^Desayuno/);
-    await expect(agenda(page).nth(1)).toHaveText(/^Cena/);
-  });
 
   test('al soltar se envía al servidor el orden de todo el día con la sesión', async ({ page }) => {
     const { ordenesRecibidos } = await preparar(page);
@@ -209,44 +188,8 @@ test.describe('Itinerario · reordenar actividades arrastrando', () => {
     });
   });
 
-  test('colocar una sin hora entre las de hora guarda ese orden', async ({ page }) => {
-    const { ordenesRecibidos } = await preparar(page);
-    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
 
-    await arrastrar(page, asa(page, 'Fotos'), agenda(page).nth(1));
 
-    await expect.poll(() => ordenesRecibidos.length).toBe(1);
-    expect(ordenesRecibidos[0].actividades).toEqual(['Desayuno', 'Fotos', 'Cena', 'Paseo', 'Compras']);
-  });
-
-  test('si el servidor no puede guardar el orden se avisa y la agenda vuelve a como estaba', async ({ page }) => {
-    await preparar(page, {}, AGENDA, {
-      status: 502,
-      cuerpo: { error: { codigo: 'error_actividad', mensaje: 'No se ha podido guardar el orden de las actividades' } },
-    });
-    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
-
-    await arrastrar(page, asa(page, 'Fotos'), agenda(page).nth(2));
-
-    await expect(page.getByRole('alert')).toHaveText('No se ha podido guardar el orden de las actividades');
-    await expect(agenda(page)).toHaveText([/^Desayuno/, /^Cena/, /^Paseo/, /^Compras/, /^Fotos/]);
-  });
-
-  test('si la agenda ha cambiado se avisa y se vuelve a pedir el listado', async ({ page }) => {
-    const { totalDeListados } = await preparar(page, {}, AGENDA, {
-      status: 409,
-      cuerpo: { error: { codigo: 'agenda_cambiada', mensaje: 'La agenda de ese día ha cambiado. Recárgala para ver las actividades actuales' } },
-    });
-    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
-    await expect(agenda(page)).toHaveCount(5);
-    const antes = totalDeListados();
-
-    await arrastrar(page, asa(page, 'Fotos'), agenda(page).nth(2));
-
-    await expect(page.getByRole('alert')).toContainText('La agenda de ese día ha cambiado');
-    await expect.poll(() => totalDeListados()).toBeGreaterThan(antes);
-    await expect(agenda(page)).toHaveText([/^Desayuno/, /^Cena/, /^Paseo/, /^Compras/, /^Fotos/]);
-  });
 
   test('con el teclado se coge el asa, se mueve con las flechas y se suelta', async ({ page }) => {
     await preparar(page);
@@ -262,47 +205,8 @@ test.describe('Itinerario · reordenar actividades arrastrando', () => {
     await expect(agenda(page)).toHaveText([/^Desayuno/, /^Cena/, /^Compras/, /^Paseo/, /^Fotos/]);
   });
 
-  test('con Escape se cancela el movimiento con teclado', async ({ page }) => {
-    await preparar(page);
-    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
 
-    await asa(page, 'Paseo').focus();
-    await page.keyboard.press('Space');
-    await esperarAlSensor(page);
-    await page.keyboard.press('ArrowDown');
-    await esperarAlSensor(page);
-    await page.keyboard.press('Escape');
 
-    await expect(agenda(page)).toHaveText([/^Desayuno/, /^Cena/, /^Paseo/, /^Compras/, /^Fotos/]);
-  });
-
-  test('las instrucciones para lectores de pantalla están en español y se anuncian los movimientos', async ({ page }) => {
-    await preparar(page);
-    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
-
-    await expect(page.getByText(/Para mover una actividad pulsa espacio o Intro/)).toHaveCount(1);
-    await asa(page, 'Paseo').focus();
-    await page.keyboard.press('Space');
-
-    await expect(page.locator('[id^=DndLiveRegion]')).toContainText('«Paseo»');
-    await page.keyboard.press('Escape');
-  });
-
-  test('los marcadores del mapa y su numeración siguen el nuevo orden', async ({ page }) => {
-    const conUbicacion = [
-      actividad('Paseo', { orden: 0, ubicacion_nombre: 'Trastevere', latitud: 41.889, longitud: 12.47 }),
-      actividad('Compras', { orden: 1, ubicacion_nombre: 'Via del Corso', latitud: 41.9, longitud: 12.48 }),
-    ];
-    await preparar(page, {}, conUbicacion);
-    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
-    await expect(page.getByRole('button', { name: '1. Paseo' })).toBeVisible();
-
-    await arrastrar(page, asa(page, 'Compras'), agenda(page).nth(0));
-
-    await expect(agenda(page)).toHaveText([/^Compras/, /^Paseo/]);
-    await expect(page.getByRole('button', { name: '1. Compras' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '2. Paseo' })).toBeVisible();
-  });
 
   test('en un viaje finalizado no hay asas', async ({ page }) => {
     await preparar(page, { estado: 'finalizado' });

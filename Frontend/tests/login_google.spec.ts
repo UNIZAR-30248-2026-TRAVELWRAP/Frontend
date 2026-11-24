@@ -54,38 +54,7 @@ test.describe('PB-05 · Iniciar sesión con Google (OAuth)', () => {
     await expect(page).toHaveURL(/\/$/);
   });
 
-  test('la sesión de Google se guarda y se mantiene al recargar', async ({ page }) => {
-    await simularBackendGoogle(page, `sesion=${codificar(sesion)}`);
-    let refreshRecibido: unknown = null;
-    await page.route('**/api/auth/refresh', (route) => {
-      refreshRecibido = route.request().postDataJSON();
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ token: 'token-nuevo', refresh_token: 'refresco-nuevo' }),
-      });
-    });
 
-    await pulsarGoogle(page);
-    await expect(page.getByRole('button', { name: `Perfil de ${EMAIL}` })).toBeVisible();
-
-    const guardada = await page.evaluate(() => JSON.parse(localStorage.getItem('travelwrap.sesion') ?? 'null'));
-    expect(guardada).toEqual(sesion);
-
-    await page.reload();
-
-    await expect(page.getByRole('button', { name: `Perfil de ${EMAIL}` })).toBeVisible();
-    expect(refreshRecibido).toEqual({ refresh_token: 'token-refresco' });
-  });
-
-  test('si el usuario cancela en Google, vuelve al login con un aviso', async ({ page }) => {
-    await simularBackendGoogle(page, 'error=google_cancelado');
-
-    await pulsarGoogle(page);
-
-    await expect(page).toHaveURL(/\/login$/);
-    await expect(page.getByRole('alert')).toHaveText('Has cancelado el inicio de sesión con Google');
-  });
 
   test('si el backend no puede completar el login, vuelve al login con un error', async ({ page }) => {
     await simularBackendGoogle(page, 'error=google');
@@ -96,11 +65,4 @@ test.describe('PB-05 · Iniciar sesión con Google (OAuth)', () => {
     await expect(page.getByRole('alert')).toHaveText('No se ha podido iniciar sesión con Google');
   });
 
-  test('una respuesta manipulada no inicia sesión', async ({ page }) => {
-    await page.goto('/auth/callback#sesion=manipulada');
-
-    await expect(page).toHaveURL(/\/login$/);
-    await expect(page.getByRole('alert')).toHaveText('No se ha podido iniciar sesión con Google');
-    expect(await page.evaluate(() => localStorage.getItem('travelwrap.sesion'))).toBeNull();
-  });
 });

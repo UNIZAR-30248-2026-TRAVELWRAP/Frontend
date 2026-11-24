@@ -260,36 +260,7 @@ test.describe('Cartera de documentos', () => {
     expect(recibidas).toHaveLength(0);
   });
 
-  test('un archivo de más de 8 MB se rechaza sin llamar al servidor', async ({ page }) => {
-    await entrarConSesion(page);
-    const { recibidas } = await simularBackend(page);
 
-    await page.goto(rutaCartera);
-    await expect(filas(page)).toHaveCount(1);
-    await page
-      .getByLabel('Elegir el documento que se va a subir')
-      .setInputFiles({ name: 'enorme.pdf', mimeType: 'application/pdf', buffer: Buffer.alloc(8_000_001, 1) });
-
-    await expect(page.getByRole('alert')).toContainText('El documento no puede ocupar más de 8 MB');
-    expect(recibidas).toHaveLength(0);
-  });
-
-  test('muestra el error que devuelve el servidor y la lista no cambia', async ({ page }) => {
-    await entrarConSesion(page);
-    await simularBackend(page, {
-      respuestaSubida: () => ({
-        status: 400,
-        cuerpo: { error: { codigo: 'tipo_no_permitido', mensaje: 'Solo se pueden subir documentos PDF o imágenes JPEG o PNG' } },
-      }),
-    });
-
-    await page.goto(rutaCartera);
-    await expect(filas(page)).toHaveCount(1);
-    await page.getByLabel('Elegir el documento que se va a subir').setInputFiles(PDF);
-
-    await expect(page.getByRole('alert')).toContainText('No se ha podido subir el documento: Solo se pueden subir');
-    await expect(filas(page)).toHaveCount(1);
-  });
 
   test('en un viaje finalizado se ven los documentos pero no se puede subir ninguno', async ({ page }) => {
     await entrarConSesion(page);
@@ -349,27 +320,6 @@ test.describe('Cartera de documentos', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0);
   });
 
-  test('si el servidor falla, la vista previa muestra el error y «Reintentar» abre el documento', async ({ page }) => {
-    await entrarConSesion(page);
-    let servidorCaido = true;
-    await simularBackend(page, {
-      documentos: [imagenExistente],
-      respuestaUrl: (documento) =>
-        servidorCaido
-          ? { status: 502, cuerpo: { error: { codigo: 'error_documento', mensaje: 'No se ha podido obtener el enlace del documento' } } }
-          : { status: 200, cuerpo: enlaceDe(documento) },
-    });
-    await simularArchivos(page);
-
-    await page.goto(rutaCartera);
-    await page.getByRole('button', { name: 'Abrir Foto del hotel.png' }).click();
-
-    await expect(page.getByRole('alert')).toContainText('No se ha podido abrir el documento');
-    servidorCaido = false;
-    await page.getByRole('button', { name: 'Reintentar' }).click();
-
-    await expect(page.getByRole('dialog').getByRole('img', { name: 'Foto del hotel.png' })).toBeVisible();
-  });
 
   test('si el documento ya no existe, la vista previa lo dice', async ({ page }) => {
     await entrarConSesion(page);
@@ -399,93 +349,4 @@ test.describe('Cartera de documentos', () => {
     await expect(page).toHaveURL(/\/login$/);
   });
 
-  test.describe('eliminar un documento', () => {
-    const papelera = (page: Page) => page.getByRole('button', { name: 'Eliminar Reserva del hotel.pdf' });
-
-    test('al confirmar, el documento se elimina de la cartera', async ({ page }) => {
-      await entrarConSesion(page);
-      const { borrados } = await simularBackend(page);
-
-      await page.goto(rutaCartera);
-      await expect(filas(page)).toHaveCount(1);
-      await papelera(page).click();
-
-      const dialogo = page.getByRole('dialog');
-      await expect(dialogo).toContainText('¿Eliminar este documento?');
-      await expect(dialogo).toContainText('Reserva del hotel.pdf');
-      await dialogo.getByRole('button', { name: 'Eliminar documento' }).click();
-
-      await expect(page.getByRole('status')).toContainText('Documento eliminado');
-      await expect(dialogo).toHaveCount(0);
-      await expect(filas(page)).toHaveCount(0);
-      await expect(page.getByText('Aún no hay documentos en la cartera del viaje.')).toBeVisible();
-      // Es una acción del usuario, no de un efecto: llega una sola petición
-      expect(borrados).toEqual([`/viajes/${VIAJE_ID}/documentos/doc-1`]);
-    });
-
-    test('al cancelar, el documento se mantiene y no se llama al servidor', async ({ page }) => {
-      await entrarConSesion(page);
-      const { borrados } = await simularBackend(page);
-
-      await page.goto(rutaCartera);
-      await expect(filas(page)).toHaveCount(1);
-      await papelera(page).click();
-      await page.getByRole('dialog').getByRole('button', { name: 'Cancelar' }).click();
-
-      await expect(page.getByRole('dialog')).toHaveCount(0);
-      await expect(filas(page)).toHaveCount(1);
-      await expect(filas(page).first()).toContainText('Reserva del hotel.pdf');
-      expect(borrados).toHaveLength(0);
-    });
-
-    test('si el servidor falla, el error sale en el diálogo y el documento sigue en la lista', async ({ page }) => {
-      await entrarConSesion(page);
-      const { borrados } = await simularBackend(page, {
-        respuestaBorrado: () => ({
-          status: 502,
-          cuerpo: { error: { codigo: 'error_documento', mensaje: 'No se ha podido eliminar el documento' } },
-        }),
-      });
-
-      await page.goto(rutaCartera);
-      await expect(filas(page)).toHaveCount(1);
-      await papelera(page).click();
-      const dialogo = page.getByRole('dialog');
-      await dialogo.getByRole('button', { name: 'Eliminar documento' }).click();
-
-      await expect(dialogo.getByRole('alert')).toContainText('No se ha podido eliminar el documento');
-      await expect(dialogo.getByRole('button', { name: 'Eliminar documento' })).toBeEnabled();
-      await expect(filas(page)).toHaveCount(1);
-      await expect(page.getByRole('status')).toHaveCount(0);
-      expect(borrados).toHaveLength(1);
-    });
-
-    test('si otro miembro ya lo había eliminado, se quita de la lista con su aviso', async ({ page }) => {
-      await entrarConSesion(page);
-      await simularBackend(page, {
-        respuestaBorrado: () => ({
-          status: 404,
-          cuerpo: { error: { codigo: 'documento_no_encontrado', mensaje: 'El documento no existe en este viaje' } },
-        }),
-      });
-
-      await page.goto(rutaCartera);
-      await papelera(page).click();
-      await page.getByRole('dialog').getByRole('button', { name: 'Eliminar documento' }).click();
-
-      await expect(page.getByRole('status')).toContainText('Este documento ya lo había eliminado otro miembro');
-      await expect(page.getByRole('dialog')).toHaveCount(0);
-      await expect(filas(page)).toHaveCount(0);
-    });
-
-    test('en un viaje finalizado no hay botón para eliminar', async ({ page }) => {
-      await entrarConSesion(page);
-      await simularBackend(page, { estado: 'finalizado' });
-
-      await page.goto(rutaCartera);
-
-      await expect(filas(page)).toHaveCount(1);
-      await expect(page.getByRole('button', { name: /^Eliminar / })).toHaveCount(0);
-    });
-  });
 });

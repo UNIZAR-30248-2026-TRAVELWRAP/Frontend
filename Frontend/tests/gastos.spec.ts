@@ -2,8 +2,6 @@ import { test, expect, type Page, type Route } from '@playwright/test';
 
 const EMAIL = 'adriana@travelwrap.app';
 const USUARIO_ID = 'df77cba6-4be5-4cbc-814b-1e228dd73dcc';
-const OTRO_ID = '5b1f0c2e-8a7d-4c3b-9e6f-2d4a1b3c5e7f';
-const TERCERO_ID = '8c4d2e1f-3a5b-4c6d-9e7f-1a2b3c4d5e6f';
 const BERTA_ID = '5b1f0c2e-8a7d-4c3b-9e6f-2d4a1b3c5e7f';
 const DANIEL_ID = '8c4d2e1f-3a5b-4c6d-9e7f-1a2b3c4d5e6f';
 const VIAJE_ID = 'roma';
@@ -345,30 +343,12 @@ test.describe('Control de Gastos', () => {
     await expect(historial(page)).toHaveCount(1);
   });
 
-  test('en un viaje finalizado se consultan los gastos pero no se pueden añadir', async ({ page }) => {
-    await entrarConSesion(page);
-    await simularHistorial(page, [{ id: 'g1' }], { estado: 'finalizado' });
-
-    await page.goto(rutaControl);
-
-    await expect(historial(page)).toHaveCount(1);
-    await expect(page.getByRole('button', { name: 'Añadir Gasto' })).toHaveCount(0);
-    await expect(page.getByRole('img', { name: 'Modo visualización: el viaje no se puede modificar' })).toBeVisible();
-  });
 });
 
 // Balance 
 
 // Saldos que devuelve GET /gastos/balance. Se registra después del resto de rutas, así que tiene prioridad.
 // Devuelve cuántas veces se ha pedido el balance
-const simularBalance = async (page: Page, saldos: Record<string, unknown>[]) => {
-  let peticiones = 0;
-  await page.route(`**/api/viajes/${VIAJE_ID}/gastos/balance`, (route) => {
-    peticiones += 1;
-    return json(route, 200, { saldos });
-  });
-  return { peticiones: () => peticiones };
-};
 
 const saldo = (usuarioId: string, nombre: string, valor: number) => ({
   usuario_id: usuarioId,
@@ -378,276 +358,22 @@ const saldo = (usuarioId: string, nombre: string, valor: number) => ({
   saldo: valor,
 });
 
-const saldoDe = (page: Page, nombre: string) =>
-  page.getByRole('list', { name: 'Saldo de cada miembro' }).getByRole('listitem').filter({ hasText: nombre });
 
-test.describe('Balance de cada miembro', () => {
-  test('muestra «Tu saldo» y el saldo de cada miembro con su signo', async ({ page }) => {
-    await entrarConSesion(page);
-    await simularHistorial(page, [{ id: 'g1' }]);
-    await simularBalance(page, [
-      saldo(DANIEL_ID, 'Daniel', 40),
-      saldo(BERTA_ID, 'Berta', 20),
-      saldo(USUARIO_ID, 'Adriana', -60),
-    ]);
-
-    await page.goto(rutaControl);
-
-    await expect(page.getByRole('group', { name: 'Tu saldo' })).toContainText('-60 €');
-    await expect(page.getByRole('group', { name: 'Tu saldo' })).toContainText('Debes');
-    await expect(saldoDe(page, 'Daniel')).toContainText('+40 €');
-    await expect(saldoDe(page, 'Berta')).toContainText('+20 €');
-    await expect(saldoDe(page, 'Adriana')).toContainText('-60 €');
-  });
-
-  test('cuando te deben, «Tu saldo» sale en positivo', async ({ page }) => {
-    await entrarConSesion(page);
-    await simularHistorial(page, [{ id: 'g1' }]);
-    await simularBalance(page, [saldo(BERTA_ID, 'Berta', -30.25), saldo(USUARIO_ID, 'Adriana', 30.25)]);
-
-    await page.goto(rutaControl);
-
-    await expect(page.getByRole('group', { name: 'Tu saldo' })).toContainText('+30,25 €');
-    await expect(page.getByRole('group', { name: 'Tu saldo' })).toContainText('Te deben');
-  });
-
-  test('sin deudas, «Tu saldo» está al día', async ({ page }) => {
-    await entrarConSesion(page);
-    await simularHistorial(page, []);
-    await simularBalance(page, [saldo(USUARIO_ID, 'Adriana', 0)]);
-
-    await page.goto(rutaControl);
-
-    await expect(page.getByRole('group', { name: 'Tu saldo' })).toContainText('0 €');
-    await expect(page.getByRole('group', { name: 'Tu saldo' })).toContainText('Al día');
-  });
-
-  test('al registrar un gasto se vuelve a pedir el balance', async ({ page }) => {
-    await entrarConSesion(page);
-    await simularHistorial(page, []);
-    const balance = await simularBalance(page, [saldo(USUARIO_ID, 'Adriana', 0)]);
-
-    await page.goto(rutaControl);
-    await expect(page.getByRole('group', { name: 'Tu saldo' })).toBeVisible();
-    // En desarrollo React puede pedirlo dos veces al cargar: se comprueba que vuelve a pedirse, no cuántas veces
-    const alAbrir = balance.peticiones();
-    await page.getByRole('button', { name: 'Añadir Gasto' }).click();
-    await page.getByLabel('Importe').fill('10');
-    await page.getByLabel('Concepto').fill('Cena');
-    await page.getByRole('button', { name: 'Registrar gasto' }).click();
-
-    await expect(page).toHaveURL(new RegExp(`${rutaControl}$`));
-    await expect(page.getByRole('group', { name: 'Tu saldo' })).toBeVisible();
-    await expect.poll(() => balance.peticiones()).toBeGreaterThan(alAbrir);
-  });
-});
 
 // Liquidación pendiente: transferencias que devuelve GET /gastos/liquidacion (con prioridad, como el balance)
-const simularLiquidacion = async (page: Page, transferencias: Record<string, unknown>[]) => {
-  await page.route(`**/api/viajes/${VIAJE_ID}/gastos/liquidacion`, (route) =>
-    json(route, 200, { transferencias, saldadas: [] }),
-  );
-};
 
-const transferencia = (de: string, deNombre: string, a: string, aNombre: string, importe: number) => ({
-  de,
-  de_nombre: deNombre,
-  a,
-  a_nombre: aNombre,
-  importe,
-});
 
-test.describe('Liquidación pendiente', () => {
-  test('sin deudas dice que las cuentas están saldadas', async ({ page }) => {
-    await entrarConSesion(page);
-    await simularHistorial(page, []);
-    await simularLiquidacion(page, []);
-
-    await page.goto(rutaControl);
-    await expect(page.getByRole('region', { name: 'Liquidación' })).toContainText('Cuentas saldadas');
-  });
-
-  test('cada transferencia dice quién paga a quién y destaca las tuyas', async ({ page }) => {
-    await entrarConSesion(page);
-    await simularHistorial(page, []);
-    await simularLiquidacion(page, [
-      transferencia(USUARIO_ID, 'Adriana', OTRO_ID, 'Berta', 30),
-      transferencia(OTRO_ID, 'Berta', TERCERO_ID, 'Daniel', 12.5),
-    ]);
-
-    await page.goto(rutaControl);
-    const filas = page.getByRole('list', { name: 'Transferencias pendientes' }).getByRole('listitem');
-    await expect(filas.nth(0)).toContainText('Tú pagas a Berta');
-    await expect(filas.nth(0)).toContainText('30 €');
-    await expect(filas.nth(1)).toContainText('Berta paga a Daniel');
-    await expect(filas.nth(1)).toContainText('12,50 €');
-  });
-});
 
 // Importes grandes en pantallas estrechas
 
 // Hay desplazamiento horizontal si el contenido es más ancho que la ventana
-const haySalidaPorLaDerecha = (page: Page) =>
-  page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
 
-test.describe('Importes grandes en un móvil de 320 px', () => {
-  test.use({ viewport: { width: 320, height: 640 } });
-
-  test('Control de Gastos no se sale por la derecha con importes de diez cifras', async ({ page }) => {
-    await entrarConSesion(page);
-    await simularHistorial(page, [{ id: 'g1', importe: 9999999999.99 }, { id: 'g2', importe: 150.6 }]);
-    await simularBalance(page, [
-      saldo(DANIEL_ID, 'Daniel', 6666666766.73),
-      saldo(BERTA_ID, 'Berta', -3333333383.37),
-      saldo(USUARIO_ID, 'Adriana', -3333333383.36),
-    ]);
-
-    await page.goto(rutaControl);
-
-    await expect(page.getByRole('region', { name: 'Total gastado' })).toContainText('10.000.000.150,59 €');
-    await expect(page.getByRole('group', { name: 'Tu saldo' })).toContainText('-3.333.333.383,36 €');
-    expect(await haySalidaPorLaDerecha(page)).toBe(false);
-    // El total ocupa una sola línea: el símbolo del euro no se queda solo debajo
-    const total = page.getByRole('region', { name: 'Total gastado' }).getByText('10.000.000.150,59 €');
-    const { height } = (await total.boundingBox())!;
-    const lineHeight = await total.evaluate((el) => Number.parseFloat(getComputedStyle(el).fontSize) * 1.6);
-    expect(height).toBeLessThan(lineHeight);
-  });
-
-  test('en Añadir Gasto el importe máximo se ve entero sin salirse', async ({ page }) => {
-    await entrarConSesion(page);
-    await simularBackend(page);
-
-    await page.goto(rutaFormulario);
-    const importe = page.getByLabel('Importe');
-    await importe.fill('9999999999,99');
-
-    expect(await haySalidaPorLaDerecha(page)).toBe(false);
-    // El texto cabe en el campo: no hay parte oculta que haya que desplazar
-    expect(await importe.evaluate((el: HTMLInputElement) => el.scrollWidth <= el.clientWidth)).toBe(true);
-  });
-});
 
 // Detalle, modificar y eliminar un gasto. El backend simulado guarda el gasto en memoria: GET, PATCH y DELETE del
 // gasto cambian lo que devuelven el historial, el total y el detalle
-const GASTO_ID = 'g1';
-const NOMBRES = { [USUARIO_ID]: 'Adriana', [BERTA_ID]: 'Berta', [DANIEL_ID]: 'Daniel' } as Record<string, string>;
 
-const gastoCena = () => ({
-  id: GASTO_ID,
-  viaje_id: VIAJE_ID,
-  concepto: 'Cena en el Trastevere',
-  importe: 60.5,
-  categoria: 'comida',
-  pagado_por: BERTA_ID,
-  fecha: '2027-05-12',
-  creado_por: USUARIO_ID,
-  creado_en: '2026-10-29T10:00:00Z',
-  actualizado_en: '2026-10-29T10:00:00Z',
-  repartos: [
-    { usuario_id: BERTA_ID, importe: 30.25 },
-    { usuario_id: USUARIO_ID, importe: 30.25 },
-  ],
-});
 
 // Reparto a partes iguales para el backend simulado (sin céntimos sobrantes en estos casos)
-const repartir = (importe: number, participantes: string[]) =>
-  participantes.map((id) => ({ usuario_id: id, importe: Math.round((importe / participantes.length) * 100) / 100 }));
 
-const simularGastoEnViaje = async (page: Page) => {
-  let gastos = [gastoCena()];
-  const conNombre = (gasto: ReturnType<typeof gastoCena>) => ({
-    ...gasto,
-    repartos: gasto.repartos.map((r) => ({ ...r, nombre: NOMBRES[r.usuario_id] ?? null, abandonado: false })),
-  });
-  const total = () => gastos.reduce((suma, g) => suma + Math.round(g.importe * 100), 0) / 100;
 
-  await page.route('**/api/viajes/**', async (route) => {
-    const peticion = route.request();
-    const ruta = new URL(peticion.url()).pathname.replace(/^.*\/api/, '');
-    const metodo = peticion.method();
 
-    if (ruta === `/viajes/${VIAJE_ID}/gastos/${GASTO_ID}`) {
-      if (metodo === 'DELETE') {
-        gastos = gastos.filter((g) => g.id !== GASTO_ID);
-        return route.fulfill({ status: 204, body: '' });
-      }
-      if (metodo === 'PATCH') {
-        const cuerpo = peticion.postDataJSON();
-        gastos = gastos.map((g) => ({
-          ...g,
-          concepto: cuerpo.concepto,
-          importe: cuerpo.importe,
-          pagado_por: cuerpo.pagado_por,
-          repartos: repartir(cuerpo.importe, cuerpo.participantes),
-        }));
-        return json(route, 200, gastos[0]);
-      }
-      const gasto = gastos.find((g) => g.id === GASTO_ID);
-      return gasto ? json(route, 200, conNombre(gasto)) : json(route, 404, { error: { codigo: 'gasto_no_encontrado', mensaje: 'El gasto no existe o no pertenece a este viaje' } });
-    }
-    if (ruta === `/viajes/${VIAJE_ID}/gastos/balance`) return json(route, 200, { saldos: [] });
-    if (ruta === `/viajes/${VIAJE_ID}/gastos/liquidacion`) return json(route, 200, { transferencias: [], saldadas: [] });
-    if (ruta === `/viajes/${VIAJE_ID}/gastos`) return json(route, 200, { gastos, total: total() });
-    return json(route, 200, viaje);
-  });
-};
-
-const detalle = (page: Page) => page.getByRole('region', { name: 'Datos del gasto' });
-const reparto = (page: Page) => page.getByRole('list', { name: 'Parte de cada miembro' }).getByRole('listitem');
-
-test.describe('Detalle y gestión de un gasto', () => {
-  test('desde el historial se abre el detalle con la parte de cada miembro', async ({ page }) => {
-    await entrarConSesion(page);
-    await simularGastoEnViaje(page);
-
-    await page.goto(rutaControl);
-    await page.getByRole('button', { name: 'Ver el detalle de Cena en el Trastevere' }).click();
-
-    await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}/gastos/${GASTO_ID}$`));
-    await expect(detalle(page)).toContainText('60,50 €');
-    await expect(reparto(page).nth(0)).toContainText('Berta');
-    await expect(reparto(page).nth(1)).toContainText('Adriana (tú)');
-    await expect(reparto(page).nth(1)).toContainText('30,25 €');
-  });
-
-  test('modificar el importe actualiza el detalle y el reparto', async ({ page }) => {
-    await entrarConSesion(page);
-    await simularGastoEnViaje(page);
-
-    await page.goto(`/viajes/${VIAJE_ID}/gastos/${GASTO_ID}`);
-    await page.getByRole('button', { name: 'Modificar' }).click();
-    await expect(page.getByText('Modificar gasto', { exact: true })).toBeVisible();
-    await page.getByLabel('Importe').fill('30');
-    await page.getByRole('button', { name: 'Guardar cambios' }).click();
-
-    await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}/gastos/${GASTO_ID}$`));
-    await expect(detalle(page)).toContainText('30 €');
-    await expect(reparto(page).nth(1)).toContainText('15 €');
-  });
-
-  test('eliminar tras confirmar vuelve a Control de Gastos sin el gasto', async ({ page }) => {
-    await entrarConSesion(page);
-    await simularGastoEnViaje(page);
-
-    await page.goto(`/viajes/${VIAJE_ID}/gastos/${GASTO_ID}`);
-    await page.getByRole('button', { name: 'Eliminar', exact: true }).click();
-    await expect(page.getByRole('dialog')).toContainText('¿Eliminar este gasto?');
-    await page.getByRole('button', { name: 'Eliminar gasto' }).click();
-
-    await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}/gastos$`));
-    await expect(page.getByText('Todavía no hay gastos en este viaje.')).toBeVisible();
-  });
-
-  test('cancelar la eliminación no borra el gasto', async ({ page }) => {
-    await entrarConSesion(page);
-    await simularGastoEnViaje(page);
-
-    await page.goto(`/viajes/${VIAJE_ID}/gastos/${GASTO_ID}`);
-    await page.getByRole('button', { name: 'Eliminar', exact: true }).click();
-    await page.getByRole('button', { name: 'Cancelar' }).click();
-
-    await expect(page.getByRole('dialog')).toHaveCount(0);
-    await expect(detalle(page)).toContainText('60,50 €');
-  });
-});

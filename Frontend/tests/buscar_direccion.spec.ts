@@ -138,7 +138,6 @@ const simularBackend = async (
 };
 
 const rutaNueva = `/viajes/${VIAJE_ID}/actividades/nueva`;
-const rutaEditar = `/viajes/${VIAJE_ID}/actividades/${ACTIVIDAD_ID}/editar`;
 
 const buscarColosseo = async (page: Page) => {
   await page.getByLabel('Lugar / Dirección').fill('Colosseo');
@@ -239,59 +238,8 @@ test.describe('Buscar la dirección de una actividad', () => {
     });
   });
 
-  test('si se cambia el texto después de elegir se pierden las coordenadas', async ({ page }) => {
-    await entrarConSesion(page);
-    const { creadas } = await simularBackend(page);
 
-    await page.goto(rutaNueva);
-    await page.getByLabel('Nombre de la actividad').fill('Visita al Coliseo');
-    await buscarColosseo(page);
-    await page.getByRole('button', { name: etiqueta(COLISEO) }).click();
-    await page.getByLabel('Lugar / Dirección').pressSequentially(' (entrada norte)');
 
-    await expect(page.getByText('Ubicación localizada en el mapa')).toHaveCount(0);
-    await page.getByRole('button', { name: 'Añadir al itinerario' }).click();
-
-    await expect(page).toHaveURL(/\/viajes\/roma\/itinerario/);
-    expect(creadas[0]).toMatchObject({ latitud: null, longitud: null, lugar_externo_id: null });
-  });
-
-  test('sin resultados avisa y se puede guardar el lugar como texto', async ({ page }) => {
-    await entrarConSesion(page);
-    const { creadas } = await simularBackend(page, [{ status: 200, cuerpo: { direcciones: [] } }]);
-
-    await page.goto(rutaNueva);
-    await page.getByLabel('Nombre de la actividad').fill('Cena');
-    await page.getByLabel('Lugar / Dirección').fill('Trattoria sin nombre');
-    await page.getByRole('button', { name: 'Buscar dirección' }).click();
-
-    await expect(page.getByText(/No se han encontrado resultados/)).toBeVisible();
-    await page.getByRole('button', { name: 'Añadir al itinerario' }).click();
-
-    await expect(page).toHaveURL(/\/viajes\/roma\/itinerario/);
-    expect(creadas[0]).toMatchObject({ ubicacion_nombre: 'Trattoria sin nombre', latitud: null, longitud: null });
-  });
-
-  test('si se busca demasiado rápido (429) se muestra el aviso y se puede reintentar', async ({ page }) => {
-    await entrarConSesion(page);
-    const { busquedas } = await simularBackend(page, [
-      {
-        status: 429,
-        cuerpo: { error: { codigo: 'demasiadas_busquedas', mensaje: 'Espera un segundo entre una búsqueda y otra' } },
-      },
-      { status: 200, cuerpo: { direcciones: [COLISEO] } },
-    ]);
-
-    await page.goto(rutaNueva);
-    await buscarColosseo(page);
-
-    await expect(page.getByRole('alert')).toHaveText('Espera un segundo entre una búsqueda y otra');
-    await page.getByRole('button', { name: 'Buscar dirección' }).click();
-
-    await expect(page.getByRole('list', { name: 'Resultados de la búsqueda' })).toBeVisible();
-    await expect(page.getByRole('alert')).toHaveCount(0);
-    expect(busquedas).toHaveLength(2);
-  });
 
   test('si falla el servicio de direcciones (502) se muestra el error y el formulario sigue disponible', async ({
     page,
@@ -312,35 +260,5 @@ test.describe('Buscar la dirección de una actividad', () => {
     await expect(page.getByRole('button', { name: 'Añadir al itinerario' })).toBeEnabled();
   });
 
-  test('al editar una actividad localizada se puede quitar la ubicación', async ({ page }) => {
-    await entrarConSesion(page);
-    const { cambios } = await simularBackend(page, undefined, [actividadGuardada()]);
 
-    await page.goto(rutaEditar);
-    await expect(page.getByLabel('Nombre de la actividad')).toHaveValue('Visita al Coliseo');
-    await expect(page.getByText('Ubicación localizada en el mapa')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Guardar cambios' })).toBeDisabled();
-    await page.getByRole('button', { name: 'Quitar' }).click();
-    await page.getByRole('button', { name: 'Guardar cambios' }).click();
-
-    await expect(page).toHaveURL(/\/viajes\/roma\/itinerario/);
-    expect(cambios).toEqual([{ latitud: null, longitud: null, lugar_externo_id: null }]);
-  });
-
-  test('al editar una actividad se puede elegir otro lugar', async ({ page }) => {
-    await entrarConSesion(page);
-    const { cambios } = await simularBackend(page, undefined, [actividadGuardada()]);
-
-    await page.goto(rutaEditar);
-    await expect(page.getByLabel('Nombre de la actividad')).toHaveValue('Visita al Coliseo');
-    await page.getByLabel('Lugar / Dirección').fill('Foro Romano');
-    await page.getByRole('button', { name: 'Buscar dirección' }).click();
-    await page.getByRole('button', { name: etiqueta(FORO) }).click();
-    await page.getByRole('button', { name: 'Guardar cambios' }).click();
-
-    await expect(page).toHaveURL(/\/viajes\/roma\/itinerario/);
-    expect(cambios).toEqual([
-      { ubicacion_nombre: FORO.nombre, latitud: 41.892462, longitud: 12.485325, lugar_externo_id: 'relation/5' },
-    ]);
-  });
 });

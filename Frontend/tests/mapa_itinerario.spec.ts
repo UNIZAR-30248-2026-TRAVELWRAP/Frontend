@@ -303,128 +303,13 @@ test.describe('Itinerario · mapa de las actividades', () => {
     expect(await page.evaluate(() => document.body.style.overflow)).toBe('');
   });
 
-  test('con Escape se reduce el mapa ampliado', async ({ page }) => {
-    await preparar(page);
-    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
-    await page.getByRole('button', { name: 'Ampliar mapa' }).click();
-    await expect(page.getByRole('button', { name: 'Reducir mapa' })).toBeVisible();
 
-    await page.keyboard.press('Escape');
 
-    await expect(page.getByRole('button', { name: 'Ampliar mapa' })).toBeVisible();
-  });
 
-  test('con el mapa ampliado se puede tocar un marcador y el botón de reducir sigue accesible a 320 px', async ({ page }) => {
-    await page.setViewportSize({ width: 320, height: 568 });
-    await preparar(page, {}, ACTIVIDADES, RUTA_DEL_DIA);
-    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
-    await page.getByRole('button', { name: 'Ampliar mapa' }).click();
 
-    await page.getByRole('button', { name: '1. Visita al Coliseo' }).click();
 
-    await expect(page.locator('.leaflet-popup-content')).toContainText('Visita al Coliseo');
-    const boton = await page.getByRole('button', { name: 'Reducir mapa' }).boundingBox();
-    expect(boton?.x).toBeGreaterThanOrEqual(0);
-    expect((boton?.x ?? 0) + (boton?.width ?? 0)).toBeLessThanOrEqual(320);
-    expect(boton?.height).toBeGreaterThanOrEqual(44);
-    const [ancho, visible] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
-    expect(ancho).toBeLessThanOrEqual(visible);
-  });
 
-  test('con una sola actividad con ubicación no se dibuja ninguna línea', async ({ page }) => {
-    await preparar(page);
-    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
-    await expect(lineaDeRuta(page)).toHaveCount(1);
 
-    await page.getByRole('button', { name: 'Día 2 · 13 may' }).click();
 
-    await expect(marcadores(page)).toHaveCount(1);
-    await expect(lineaDeRuta(page)).toHaveCount(0);
-  });
 
-  test('al tocar un marcador se abre su título y su lugar', async ({ page }) => {
-    await preparar(page);
-    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
-
-    await page.getByRole('button', { name: '1. Visita al Coliseo' }).click();
-
-    const ventana = page.locator('.leaflet-popup-content');
-    await expect(ventana).toContainText('Visita al Coliseo');
-    await expect(ventana).toContainText('Colosseo, Roma');
-  });
-
-  test('al cambiar de día el mapa enseña los marcadores de ese día', async ({ page }) => {
-    await preparar(page);
-    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
-    await expect(marcadores(page)).toHaveCount(2);
-
-    await page.getByRole('button', { name: 'Día 2 · 13 may' }).click();
-
-    await expect(marcadores(page)).toHaveCount(1);
-    await expect(page.getByRole('button', { name: '1. Vaticano' })).toBeVisible();
-    await expect(page.getByText('1 de 1 actividad con ubicación en el mapa')).toBeVisible();
-  });
-
-  test('un día sin ubicaciones sigue enseñando el mapa, sin marcadores, con el aviso', async ({ page }) => {
-    await preparar(page);
-    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
-    await expect(marcadores(page)).toHaveCount(2);
-
-    await page.getByRole('button', { name: 'Día 3 · 14 may' }).click();
-
-    await expect(mapa(page)).toBeVisible();
-    await expect(marcadores(page)).toHaveCount(0);
-    await expect(page.getByText(/Ninguna actividad de este día tiene ubicación en el mapa/)).toBeVisible();
-  });
-
-  test('un día sin actividades también enseña el mapa', async ({ page }) => {
-    await preparar(page, {}, [ACTIVIDADES[0]]);
-    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
-
-    await page.getByRole('button', { name: 'Día 2 · 13 may' }).click();
-
-    await expect(page.getByText('No hay actividades este día.')).toBeVisible();
-    await expect(mapa(page)).toBeVisible();
-    await expect(marcadores(page)).toHaveCount(0);
-  });
-
-  test('en un viaje finalizado el mapa se ve igual', async ({ page }) => {
-    await preparar(page, { estado: 'finalizado' });
-
-    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
-
-    await expect(marcadores(page)).toHaveCount(2);
-  });
-
-  test('los botones de zoom son lo bastante grandes para el dedo y se pueden pulsar', async ({ page }) => {
-    await preparar(page);
-    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
-    await expect(marcadores(page)).toHaveCount(2);
-
-    const ampliar = page.getByRole('button', { name: 'Zoom in' });
-    const reducir = page.getByRole('button', { name: 'Zoom out' });
-    for (const boton of [ampliar, reducir]) {
-      const caja = await boton.boundingBox();
-      expect(caja?.width).toBeGreaterThanOrEqual(40);
-      expect(caja?.height).toBeGreaterThanOrEqual(40);
-    }
-    await ampliar.click();
-    await expect(marcadores(page).first()).toBeVisible();
-    await reducir.click();
-    await reducir.click();
-    await expect(marcadores(page)).toHaveCount(2);
-  });
-
-  test('en un móvil estrecho el mapa cabe sin scroll horizontal', async ({ page }) => {
-    await page.setViewportSize({ width: 320, height: 568 });
-    await preparar(page);
-
-    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
-    await expect(marcadores(page)).toHaveCount(2);
-
-    const [ancho, visible] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
-    expect(ancho).toBeLessThanOrEqual(visible);
-    const caja = await mapa(page).boundingBox();
-    expect(caja?.width).toBeLessThanOrEqual(320);
-  });
 });

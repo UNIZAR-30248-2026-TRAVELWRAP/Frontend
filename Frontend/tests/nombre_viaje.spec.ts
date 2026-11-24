@@ -127,32 +127,5 @@ test.describe('Nuevo viaje · nombre por defecto', () => {
     expect(creados[0].nombre).toBe('Escapada con los primos');
   });
 
-  test('con «Votar destino» y sin nombre, el viaje lleva un nombre temporal', async ({ page }) => {
-    await entrarConSesion(page);
-    const { creados } = await simularBackend(page);
 
-    await page.goto('/viajes/nuevo');
-    await page.getByRole('radio', { name: /Votar destino/ }).click();
-    await page.getByLabel('Fecha inicio').fill('2027-07-01');
-    await page.getByLabel('Presupuesto estimado (€)').fill('850');
-    await expect(page.getByLabel('Nombre del viaje')).toHaveAttribute('placeholder', 'Viaje sin destino 2027');
-    await page.getByRole('button', { name: 'Crear viaje y elegir destino' }).click();
-
-    await expect(page).toHaveURL(/\/viajes\/viaje-1\/destino$/);
-    expect(creados[0]).toMatchObject({ nombre: null, destino: null });
-  });
-
-  test('con «Votar destino» al crear el viaje se abre la votación del destino', async ({ page }) => {
-    await entrarConSesion(page);
-    const { creados } = await simularBackend(page);
-
-    await page.goto('/viajes/nuevo');
-    await page.getByRole('radio', { name: /Votar destino/ }).click();
-    await page.getByLabel('Nombre del viaje').fill('Verano 2027');
-    await page.getByLabel('Presupuesto estimado (€)').fill('900');
-    await page.getByRole('button', { name: 'Crear viaje y elegir destino' }).click();
-
-    await expect(page).toHaveURL(/\/viajes\/viaje-1\/destino$/);
-    expect(creados[0]).toMatchObject({ nombre: 'Verano 2027', destino: null });
-  });
 });

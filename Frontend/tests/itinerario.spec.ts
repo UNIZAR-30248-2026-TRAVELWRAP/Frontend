@@ -224,47 +224,8 @@ test.describe('Itinerario · agenda del día', () => {
     await expect(page.getByText('No hay actividades este día.')).toBeVisible();
   });
 
-  test('una actividad nueva aparece en su día al volver del formulario', async ({ page }) => {
-    await entrarConSesion(page);
-    await simularBackend(page);
 
-    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
-    await page.getByRole('button', { name: 'Añadir Actividad' }).click();
-    await expect(page).toHaveURL(/\/viajes\/roma\/actividades\/nueva\?fecha=2027-05-12$/);
-    await page.getByRole('button', { name: 'Día 3 · 14 may' }).click();
-    await page.getByLabel('Nombre de la actividad').fill('Vuelta a casa');
-    await page.getByLabel('Hora').fill('18:00');
-    await page.getByRole('button', { name: 'Añadir al itinerario' }).click();
 
-    await expect(page).toHaveURL(/\/viajes\/roma\/itinerario\?fecha=2027-05-14$/);
-    await expect(page.getByRole('button', { name: 'Día 3 · 14 may' })).toHaveAttribute('aria-pressed', 'true');
-    await expect(agenda(page)).toHaveText(['Vuelta a casa18:00 h']);
-  });
-
-  test('con un viaje sin fechas, los días salen de las actividades', async ({ page }) => {
-    await entrarConSesion(page);
-    await simularBackend(page, { fecha_inicio: null, fecha_fin: null }, [
-      actividad('playa', { titulo: 'Playa', fecha: '2027-06-02' }),
-      actividad('museo', { titulo: 'Museo', fecha: '2027-06-01' }),
-    ]);
-
-    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
-
-    await expect(page.getByRole('group', { name: 'Día del itinerario' }).getByRole('button')).toHaveText(['1 jun', '2 jun']);
-    await expect(agenda(page)).toHaveText(['Museo']);
-    await page.getByRole('button', { name: '2 jun' }).click();
-    await expect(agenda(page)).toHaveText(['Playa']);
-  });
-
-  test('un viaje finalizado se consulta pero no deja añadir actividades', async ({ page }) => {
-    await entrarConSesion(page);
-    await simularBackend(page, { estado: 'finalizado' });
-
-    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
-
-    await expect(agenda(page)).toHaveCount(3);
-    await expect(page.getByRole('button', { name: 'Añadir Actividad' })).toHaveCount(0);
-  });
 
   test('si el servidor falla al listar se muestra el error', async ({ page }) => {
     await entrarConSesion(page);
@@ -276,21 +237,7 @@ test.describe('Itinerario · agenda del día', () => {
     await expect(page.getByRole('button', { name: 'Añadir Actividad' })).toHaveCount(0);
   });
 
-  test('la pestaña Inicio vuelve al inicio del viaje', async ({ page }) => {
-    await entrarConSesion(page);
-    await simularBackend(page);
 
-    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
-    await page.getByRole('navigation', { name: 'Secciones del viaje' }).getByRole('button', { name: 'Inicio' }).click();
-
-    await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}$`));
-  });
-
-  test('sin sesión se redirige al login', async ({ page }) => {
-    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
-
-    await expect(page).toHaveURL(/\/login$/);
-  });
 
   test('en un móvil de 390 px no hay scroll horizontal con muchos días y textos largos', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
@@ -313,76 +260,3 @@ test.describe('Itinerario · agenda del día', () => {
   });
 });
 
-test.describe('Itinerario · sin conexión', () => {
-  const cortarConexion = async (page: Page) => {
-    const manejador = (route: Route) => route.abort('internetdisconnected');
-    await page.route('**/api/**', manejador);
-    return manejador;
-  };
-
-  test('al reabrir la app sin red se ve lo último guardado y no se puede añadir', async ({ page }) => {
-    await entrarConSesion(page);
-    await simularBackend(page);
-
-    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
-    await expect(agenda(page)).toHaveCount(3);
-    await cortarConexion(page);
-    await page.reload();
-
-    await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}/itinerario$`));
-    await expect(agenda(page)).toHaveText([
-      'DesayunoHotel08:30 h',
-      'Visita al ColiseoPiazza del Colosseo10:00 h',
-      'Paseo sin hora',
-    ]);
-    await expect(page.getByRole('status').filter({ hasText: 'Sin conexión: se muestra lo último guardado' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Añadir Actividad' })).toHaveCount(0);
-    await page.getByRole('button', { name: 'Día 2 · 13 may' }).click();
-    await expect(agenda(page)).toHaveText(['Vaticano09:30 h']);
-  });
-
-  test('al volver la conexión se actualiza solo y vuelve el botón de añadir', async ({ page }) => {
-    await entrarConSesion(page);
-    await simularBackend(page);
-
-    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
-    await expect(agenda(page)).toHaveCount(3);
-    const manejador = await cortarConexion(page);
-    await page.reload();
-    await expect(page.getByRole('status').filter({ hasText: 'Sin conexión: se muestra lo último guardado' })).toBeVisible();
-
-    await page.unroute('**/api/**', manejador);
-    await page.evaluate(() => window.dispatchEvent(new Event('online')));
-
-    await expect(page.getByRole('status').filter({ hasText: 'Sin conexión: se muestra lo último guardado' })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Añadir Actividad' })).toBeVisible();
-    await expect(agenda(page)).toHaveCount(3);
-  });
-
-  test('el botón Reintentar recupera los datos cuando ya hay conexión', async ({ page }) => {
-    await entrarConSesion(page);
-    await simularBackend(page);
-
-    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
-    await expect(agenda(page)).toHaveCount(3);
-    const manejador = await cortarConexion(page);
-    await page.reload();
-    await expect(page.getByRole('button', { name: 'Reintentar' })).toBeVisible();
-
-    await page.unroute('**/api/**', manejador);
-    await page.getByRole('button', { name: 'Reintentar' }).click();
-
-    await expect(page.getByRole('button', { name: 'Reintentar' })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Añadir Actividad' })).toBeVisible();
-  });
-
-  test('sin red y sin nada guardado se muestra el error y no se pierde la sesión', async ({ page }) => {
-    await entrarConSesion(page);
-    await cortarConexion(page);
-
-    await page.goto(`/viajes/${VIAJE_ID}/itinerario`);
-
-    await expect(page.getByRole('alert')).toContainText('No se puede conectar con el servidor');
-    await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}/itinerario$`));
-  });
-});

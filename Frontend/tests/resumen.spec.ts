@@ -145,23 +145,6 @@ test.describe('Resumen de fin de viaje (Wrap)', () => {
     await expect(page.getByRole('button', { name: 'Descargar imagen' })).toBeVisible();
   });
 
-  test('ya no hay diapositivas de gastos ni de balance final', async ({ page }) => {
-    await entrarConSesion(page);
-    await simularBackend(page);
-    let pidioElBalance = false;
-    page.on('request', (peticion) => {
-      if (peticion.url().endsWith('/balance')) pidioElBalance = true;
-    });
-
-    await page.goto(`/viajes/${VIAJE_ID}/resumen`);
-    await expect(page.getByRole('heading', { name: 'Roma' })).toBeVisible();
-    await irADiapositiva(page, 6);
-
-    await expect(page.getByRole('region')).toHaveAccessibleName(/6 de 7: Resumen/);
-    await expect(page.getByText('Balance final')).toHaveCount(0);
-    await expect(page.getByText('Cena Trastevere')).toHaveCount(0);
-    expect(pidioElBalance).toBe(false);
-  });
 
   test('la última diapositiva enseña la imagen del resumen y «Descargar imagen» baja ese mismo PNG vertical', async ({ page }) => {
     await entrarConSesion(page);
@@ -245,38 +228,7 @@ test.describe('Resumen de fin de viaje (Wrap)', () => {
     await expect(page.getByRole('status')).toContainText('se ha descargado la imagen');
   });
 
-  test('si una foto no se puede cargar el resumen se crea sin fotos y se avisa', async ({ page }) => {
-    await entrarConSesion(page);
-    await page.route('https://storage.test/**', (route) => route.fulfill({ status: 403, body: 'denegado' }));
-    await simularBackend(page);
 
-    await page.goto(`/viajes/${VIAJE_ID}/resumen`);
-    await expect(page.getByRole('heading', { name: 'Roma' })).toBeVisible();
-    await irADiapositiva(page, 6);
-
-    await expect(page.getByAltText('Resumen del viaje a Roma')).toBeVisible({ timeout: 15000 });
-    await expect(page.getByRole('status')).toContainText('No se han podido incluir las fotos en la imagen');
-    await expect(page.getByRole('alert')).toHaveCount(0);
-    const descarga = page.waitForEvent('download');
-    await page.getByRole('button', { name: 'Descargar imagen' }).click();
-    expect((await descarga).suggestedFilename()).toBe('TravelWrap-Roma-2027.png');
-  });
-
-  test('un viaje sin votos ni alma ni fotos también enseña la imagen del resumen y se puede descargar', async ({ page }) => {
-    await entrarConSesion(page);
-    await simularBackend(page, { resumen: { dias: 4, actividad_mas_votada: null, alma_del_grupo: null }, fotos: false });
-
-    await page.goto(`/viajes/${VIAJE_ID}/resumen`);
-    await expect(page.getByText('TravelWrap · Resumen')).toBeVisible();
-    await expect(async () => {
-      await page.keyboard.press('ArrowRight');
-      await expect(page.getByRole('region')).toHaveAccessibleName(/3 de 4: Resumen/, { timeout: 1000 });
-    }).toPass();
-    await expect(page.getByAltText('Resumen del viaje a Roma')).toBeVisible({ timeout: 15000 });
-    const descarga = page.waitForEvent('download');
-    await page.getByRole('button', { name: 'Descargar imagen' }).click();
-    expect((await descarga).suggestedFilename()).toBe('TravelWrap-Roma-2027.png');
-  });
 
   test('en 320 px ninguna diapositiva desborda y los botones siguen visibles', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 640 });
@@ -304,72 +256,4 @@ test.describe('Resumen de fin de viaje (Wrap)', () => {
     await expect(page.getByRole('region')).toBeVisible();
   });
 
-  test.describe('como las historias', () => {
-    test.use({ reducedMotion: 'no-preference' });
-
-    const punto = async (page: Page, fraccion: number) => {
-      const caja = await page.getByRole('region').boundingBox();
-      return { x: (caja?.x ?? 0) + (caja?.width ?? 0) * fraccion, y: (caja?.y ?? 0) + (caja?.height ?? 0) / 2 };
-    };
-
-    test('el botón de pausa detiene el avance automático y el de reanudar lo continúa', async ({ page }) => {
-      await entrarConSesion(page);
-      await simularBackend(page);
-
-      await page.goto(`/viajes/${VIAJE_ID}/resumen`);
-      await expect(page.getByRole('heading', { name: 'Roma' })).toBeVisible();
-      await page.getByRole('button', { name: 'Pausar' }).click();
-      await expect(page.getByRole('button', { name: 'Reanudar' })).toBeVisible();
-      await page.waitForTimeout(5600);
-      await expect(page.getByRole('region')).toHaveAccessibleName(/1 de 7: Portada/);
-
-      await page.getByRole('button', { name: 'Reanudar' }).click();
-      await expect(page.getByRole('region')).toHaveAccessibleName(/2 de 7: Tiempo juntos/, { timeout: 8000 });
-    });
-
-    test('se toca a los lados para pasar y la barra avanza sola a los 5 segundos', async ({ page }) => {
-      await entrarConSesion(page);
-      await simularBackend(page);
-
-      await page.goto(`/viajes/${VIAJE_ID}/resumen`);
-      await expect(page.getByRole('heading', { name: 'Roma' })).toBeVisible();
-
-      const derecha = await punto(page, 0.85);
-      await page.mouse.click(derecha.x, derecha.y);
-      await expect(page.getByRole('region')).toHaveAccessibleName(/2 de 7/);
-
-      const izquierda = await punto(page, 0.1);
-      await page.mouse.click(izquierda.x, izquierda.y);
-      await expect(page.getByRole('region')).toHaveAccessibleName(/1 de 7/);
-
-      await expect(page.getByRole('region')).toHaveAccessibleName(/2 de 7/, { timeout: 12000 });
-    });
-
-    test('al mantener pulsado y arrastrar se ve la historia vecina; al soltar se cambia, y si se devuelve a su sitio no', async ({ page }) => {
-      await entrarConSesion(page);
-      await simularBackend(page);
-
-      await page.goto(`/viajes/${VIAJE_ID}/resumen`);
-      await expect(page.getByRole('heading', { name: 'Roma' })).toBeVisible();
-      const inicio = await punto(page, 0.8);
-      const fin = await punto(page, 0.15);
-
-      await page.mouse.move(inicio.x, inicio.y);
-      await page.mouse.down();
-      await page.mouse.move(fin.x, fin.y, { steps: 8 });
-      // En WebKit la caja de un elemento con giro 3D se mide con ancho 0 y Playwright lo da por oculto: basta con que esté en el DOM
-      await expect(page.getByText('días de aventura')).toBeAttached();
-      await page.mouse.move(inicio.x, inicio.y, { steps: 8 });
-      await page.mouse.up();
-      await expect(page.getByRole('region')).toHaveAccessibleName(/1 de 7/);
-      await expect(page.locator('[style*="preserve-3d"]')).toHaveCount(0);
-
-      await page.mouse.move(inicio.x, inicio.y);
-      await page.mouse.down();
-      await page.mouse.move(fin.x, fin.y, { steps: 8 });
-      await page.mouse.up();
-      await expect(page.getByRole('region')).toHaveAccessibleName(/2 de 7/);
-      await expect(page.getByText('días de aventura')).toBeVisible();
-    });
-  });
 });

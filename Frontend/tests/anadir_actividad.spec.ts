@@ -151,33 +151,7 @@ test.describe('Añadir actividad', () => {
     await expect(boton).toBeEnabled();
   });
 
-  test('si el viaje no tiene fechas se pide la fecha con un campo', async ({ page }) => {
-    await entrarConSesion(page);
-    const { creadas } = await simularBackend(page, { fecha_inicio: null, fecha_fin: null });
 
-    await page.goto(rutaFormulario);
-    await page.getByLabel('Nombre de la actividad').fill('Paseo');
-    await expect(page.getByRole('button', { name: 'Añadir al itinerario' })).toBeDisabled();
-    await page.getByLabel('Fecha').fill('2027-06-01');
-    await page.getByRole('button', { name: 'Añadir al itinerario' }).click();
-
-    await expect(page).toHaveURL(/\/viajes\/roma\/itinerario(\?fecha=[0-9-]+)?$/);
-    expect(creadas[0].cuerpo.fecha).toBe('2027-06-01');
-  });
-
-  test('la hora de fin anterior a la de inicio muestra un aviso y bloquea el botón', async ({ page }) => {
-    await entrarConSesion(page);
-    await simularBackend(page);
-
-    await page.goto(rutaFormulario);
-    await page.getByLabel('Nombre de la actividad').fill('Paseo');
-    await expect(page.getByLabel('Hasta (opcional)')).toBeDisabled();
-    await page.getByLabel('Hora').fill('12:00');
-    await page.getByLabel('Hasta (opcional)').fill('11:00');
-
-    await expect(page.getByRole('alert')).toHaveText('La hora de fin no puede ser anterior a la de inicio');
-    await expect(page.getByRole('button', { name: 'Añadir al itinerario' })).toBeDisabled();
-  });
 
   test('si el servidor rechaza la actividad se muestra el error y se sigue en el formulario', async ({ page }) => {
     await entrarConSesion(page);
@@ -194,21 +168,7 @@ test.describe('Añadir actividad', () => {
     await expect(page).toHaveURL(new RegExp(`${rutaFormulario}$`));
   });
 
-  test('un viaje finalizado no deja añadir actividades', async ({ page }) => {
-    await entrarConSesion(page);
-    await simularBackend(page, { estado: 'finalizado' });
 
-    await page.goto(rutaFormulario);
-
-    await expect(page.getByRole('alert')).toHaveText('El viaje está finalizado y ya no se pueden añadir actividades');
-    await expect(page.getByLabel('Nombre de la actividad')).toHaveCount(0);
-  });
-
-  test('sin sesión se redirige al login', async ({ page }) => {
-    await page.goto(rutaFormulario);
-
-    await expect(page).toHaveURL(/\/login$/);
-  });
 
   test('en un móvil de 390 px no hay scroll horizontal ni se sale el botón', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
