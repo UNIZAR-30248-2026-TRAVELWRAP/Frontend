@@ -72,7 +72,7 @@ export default function OpcionNotificaciones({ token }: { token: string }) {
           <div style={{ fontWeight: 800, color: C.navy, fontSize: 14 }}>Notificaciones push</div>
           <div style={{ color: C.muted, fontSize: 12, marginTop: 2, lineHeight: 1.4 }}>{AYUDA[estado]}</div>
         </div>
-        <span style={{ fontFamily: NUNITO, fontWeight: 800, fontSize: 13, color: estado === "activadas" ? C.green : C.muted }}>
+        <span style={{ fontFamily: NUNITO, fontWeight: 800, fontSize: 13, color: estado === "activadas" ? C.green : "#4A5568" }}>
           {estado === "activadas" ? "Activadas" : "Desactivadas"}
         </span>
       </button>

@@ -372,7 +372,7 @@ export default function InicioViaje({
             >
               <div
                 style={{
-                  color: "rgba(255,255,255,0.55)",
+                  color: "rgba(255,255,255,0.8)",
                   fontSize: 10,
                   fontWeight: 700,
                   fontFamily: NUNITO,
@@ -387,7 +387,7 @@ export default function InicioViaje({
                 <div style={{ fontFamily: NUNITO, fontSize: 44, fontWeight: 900, color: "white", lineHeight: 1 }}>
                   {formatearImporte(viaje.presupuesto, viaje.moneda)}
                 </div>
-                <div style={{ fontFamily: NUNITO, fontSize: 13, color: "rgba(255,255,255,0.55)" }}>total</div>
+                <div style={{ fontFamily: NUNITO, fontSize: 13, color: "rgba(255,255,255,0.8)" }}>total</div>
               </div>
               {presupuesto && (
                 <div data-testid="presupuesto-progreso" style={{ marginTop: 10 }}>
@@ -403,12 +403,12 @@ export default function InicioViaje({
                     />
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", marginTop: 5 }}>
-                    <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, fontFamily: NUNITO }}>
+                    <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 11, fontFamily: NUNITO }}>
                       Gastado {formatearImporte(presupuesto.gastado, viaje.moneda)}
                     </span>
                     <span
                       style={{
-                        color: porcentajeGastado > 90 ? "#FC8181" : C.accent,
+                        color: porcentajeGastado > 90 ? "#FC8181" : "#F6AD55",
                         fontSize: 11,
                         fontFamily: NUNITO,
                         fontWeight: 700,
