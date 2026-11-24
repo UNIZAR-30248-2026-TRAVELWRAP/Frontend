@@ -12,6 +12,7 @@ import { listarViajes, type ViajeDelUsuario } from "../services/viajesApi"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { ESTILO_CON_PORTADA } from "../styles/portada"
 import { aMiembro, formatearFechasActivo, formatearFechasAnterior, formatearImporte } from "../utils/formatoViaje"
+import { etiquetaEstadoActivo } from "../utils/estadoViaje"
 
 // ─── Tipos de las tarjetas ────────────────────────────────────────────────────
 type TarjetaActiva = {
@@ -19,6 +20,7 @@ type TarjetaActiva = {
   id: string
   nombre: string
   fechas: string
+  fechaInicio?: string | null
   presupuesto: string
   miembros: Miembro[]
   portadaUrl?: string | null
@@ -70,6 +72,7 @@ const aTarjetaActiva = (viaje: ViajeDelUsuario): TarjetaActiva | TarjetaPendient
         id: viaje.id,
         nombre: viaje.nombre,
         fechas: formatearFechasActivo(viaje.fecha_inicio, viaje.fecha_fin),
+        fechaInicio: viaje.fecha_inicio,
         presupuesto: formatearImporte(viaje.presupuesto, viaje.moneda),
         miembros: viaje.miembros.map((m, i) => aMiembro(m.nombre, i, m.avatar_url)),
         portadaUrl: viaje.portada_url,
@@ -299,7 +302,7 @@ export default function MisViajes({
                 >
                   <div>
                     <Badge bg="rgba(255,255,255,0.2)" color="white">
-                      En curso
+                      {etiquetaEstadoActivo(viaje.fechaInicio)}
                     </Badge>
                     <div
                       style={{
@@ -340,7 +343,7 @@ export default function MisViajes({
                   <div style={{ textAlign: "right" }}>
                     <div
                       style={{
-                        color: "rgba(255,255,255,0.55)",
+                        color: "rgba(255,255,255,0.8)",
                         fontSize: 10,
                         fontFamily: NUNITO,
                         fontWeight: 700,

@@ -136,7 +136,7 @@ When('amplío el código QR', async () => {
 
 Then('veo el viaje {string} entre mis viajes en curso', async (nombre: string) => {
   await expect(tarjeta(nombre)).toBeVisible();
-  await expect(tarjeta(nombre)).toContainText('En curso');
+  await expect(tarjeta(nombre)).toContainText(/En curso|Próximo/);
 });
 
 Then('veo el viaje {string} como pendiente de destino', async (nombre: string) => {

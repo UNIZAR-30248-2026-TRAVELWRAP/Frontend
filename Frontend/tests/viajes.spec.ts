@@ -85,7 +85,7 @@ test.describe('RF8 · Mis viajes y crear viaje', () => {
     await page.goto('/');
 
     const activo = page.getByRole('button', { name: /Lisboa 2027/ });
-    await expect(activo).toContainText('En curso');
+    await expect(activo).toContainText('Próximo · faltan');
     await expect(activo).toContainText('PRESUPUESTO');
     await expect(activo).toContainText('1.240 €');
     await expect(page.getByRole('button', { name: /Verano 2027/ })).toContainText('Pendiente de destino');

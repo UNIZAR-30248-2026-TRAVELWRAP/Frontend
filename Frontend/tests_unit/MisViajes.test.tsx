@@ -64,7 +64,7 @@ describe('MisViajes', () => {
     render(<MisViajes tokenSesion="token-acceso" mostrarEjemplos={false} />)
 
     const azul = await screen.findByRole('button', { name: /Lisboa 2027/ })
-    expect(azul.textContent).toContain('En curso')
+    expect(azul.textContent).toMatch(/Próximo · faltan \d+ días/)
     expect(azul.textContent).toContain('12 – 15 may · 4 días')
     expect(azul.textContent).toContain('PRESUPUESTO')
     expect(azul.textContent).toContain('1.240 €')

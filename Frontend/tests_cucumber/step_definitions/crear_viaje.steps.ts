@@ -75,7 +75,7 @@ Then('vuelvo a la pantalla de mis viajes', async () => {
 
 Then('veo el viaje {string} en curso con presupuesto {string}', async (nombre: string, presupuesto: string) => {
   const tarjeta = paginaActual().getByRole('button', { name: new RegExp(nombre) });
-  await expect(tarjeta).toContainText('En curso');
+  await expect(tarjeta).toContainText(/En curso|Próximo/);
   await expect(tarjeta).toContainText(presupuesto);
 });
 
