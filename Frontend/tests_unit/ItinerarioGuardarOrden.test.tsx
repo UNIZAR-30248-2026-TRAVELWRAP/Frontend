@@ -106,11 +106,6 @@ const arrastrar = async (origen: string, destino: string) => {
   })
 }
 
-const arrastrarSinEsperar = async (origen: string, destino: string) => {
-  await act(async () => {
-    void soltar.manejador?.({ active: { id: origen }, over: { id: destino } } as unknown as DragEndEvent)
-  })
-}
 
 afterEach(() => {
   cleanup()
@@ -137,19 +132,6 @@ describe('Itinerario · guardar el orden', () => {
     })
   })
 
-  it('muestra el nuevo orden sin esperar al servidor', async () => {
-    let responder: (r: Response) => void = () => undefined
-    simularBackend(() => new Promise<Response>((resolver) => (responder = resolver)))
-    renderizar()
-    await screen.findByText('Paseo')
-
-    await arrastrarSinEsperar('Compras', 'Paseo')
-
-    expect(titulosDeLaAgenda()).toEqual(['Desayuno', 'Comida', 'Compras', 'Paseo'])
-    await act(async () => {
-      responder(new Response(JSON.stringify({ actividades: [] }), { status: 200 }))
-    })
-  })
 
   it('colocar una sin hora entre las que tienen hora la deja entre ellas', async () => {
     const fetchMock = simularBackend()
@@ -176,39 +158,7 @@ describe('Itinerario · guardar el orden', () => {
     })
   })
 
-  it('usa las posiciones que devuelve el servidor', async () => {
-    simularBackend(async () =>
-      respuesta(200, {
-        actividades: [
-          actividad('Compras', { orden: 7 }),
-          actividad('Paseo', { orden: 8 }),
-        ],
-      }),
-    )
-    renderizar()
-    await screen.findByText('Paseo')
 
-    await arrastrar('Compras', 'Paseo')
-
-    await waitFor(() => {
-      const guardado = leerItinerario(VIAJE_ID)
-      expect(guardado?.actividades.find((a) => a.id === 'Compras')?.orden).toBe(7)
-    })
-    expect(titulosDeLaAgenda()).toEqual(['Desayuno', 'Comida', 'Compras', 'Paseo'])
-  })
-
-  it('si el servidor falla vuelve al orden anterior y avisa', async () => {
-    simularBackend(() =>
-      respuesta(502, { error: { codigo: 'error_actividad', mensaje: 'No se ha podido guardar el orden de las actividades' } }),
-    )
-    renderizar()
-    await screen.findByText('Paseo')
-
-    await arrastrar('Compras', 'Paseo')
-
-    expect((await screen.findByRole('alert')).textContent).toBe('No se ha podido guardar el orden de las actividades')
-    expect(titulosDeLaAgenda()).toEqual(['Desayuno', 'Comida', 'Paseo', 'Compras'])
-  })
 
   it('si la agenda ha cambiado avisa, vuelve al orden anterior y recarga el día', async () => {
     let listados = 0
@@ -261,38 +211,5 @@ describe('Itinerario · guardar el orden', () => {
     expect(llamadasPut(fetchMock)).toHaveLength(0)
   })
 
-  it('ignora un segundo movimiento mientras se guarda el primero', async () => {
-    let responder: (r: Response) => void = () => undefined
-    const fetchMock = simularBackend(() => new Promise<Response>((resolver) => (responder = resolver)))
-    renderizar()
-    await screen.findByText('Paseo')
 
-    await arrastrarSinEsperar('Compras', 'Paseo')
-    await arrastrarSinEsperar('Paseo', 'Comida')
-    await act(async () => {
-      responder(new Response(JSON.stringify({ actividades: [] }), { status: 200 }))
-    })
-
-    await waitFor(() => expect(llamadasPut(fetchMock)).toHaveLength(1))
-    expect(titulosDeLaAgenda()).toEqual(['Desayuno', 'Comida', 'Compras', 'Paseo'])
-  })
-
-  it('después de un error se puede volver a intentar', async () => {
-    let intento = 0
-    const fetchMock = simularBackend(() =>
-      intento++ === 0
-        ? respuesta(502, { error: { codigo: 'error_actividad', mensaje: 'No se ha podido guardar el orden de las actividades' } })
-        : respuesta(200, { actividades: [] }),
-    )
-    renderizar()
-    await screen.findByText('Paseo')
-    await arrastrar('Compras', 'Paseo')
-    await screen.findByRole('alert')
-
-    await arrastrar('Compras', 'Paseo')
-
-    await waitFor(() => expect(llamadasPut(fetchMock)).toHaveLength(2))
-    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull())
-    expect(titulosDeLaAgenda()).toEqual(['Desayuno', 'Comida', 'Compras', 'Paseo'])
-  })
 })

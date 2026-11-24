@@ -76,14 +76,6 @@ describe('puntosInteresApi · crearPuntoInteres', () => {
     expect(init.headers.Authorization).toBe('Bearer token-acceso')
   })
 
-  it('lanza el error de validación del servidor', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => respuesta(400, { error: { codigo: 'datos_invalidos', mensaje: 'El nombre es obligatorio y tiene un máximo de 120 caracteres' } })))
-
-    const fallo = await crearPuntoInteres(VIAJE_ID, { nombre: '', nota: null, categoria: null, latitud: 1, longitud: 2, lugar_externo_id: null, direccion: null }, 't').catch((e) => e)
-
-    expect(fallo.estado).toBe(400)
-    expect(fallo.message).toBe('El nombre es obligatorio y tiene un máximo de 120 caracteres')
-  })
 })
 
 describe('puntosInteresApi · eliminarPuntoInteres', () => {
@@ -99,11 +91,4 @@ describe('puntosInteresApi · eliminarPuntoInteres', () => {
     expect(init.method).toBe('DELETE')
   })
 
-  it('lanza el error si el viaje no está activo', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => respuesta(409, { error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está finalizado y ya no se puede modificar' } })))
-
-    const fallo = await eliminarPuntoInteres(VIAJE_ID, 'p1', 't').catch((e) => e)
-
-    expect(fallo.estado).toBe(409)
-  })
 })

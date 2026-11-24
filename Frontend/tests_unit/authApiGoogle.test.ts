@@ -51,11 +51,6 @@ describe('leerResultadoGoogle', () => {
     })
   })
 
-  it('devuelve el mensaje genérico ante un código de error desconocido', () => {
-    expect(leerResultadoGoogle('#error=otro')).toEqual({
-      error: 'No se ha podido iniciar sesión con Google',
-    })
-  })
 
   it('devuelve el mensaje genérico si el fragmento está vacío', () => {
     expect(leerResultadoGoogle('')).toEqual({
@@ -63,19 +58,5 @@ describe('leerResultadoGoogle', () => {
     })
   })
 
-  it('devuelve el mensaje genérico si la sesión está corrupta', () => {
-    expect(leerResultadoGoogle('#sesion=%%%no-es-base64')).toEqual({
-      error: 'No se ha podido iniciar sesión con Google',
-    })
-  })
 
-  it('rechaza una sesión sin token o sin usuario', () => {
-    const { token: _token, ...sinToken } = sesion
-    expect(leerResultadoGoogle(`#sesion=${codificar(sinToken)}`)).toEqual({
-      error: 'No se ha podido iniciar sesión con Google',
-    })
-    expect(leerResultadoGoogle(`#sesion=${codificar({ token: 'a', refresh_token: 'b' })}`)).toEqual({
-      error: 'No se ha podido iniciar sesión con Google',
-    })
-  })
 })

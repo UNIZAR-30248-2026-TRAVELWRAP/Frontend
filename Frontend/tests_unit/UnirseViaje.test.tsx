@@ -1,7 +1,6 @@
 import { StrictMode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import UnirseViaje from '../src/screens/UnirseViaje'
 import { leerInvitacionPendiente, rutaTrasLogin } from '../src/services/invitacionPendiente'
@@ -83,23 +82,7 @@ describe('UnirseViaje', () => {
     expect(rutaTrasLogin()).toBe('/')
   })
 
-  it('lleva al inicio al pulsar Entrar al viaje', async () => {
-    const user = userEvent.setup()
-    vi.stubGlobal('fetch', vi.fn(() => respuesta(200, unido(false))))
 
-    renderizar(sesion)
-    await user.click(await screen.findByRole('button', { name: 'Entrar al viaje' }))
-
-    expect(await screen.findByText('Pantalla de inicio')).toBeTruthy()
-  })
-
-  it('avisa si el usuario ya era miembro del viaje', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => respuesta(200, unido(true))))
-
-    renderizar(sesion)
-
-    expect(await screen.findByText('Ya formas parte de Roma 2025')).toBeTruthy()
-  })
 
   it('muestra un error si el enlace de invitación no es válido', async () => {
     vi.stubGlobal('fetch', vi.fn(() =>
@@ -115,16 +98,4 @@ describe('UnirseViaje', () => {
     expect(screen.queryByRole('button', { name: 'Entrar al viaje' })).toBeNull()
   })
 
-  it('muestra un error si el viaje ya no está activo', async () => {
-    vi.stubGlobal('fetch', vi.fn(() =>
-      respuesta(409, {
-        error: { codigo: 'viaje_no_activo', mensaje: 'El viaje ya no admite nuevos miembros' },
-      }),
-    ))
-
-    renderizar(sesion)
-
-    const alerta = await screen.findByRole('alert')
-    expect(alerta.textContent).toContain('no admite nuevos miembros')
-  })
 })

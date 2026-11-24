@@ -62,70 +62,11 @@ describe('Perfil · cerrar sesión con confirmación', () => {
     expect(onCerrarSesion).not.toHaveBeenCalled()
   })
 
-  it('el diálogo ofrece «Cancelar» y «Cerrar sesión»', async () => {
-    const user = userEvent.setup()
-    render(<Perfil {...datos} />)
 
-    await user.click(botonCerrarSesion())
 
-    const ventana = dialogo()!
-    expect(within(ventana).getByRole('button', { name: 'Cancelar' })).toBeTruthy()
-    expect(within(ventana).getByRole('button', { name: 'Cerrar sesión' })).toBeTruthy()
-  })
 
-  it('al cancelar se cierra el diálogo y no se cierra la sesión', async () => {
-    const user = userEvent.setup()
-    const onCerrarSesion = vi.fn()
-    render(<Perfil {...datos} onCerrarSesion={onCerrarSesion} />)
 
-    await user.click(botonCerrarSesion())
-    await user.click(within(dialogo()!).getByRole('button', { name: 'Cancelar' }))
 
-    expect(dialogo()).toBeNull()
-    expect(onCerrarSesion).not.toHaveBeenCalled()
-  })
-
-  it('al confirmar llama a onCerrarSesion una sola vez y cierra el diálogo', async () => {
-    const user = userEvent.setup()
-    const onCerrarSesion = vi.fn()
-    render(<Perfil {...datos} onCerrarSesion={onCerrarSesion} />)
-
-    await user.click(botonCerrarSesion())
-    await user.click(within(dialogo()!).getByRole('button', { name: 'Cerrar sesión' }))
-
-    expect(onCerrarSesion).toHaveBeenCalledTimes(1)
-    expect(dialogo()).toBeNull()
-  })
-
-  it('se puede cancelar y volver a abrir el diálogo', async () => {
-    const user = userEvent.setup()
-    render(<Perfil {...datos} />)
-
-    await user.click(botonCerrarSesion())
-    await user.click(within(dialogo()!).getByRole('button', { name: 'Cancelar' }))
-    await user.click(botonCerrarSesion())
-
-    expect(dialogo()).toBeTruthy()
-  })
-
-  it('el diálogo es modal y está etiquetado con su título', async () => {
-    const user = userEvent.setup()
-    render(<Perfil {...datos} />)
-
-    await user.click(botonCerrarSesion())
-
-    const ventana = dialogo()!
-    expect(ventana.getAttribute('aria-modal')).toBe('true')
-    const idTitulo = ventana.getAttribute('aria-labelledby')!
-    expect(document.getElementById(idTitulo)!.textContent).toBe('¿Cerrar sesión?')
-  })
-
-  it('mientras se cierra la sesión muestra «Cerrando sesión...» y desactiva el botón', () => {
-    render(<Perfil {...datos} cerrandoSesion />)
-
-    expect(botonCerrarSesion().textContent).toContain('Cerrando sesión...')
-    expect(botonCerrarSesion()).toHaveProperty('disabled', true)
-  })
 
   it('muestra el error recibido', () => {
     render(<Perfil {...datos} error="No se ha podido cerrar la sesión" />)

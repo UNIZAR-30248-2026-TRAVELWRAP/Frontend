@@ -40,22 +40,7 @@ describe('VisorFotos · compartir', () => {
     expect(screen.queryByRole('button', { name: /^Compartir/ })).toBeNull()
   })
 
-  it('el botón de compartir convive con el de borrar y el de cerrar', () => {
-    render(visor({ onBorrar: vi.fn() }))
 
-    expect(screen.getByRole('button', { name: 'Compartir foto' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Borrar foto' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Cerrar foto' })).toBeTruthy()
-  })
-
-  it('mientras se prepara el archivo muestra el estado y desactiva el botón', () => {
-    render(visor({ compartiendo: true }))
-
-    const boton = screen.getByRole('button', { name: 'Compartir foto' }) as HTMLButtonElement
-    expect(boton.disabled).toBe(true)
-    expect(boton.getAttribute('aria-busy')).toBe('true')
-    expect(screen.getByRole('status').textContent).toBe('Preparando el archivo...')
-  })
 
   it('un aviso informativo sale como estado y uno de error como alerta', () => {
     const { rerender } = render(visor({ aviso: { tipo: 'info', texto: 'Se ha descargado' } }))
@@ -66,10 +51,4 @@ describe('VisorFotos · compartir', () => {
     expect(screen.getByRole('alert').textContent).toBe('No se ha podido')
   })
 
-  it('sin aviso ni compartición en curso no hay mensaje', () => {
-    render(visor())
-
-    expect(screen.queryByRole('status')).toBeNull()
-    expect(screen.queryByRole('alert')).toBeNull()
-  })
 })

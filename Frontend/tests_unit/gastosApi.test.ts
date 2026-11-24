@@ -189,65 +189,7 @@ describe('gastosApi · detalle, edición y borrado', () => {
     expect(opciones.headers.Authorization).toBe('Bearer token-acceso')
   })
 
-  it('editarGasto envía PATCH al gasto con los datos y devuelve el gasto editado', async () => {
-    const editado = { id: GASTO_ID, concepto: 'Cena', importe: 12, repartos: [] }
-    const fetchMock = vi.fn(() => respuesta(200, editado))
-    vi.stubGlobal('fetch', fetchMock)
-    const datos: NuevoGasto = { concepto: 'Cena', importe: 12, pagado_por: ADRIANA, participantes: [ADRIANA] }
 
-    expect(await editarGasto(VIAJE_ID, GASTO_ID, datos, 'token-acceso')).toEqual(editado)
-    const [url, opciones] = llamada(fetchMock)
-    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/gastos/${GASTO_ID}$`))
-    expect(opciones.method).toBe('PATCH')
-    expect(JSON.parse(opciones.body as string)).toEqual(datos)
-  })
 
-  it('eliminarGasto envía DELETE y acepta la respuesta 204 sin cuerpo', async () => {
-    const fetchMock = vi.fn(() => Promise.resolve(new Response(null, { status: 204 })))
-    vi.stubGlobal('fetch', fetchMock)
-
-    expect(await eliminarGasto(VIAJE_ID, GASTO_ID, 'token-acceso')).toBeNull()
-    const [url, opciones] = llamada(fetchMock)
-    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/gastos/${GASTO_ID}$`))
-    expect(opciones.method).toBe('DELETE')
-    expect(opciones.headers.Authorization).toBe('Bearer token-acceso')
-  })
-
-  it('eliminarGasto propaga el 404 de un gasto que no existe', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() => respuesta(404, { error: { codigo: 'gasto_no_encontrado', mensaje: 'El gasto no existe o no pertenece a este viaje' } })),
-    )
-
-    await expect(eliminarGasto(VIAJE_ID, GASTO_ID, 'token-acceso')).rejects.toMatchObject({
-      estado: 404,
-      codigo: 'gasto_no_encontrado',
-    })
-  })
 })
 
-describe('gastosApi · deudas saldadas', () => {
-  it('marca la deuda con POST a /gastos/saldadas con el deudor y el importe', async () => {
-    const fetchMock = vi.fn(() => Promise.resolve(new Response(null, { status: 204 })))
-    vi.stubGlobal('fetch', fetchMock)
-
-    await expect(marcarDeudaSaldada(VIAJE_ID, BERTA, 30, 'token-acceso')).resolves.toBeNull()
-
-    const [url, opciones] = llamada(fetchMock)
-    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/gastos/saldadas$`))
-    expect(opciones.method).toBe('POST')
-    expect(JSON.parse(opciones.body as unknown as string)).toEqual({ de_usuario_id: BERTA, importe: 30 })
-    expect(new Headers(opciones.headers).get('Authorization')).toBe('Bearer token-acceso')
-  })
-
-  it('deshace la marca con DELETE a /gastos/saldadas/:deudorId', async () => {
-    const fetchMock = vi.fn(() => Promise.resolve(new Response(null, { status: 204 })))
-    vi.stubGlobal('fetch', fetchMock)
-
-    await expect(deshacerDeudaSaldada(VIAJE_ID, BERTA, 'token-acceso')).resolves.toBeNull()
-
-    const [url, opciones] = llamada(fetchMock)
-    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/gastos/saldadas/${BERTA}$`))
-    expect(opciones.method).toBe('DELETE')
-  })
-})

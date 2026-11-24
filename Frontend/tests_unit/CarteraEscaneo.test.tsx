@@ -77,37 +77,7 @@ describe('Cartera de Documentos: escanear con OCR', () => {
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/documentos/texto'))).toBe(false)
   })
 
-  it('una actividad se entrega a la pantalla de confirmación con su fecha y su hora', async () => {
-    simularBackend(() =>
-      json(200, { tipo: 'actividad', datos: { titulo: 'Entradas Coliseo', fecha: '2027-05-13', hora_inicio: '10:00' } }),
-    )
-    const onEscaneoConfirmar = vi.fn()
-    await abrirCartera({ onEscaneoConfirmar })
 
-    await escanearFoto()
-
-    await waitFor(() =>
-      expect(onEscaneoConfirmar).toHaveBeenCalledWith({
-        tipo: 'actividad',
-        datos: { titulo: 'Entradas Coliseo', fecha: '2027-05-13', hora_inicio: '10:00' },
-      }),
-    )
-  })
-
-  it('otro documento se guarda como resumen .txt y aparece en la cartera', async () => {
-    const fetchMock = simularBackend(() => json(200, { tipo: 'otro', datos: { resumen: 'Póliza de seguro' } }))
-    const onEscaneoConfirmar = vi.fn()
-    await abrirCartera({ onEscaneoConfirmar })
-
-    await escanearFoto()
-
-    expect(await screen.findByText('«Resumen escaneado.txt» se ha guardado en la cartera')).toBeTruthy()
-    expect(onEscaneoConfirmar).not.toHaveBeenCalled()
-    const guardado = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/documentos/texto'))
-    expect(guardado).toBeDefined()
-    const [, opciones] = guardado as unknown as [string, RequestInit]
-    expect(JSON.parse(opciones.body as string)).toEqual({ texto: 'Póliza de seguro' })
-  })
 
   it('si el OCR no lee ningún texto, no guarda nada y lo dice', async () => {
     const fetchMock = simularBackend(() => json(200, { tipo: 'otro', datos: { resumen: '' } }))

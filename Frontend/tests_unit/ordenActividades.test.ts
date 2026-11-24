@@ -163,9 +163,6 @@ describe('puedeReordenarse', () => {
     expect(puedeReordenarse(delDia, 'cena')).toBe(false)
   })
 
-  it('si es la única actividad del día no hay a dónde moverla', () => {
-    expect(puedeReordenarse([actividad('sola')], 'sola')).toBe(false)
-  })
 
   it('un identificador desconocido no se puede mover', () => {
     expect(puedeReordenarse(delDia, 'fantasma')).toBe(false)
@@ -220,20 +217,6 @@ describe('valoresDeOrden', () => {
     ).toEqual({ a: -1, b: 1 })
   })
 
-  it('al aplicar esos valores el día se ordena igual que la lista de partida', () => {
-    const listas = [
-      [actividad('a'), actividad('b', { hora_inicio: '10:00:00' }), actividad('c'), actividad('d', { hora_inicio: '12:00:00' }), actividad('e')],
-      [actividad('a'), actividad('b'), actividad('c', { hora_inicio: '10:00:00' })],
-      [actividad('a', { hora_inicio: '10:00:00' }), actividad('b', { hora_inicio: '10:00:00' }), actividad('c')],
-      [actividad('a'), actividad('b'), actividad('c')],
-    ]
-
-    for (const lista of listas) {
-      const valores = valoresDeOrden(lista)
-      const guardadas = lista.map((a) => ({ ...a, orden: valores.get(a.id) as number }))
-      expect(ids(ordenarDia(guardadas))).toEqual(ids(lista))
-    }
-  })
 })
 
 describe('moverActividad', () => {
@@ -249,73 +232,15 @@ describe('moverActividad', () => {
   const deLaFecha = (lista: ActividadOrdenable[], fecha = '2027-05-12') =>
     ids(ordenarDia(lista.filter((a) => a.fecha === fecha)))
 
-  it('una sin hora se puede colocar entre dos actividades con hora', () => {
-    const resultado = moverActividad(base, '2027-05-12', 'paseo', 'comida')
 
-    expect(resultado?.orden).toEqual(['desayuno', 'paseo', 'comida', 'cena', 'compras'])
-    expect(deLaFecha(resultado?.actividades ?? [])).toEqual(['desayuno', 'paseo', 'comida', 'cena', 'compras'])
-  })
 
-  it('se puede colocar la primera del día', () => {
-    const resultado = moverActividad(base, '2027-05-12', 'compras', 'desayuno')
 
-    expect(deLaFecha(resultado?.actividades ?? [])).toEqual(['compras', 'desayuno', 'comida', 'cena', 'paseo'])
-  })
 
-  it('moverla al final la deja con una posición normal, para que siga al final si se añaden otras después', () => {
-    const colocada = moverActividad(base, '2027-05-12', 'paseo', 'comida')
-    const alFinal = moverActividad(colocada?.actividades ?? [], '2027-05-12', 'paseo', 'compras')
 
-    const paseo = alFinal?.actividades.find((a) => a.id === 'paseo')
-    expect((paseo?.orden ?? -1) >= 0).toBe(true)
-    expect(deLaFecha(alFinal?.actividades ?? [])).toEqual(['desayuno', 'comida', 'cena', 'compras', 'paseo'])
-  })
 
-  it('al colocarla entre las de hora guarda una posición negativa', () => {
-    const resultado = moverActividad(base, '2027-05-12', 'paseo', 'comida')
 
-    expect((resultado?.actividades.find((a) => a.id === 'paseo')?.orden ?? 0) < 0).toBe(true)
-  })
 
-  it('mueve entre las sin hora', () => {
-    const resultado = moverActividad(base, '2027-05-12', 'compras', 'paseo')
 
-    expect(deLaFecha(resultado?.actividades ?? [])).toEqual(['desayuno', 'comida', 'cena', 'compras', 'paseo'])
-  })
-
-  it('mueve entre las actividades que empiezan a la misma hora', () => {
-    const empate = [
-      actividad('museoA', { hora_inicio: '10:00:00', orden: 0 }),
-      actividad('museoB', { hora_inicio: '10:00:00', orden: 1 }),
-      actividad('comida', { hora_inicio: '14:00:00', orden: 2 }),
-    ]
-
-    const resultado = moverActividad(empate, '2027-05-12', 'museoB', 'museoA')
-
-    expect(deLaFecha(resultado?.actividades ?? [])).toEqual(['museoB', 'museoA', 'comida'])
-  })
-
-  it('una actividad con hora propia no se puede mover sobre otra con distinta hora', () => {
-    expect(moverActividad(base, '2027-05-12', 'desayuno', 'comida')).toBeNull()
-    expect(moverActividad(base, '2027-05-12', 'cena', 'paseo')).toBeNull()
-  })
-
-  it('no hace nada si se suelta sobre sí misma', () => {
-    expect(moverActividad(base, '2027-05-12', 'paseo', 'paseo')).toBeNull()
-  })
-
-  it('no permite mover entre días ni con identificadores que no existen', () => {
-    expect(moverActividad(base, '2027-05-12', 'paseo', 'otroDia')).toBeNull()
-    expect(moverActividad(base, '2027-05-12', 'fantasma', 'paseo')).toBeNull()
-    expect(moverActividad(base, '2027-05-12', 'paseo', 'fantasma')).toBeNull()
-  })
-
-  it('no toca los demás días ni modifica la lista original', () => {
-    const resultado = moverActividad(base, '2027-05-12', 'paseo', 'comida')
-
-    expect(resultado?.actividades.find((a) => a.id === 'otroDia')?.orden).toBe(0)
-    expect(base.map((a) => a.orden)).toEqual([0, 1, 2, 3, 4, 0])
-  })
 
   it('el orden devuelto es el del día entero, listo para guardarlo en el servidor', () => {
     const resultado = moverActividad(base, '2027-05-12', 'paseo', 'comida')

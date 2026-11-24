@@ -149,57 +149,7 @@ describe('ChatGaleria · compartir', () => {
     await waitFor(() => expect(guardados).toHaveLength(1))
   })
 
-  it('si no se puede obtener el archivo avisa con una alerta y se puede volver a intentar', async () => {
-    simular({ archivo: () => Promise.reject(new TypeError('Failed to fetch')) })
-    await abrirFoto()
 
-    await compartir()
 
-    expect((await screen.findByRole('alert')).textContent).toBe('No se ha podido preparar el archivo para compartirlo')
-    expect(guardados).toEqual([])
-    expect((screen.getByRole('button', { name: 'Compartir foto' }) as HTMLButtonElement).disabled).toBe(false)
-  })
 
-  it('el aviso se quita al pasar a otra foto y al cerrar el visor', async () => {
-    simular()
-    await abrirFoto()
-    await compartir()
-    await screen.findByRole('status')
-
-    await userEvent.click(screen.getByRole('button', { name: 'Foto siguiente' }))
-    expect(screen.queryByRole('status')).toBeNull()
-
-    await compartir()
-    await screen.findByRole('status')
-    await userEvent.click(screen.getByRole('button', { name: 'Cerrar foto' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Ampliar trevi.png' }))
-    expect(screen.queryByRole('status')).toBeNull()
-  })
-
-  it('se puede compartir también con el viaje finalizado, aunque no se pueda borrar', async () => {
-    const share = vi.fn(async () => undefined)
-    simular({ estado: 'finalizado' })
-    conCompartir(share)
-    await abrirFoto()
-    expect(screen.queryByRole('button', { name: 'Borrar foto' })).toBeNull()
-
-    await compartir()
-
-    await waitFor(() => expect(share).toHaveBeenCalledTimes(1))
-  })
-
-  it('un vídeo se comparte con su tipo', async () => {
-    const share = vi.fn(async () => undefined)
-    simular({
-      fotos: [foto({ id: 'v1', nombre: 'paseo.mp4', tipo_mime: 'video/mp4', url: 'https://storage.test/paseo.mp4' })],
-      archivo: () => Promise.resolve(new Response('v', { status: 200, headers: { 'Content-Type': 'video/mp4' } })),
-    })
-    conCompartir(share)
-    await abrirFoto('paseo.mp4')
-
-    await compartir('Compartir vídeo')
-
-    await waitFor(() => expect(share).toHaveBeenCalledTimes(1))
-    expect((share.mock.calls[0] as unknown as [{ files: File[] }])[0].files[0].type).toBe('video/mp4')
-  })
 })

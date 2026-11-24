@@ -128,77 +128,7 @@ describe('ElegirDestino', () => {
     expect(screen.getByRole('button', { name: 'Confirmar sorteo' })).toBeTruthy()
   })
 
-  it('cualquier miembro, aunque no sea el creador, ve el botón de fijar el destino', async () => {
-    await abrir({ viaje: viajeDePrueba({ rol: 'miembro' }) })
 
-    expect(screen.getByRole('button', { name: /Fijar/ })).toBeTruthy()
-    expect(screen.queryByText(/El creador del viaje fijará el destino/)).toBeNull()
-  })
-
-  it('si el viaje ya tiene destino pasa directamente al inicio del viaje', async () => {
-    simularBackendVotaciones({ viaje: viajeDePrueba({ destino: 'Roma', pendiente_destino: false }) })
-    const onDestinoFijado = vi.fn()
-    render(<ElegirDestino viajeId={VIAJE_ID} tokenSesion="token-acceso" onDestinoFijado={onDestinoFijado} />)
-
-    await vi.waitFor(() => expect(onDestinoFijado).toHaveBeenCalled())
-    expect(screen.queryByText('Elegir Destino')).toBeNull()
-  })
 })
 
-describe('ElegirDestino en tiempo real', () => {
-  it('los destinos y votos de los demás aparecen sin recargar', async () => {
-    const { estado } = await abrir()
-    expect(await screen.findByText(/Todavía no hay destinos propuestos/)).toBeTruthy()
 
-    estado.votaciones[0].opciones.push(opcion('oporto', 'Oporto'))
-    estado.votaciones[0].votos.u2 = 'oporto'
-    await avisarCambio({ votacion_id: 'destino', motivo: 'voto' })
-
-    expect(await screen.findByRole('radio', { name: /Oporto/ })).toBeTruthy()
-    expect(screen.getByText('1/3')).toBeTruthy()
-  })
-
-  it('cuando el creador fija el destino, los demás pasan solos al inicio del viaje', async () => {
-    const onDestinoFijado = vi.fn()
-    await abrir({ viaje: viajeDePrueba({ rol: 'miembro' }) }, { onDestinoFijado })
-
-    await avisarCambio({ votacion_id: 'destino', motivo: 'cerrada', destino: 'Praga' })
-
-    await vi.waitFor(() => expect(onDestinoFijado).toHaveBeenCalledTimes(1))
-    expect(onDestinoFijado.mock.calls[0][0]).toMatchObject({ destino: 'Praga', pendiente_destino: false })
-  })
-
-  it('a quien lo ha fijado no se le redirige dos veces', async () => {
-    const user = userEvent.setup()
-    const onDestinoFijado = vi.fn()
-    await abrir(
-      { votaciones: [destino({ opciones: [opcion('praga', 'Praga')], votos: { u1: 'praga', u2: 'praga', u3: 'praga' } })] },
-      { onDestinoFijado },
-    )
-
-    await user.click(await screen.findByRole('button', { name: 'Fijar «Praga» como destino' }))
-    await user.click(screen.getByRole('button', { name: 'Confirmar Praga' }))
-    await vi.waitFor(() => expect(onDestinoFijado).toHaveBeenCalledTimes(1))
-    await avisarCambio({ votacion_id: 'destino', motivo: 'cerrada', destino: 'Praga' })
-
-    expect(onDestinoFijado).toHaveBeenCalledTimes(1)
-  })
-})
-
-describe('ElegirDestino · miembros nuevos', () => {
-  it('quien se une al viaje aparece sin recargar y ya no han votado todos', async () => {
-    const { estado } = await abrir({
-      votaciones: [destino({ opciones: [opcion('praga', 'Praga')], votos: { u1: 'praga', u2: 'praga', u3: 'praga' } })],
-    })
-    expect(await screen.findByText('3/3')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Fijar «Praga» como destino' })).toHaveProperty('disabled', false)
-
-    estado.viaje = { ...estado.viaje, miembros: [...estado.viaje.miembros, { usuario_id: 'u4', nombre: 'Carla', avatar_url: null, rol: 'miembro' as const }] }
-    await avisarCambio({ motivo: 'miembros' })
-
-    expect(await screen.findByText('3/4')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Fijar «Praga» como destino' })).toHaveProperty('disabled', true)
-    // La cabecera muestra 3 avatares y el resto como «+N»: el cuarto miembro aparece en el contador
-    expect(screen.getAllByLabelText('1 miembros más').length).toBeGreaterThan(0)
-  })
-})

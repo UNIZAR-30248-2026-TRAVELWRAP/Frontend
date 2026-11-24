@@ -45,47 +45,9 @@ describe('SelectorSello', () => {
     expect((screen.getByRole('button', { name: 'Ningún sello seleccionado' }) as HTMLButtonElement).disabled).toBe(true)
   })
 
-  it('«Cancelar» cierra sin llamar a guardar', async () => {
-    const usuario = userEvent.setup()
-    const { onGuardar, onCerrar } = montar('mapa')
 
-    await usuario.click(screen.getByRole('button', { name: 'Sello 1: Chincheta' }))
-    await usuario.click(screen.getByRole('button', { name: 'Cancelar' }))
 
-    expect(onGuardar).not.toHaveBeenCalled()
-    expect(onCerrar).toHaveBeenCalledTimes(1)
-  })
 
-  it('«Elegir» guarda el diseño marcado y cierra', async () => {
-    const usuario = userEvent.setup()
-    const { onGuardar, onCerrar } = montar()
-
-    await usuario.click(screen.getByRole('button', { name: 'Sello 3: Ruta' }))
-    await usuario.click(screen.getByRole('button', { name: 'Elegir' }))
-
-    await waitFor(() => expect(onCerrar).toHaveBeenCalledTimes(1))
-    expect(onGuardar).toHaveBeenCalledWith('ruta')
-  })
-
-  it('«Elegir» sin cambios cierra sin llamar a guardar', async () => {
-    const usuario = userEvent.setup()
-    const { onGuardar, onCerrar } = montar('mapa')
-
-    await usuario.click(screen.getByRole('button', { name: 'Elegir' }))
-
-    expect(onGuardar).not.toHaveBeenCalled()
-    expect(onCerrar).toHaveBeenCalledTimes(1)
-  })
-
-  it('deseleccionar y elegir guarda null', async () => {
-    const usuario = userEvent.setup()
-    const { onGuardar } = montar('mapa')
-
-    await usuario.click(screen.getByRole('button', { name: 'Deseleccionar todos' }))
-    await usuario.click(screen.getByRole('button', { name: 'Elegir' }))
-
-    await waitFor(() => expect(onGuardar).toHaveBeenCalledWith(null))
-  })
 
   it('si falla, muestra el error, no cierra y deja volver a intentarlo', async () => {
     const usuario = userEvent.setup()

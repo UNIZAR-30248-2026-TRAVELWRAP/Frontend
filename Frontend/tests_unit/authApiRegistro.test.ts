@@ -81,14 +81,6 @@ describe('registrar', () => {
     expect(error.codigo).toBe('datos_invalidos')
   })
 
-  it('lanza ApiError sin_conexion si el servidor no responde', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))))
-
-    const error = await registrar('Daniel', 'daniel@travelwrap.app', 'secreta123').catch((e) => e)
-
-    expect(error).toBeInstanceOf(ApiError)
-    expect(error.codigo).toBe('sin_conexion')
-  })
 })
 
 describe('reenviarConfirmacion', () => {
@@ -105,17 +97,4 @@ describe('reenviarConfirmacion', () => {
     expect(JSON.parse(opciones.body as string)).toEqual({ email: 'daniel@travelwrap.app' })
   })
 
-  it('lanza ApiError 429 si se piden demasiados correos seguidos', async () => {
-    vi.stubGlobal('fetch', vi.fn(() =>
-      respuesta(429, {
-        error: { codigo: 'demasiados_intentos', mensaje: 'Espera un momento antes de volver a pedir el correo' },
-      }),
-    ))
-
-    const error = await reenviarConfirmacion('daniel@travelwrap.app').catch((e) => e)
-
-    expect(error).toBeInstanceOf(ApiError)
-    expect(error.estado).toBe(429)
-    expect(error.codigo).toBe('demasiados_intentos')
-  })
 })

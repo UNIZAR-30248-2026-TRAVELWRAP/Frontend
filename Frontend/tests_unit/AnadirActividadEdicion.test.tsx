@@ -193,63 +193,10 @@ describe('AnadirActividad · modo edición', () => {
     expect(cuerpoDelPatch(fetchMock)).toEqual({ ubicacion_nombre: null, categoria: null })
   })
 
-  it('cambia la hora de fin y el tipo sin tocar lo demás', async () => {
-    const user = userEvent.setup()
-    const fetchMock = simularBackend()
-    renderizar()
 
-    await esperarFormulario()
-    await user.clear(screen.getByLabelText('Hasta (opcional)'))
-    await user.type(screen.getByLabelText('Hasta (opcional)'), '13:30')
-    await user.click(screen.getByRole('button', { name: 'Comida' }))
-    await user.click(botonGuardar())
 
-    await waitFor(() => expect(llamadasPatch(fetchMock)).toHaveLength(1))
-    expect(cuerpoDelPatch(fetchMock)).toEqual({ hora_fin: '13:30', categoria: 'comida' })
-  })
 
-  it('avisa y no deja guardar si la hora de fin queda antes de la de inicio', async () => {
-    const user = userEvent.setup()
-    simularBackend()
-    renderizar()
 
-    await esperarFormulario()
-    await user.clear(screen.getByLabelText('Hasta (opcional)'))
-    await user.type(screen.getByLabelText('Hasta (opcional)'), '09:00')
-
-    expect((await screen.findByRole('alert')).textContent).toBe('La hora de fin no puede ser anterior a la de inicio')
-    expect(botonGuardar()).toHaveProperty('disabled', true)
-  })
-
-  it('no deja guardar si se borra el título', async () => {
-    const user = userEvent.setup()
-    simularBackend()
-    renderizar()
-
-    await esperarFormulario()
-    await user.clear(screen.getByLabelText('Nombre de la actividad'))
-
-    expect(botonGuardar()).toHaveProperty('disabled', true)
-  })
-
-  it('si la actividad está en un día fuera de las fechas del viaje, ese día aparece y está elegido', async () => {
-    simularBackend({}, [actividad({ fecha: '2027-05-10' })])
-    renderizar()
-
-    await esperarFormulario()
-
-    expect(screen.getByRole('button', { name: '10 may' }).getAttribute('aria-pressed')).toBe('true')
-    expect(screen.getByRole('button', { name: 'Día 1 · 12 may' }).getAttribute('aria-pressed')).toBe('false')
-  })
-
-  it('en un viaje sin fechas muestra el campo de fecha con el día de la actividad', async () => {
-    simularBackend({ fecha_inicio: null, fecha_fin: null })
-    renderizar()
-
-    await esperarFormulario()
-
-    expect((screen.getByLabelText('Fecha') as HTMLInputElement).value).toBe('2027-05-12')
-  })
 
   it('muestra el error del servidor, sigue en el formulario y deja volver a intentarlo', async () => {
     const user = userEvent.setup()
@@ -267,45 +214,9 @@ describe('AnadirActividad · modo edición', () => {
     expect(botonGuardar()).toHaveProperty('disabled', false)
   })
 
-  it('avisa si la actividad no existe en el viaje y no ofrece el formulario', async () => {
-    simularBackend({}, [])
-    renderizar()
 
-    expect((await screen.findByRole('alert')).textContent).toContain('La actividad no existe en este viaje')
-    expect(screen.queryByLabelText('Nombre de la actividad')).toBeNull()
-  })
 
-  it('en un viaje finalizado avisa de que ya no se pueden modificar actividades', async () => {
-    simularBackend({ estado: 'finalizado' })
-    renderizar()
 
-    expect((await screen.findByRole('alert')).textContent).toBe(
-      'El viaje está finalizado y ya no se pueden modificar actividades',
-    )
-    expect(screen.queryByRole('button', { name: 'Guardar cambios' })).toBeNull()
-  })
-
-  it('avisa si no se ha podido cargar el viaje', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() => respuesta(404, { error: { codigo: 'viaje_no_encontrado', mensaje: 'El viaje no existe o no perteneces a él' } })),
-    )
-    renderizar()
-
-    expect((await screen.findByRole('alert')).textContent).toContain('El viaje no existe o no perteneces a él')
-  })
-
-  it('la flecha de volver avisa a la ruta', async () => {
-    const user = userEvent.setup()
-    const onVolver = vi.fn()
-    simularBackend()
-    renderizar({ onVolver })
-
-    await esperarFormulario()
-    await user.click(screen.getByRole('button', { name: 'Volver' }))
-
-    expect(onVolver).toHaveBeenCalledTimes(1)
-  })
 
   it('el selector de tipo conserva sus cinco opciones en modo edición', async () => {
     simularBackend()

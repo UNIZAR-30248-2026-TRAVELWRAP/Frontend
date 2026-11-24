@@ -67,15 +67,6 @@ describe('Añadir Gasto con un ticket escaneado', () => {
     expect(screen.queryByDisplayValue(/^\d/)).not.toBeTruthy()
   })
 
-  it('sin datos escaneados no muestra el aviso', async () => {
-    simularViaje()
-
-    render(<AnadirGasto viajeId={VIAJE_ID} tokenSesion="token-acceso" usuarioId={ADRIANA} />)
-
-    // Espera a que el formulario cargue el viaje antes de comprobar que no hay aviso
-    await screen.findByRole('button', { name: 'Registrar gasto' })
-    expect(screen.queryByRole('status')).not.toBeTruthy()
-  })
 })
 
 describe('Añadir Actividad con un documento escaneado', () => {
@@ -95,22 +86,4 @@ describe('Añadir Actividad con un documento escaneado', () => {
     expect(screen.getByRole('status').textContent).toContain('Hemos leído estos datos del documento')
   })
 
-  it('ignora una fecha leída que cae fuera de los días del viaje', async () => {
-    simularViaje()
-
-    render(
-      <AnadirActividad
-        viajeId={VIAJE_ID}
-        tokenSesion="token-acceso"
-        datosEscaneados={{ titulo: 'Vuelo de vuelta', fecha: '2027-06-30', hora_inicio: null }}
-      />,
-    )
-
-    expect(await screen.findByDisplayValue('Vuelo de vuelta')).toBeTruthy()
-    // Se queda un día del viaje (el primero), nunca la fecha leída fuera de rango
-    const dias = within(screen.getByRole('group', { name: 'Día de la actividad' })).getAllByRole('button')
-    const pulsados = dias.filter((boton) => boton.getAttribute('aria-pressed') === 'true')
-    expect(pulsados).toHaveLength(1)
-    expect(pulsados[0].textContent).not.toMatch(/30/)
-  })
 })

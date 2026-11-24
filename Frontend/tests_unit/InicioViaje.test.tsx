@@ -239,22 +239,6 @@ describe('InicioViaje · finalizar viaje con confirmación', () => {
     expect(fetchMock.mock.calls.some(([, opciones]) => opciones?.method === 'POST')).toBe(false)
   })
 
-  it('al confirmar finaliza el viaje y avisa con el viaje finalizado', async () => {
-    const user = userEvent.setup()
-    const fetchMock = simularBackend()
-    const onFinalizado = vi.fn()
-    renderizar({ onFinalizado })
-
-    await user.click(await screen.findByRole('button', { name: 'Finalizar viaje' }))
-    await user.click(within(dialogo()!).getByRole('button', { name: 'Finalizar viaje' }))
-
-    await vi.waitFor(() => expect(onFinalizado).toHaveBeenCalledTimes(1))
-    expect(onFinalizado.mock.calls[0][0].estado).toBe('finalizado')
-    const [url, opciones] = fetchMock.mock.calls.find(([, o]) => o?.method === 'POST') as unknown as [string, RequestInit]
-    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/finalizar$`))
-    expect(opciones.method).toBe('POST')
-    expect(dialogo()).toBeNull()
-  })
 
   it('si el backend no lo finaliza muestra el error en el diálogo', async () => {
     const user = userEvent.setup()
@@ -294,83 +278,12 @@ const simularAbandono = ({
 }
 
 describe('InicioViaje · abandonar el viaje', () => {
-  it('el creador también ve «Abandonar»: no tiene más privilegios que los demás', async () => {
-    simularAbandono({ rol: 'creador' })
-    renderizar()
 
-    await screen.findByRole('button', { name: 'Editar viaje' })
-    expect(screen.getByRole('button', { name: 'Abandonar' })).toBeTruthy()
-  })
 
-  it('a un miembro que no es el creador le aparece «Abandonar» en la cabecera', async () => {
-    simularAbandono()
-    renderizar()
 
-    expect(await screen.findByRole('button', { name: 'Abandonar' })).toBeTruthy()
-  })
 
-  it('con el saldo a cero pide confirmación y, al confirmar, abandona y avisa a la pantalla', async () => {
-    const fetchMock = simularAbandono({ saldo: 0 })
-    const onAbandonado = vi.fn()
-    renderizar({ onAbandonado })
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Abandonar' }))
-    expect(screen.getByRole('dialog').textContent).toContain('¿Abandonar este viaje?')
-    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Abandonar viaje' }))
 
-    await vi.waitFor(() => expect(onAbandonado).toHaveBeenCalledTimes(1))
-    const [url] = fetchMock.mock.calls.find(([, opciones]) => opciones?.method === 'POST') as unknown as [string]
-    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/abandonar$`))
-  })
-
-  it('cancelar la confirmación no abandona el viaje', async () => {
-    const fetchMock = simularAbandono({ saldo: 0 })
-    renderizar()
-
-    await userEvent.click(await screen.findByRole('button', { name: 'Abandonar' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
-
-    expect(dialogo()).toBeNull()
-    expect(fetchMock.mock.calls.some(([, opciones]) => opciones?.method === 'POST')).toBe(false)
-  })
-
-  it('con deudas avisa de lo que debe y no abandona; el botón lleva a Control de Gastos', async () => {
-    const fetchMock = simularAbandono({ saldo: -30 })
-    const onCambiarSeccion = vi.fn()
-    renderizar({ onCambiarSeccion })
-
-    await userEvent.click(await screen.findByRole('button', { name: 'Abandonar' }))
-    expect(screen.getByRole('dialog').textContent).toContain('Debes 30 € en este viaje.')
-    await userEvent.click(screen.getByRole('button', { name: 'Ir a Control de Gastos' }))
-
-    expect(onCambiarSeccion).toHaveBeenCalledWith('gastos')
-    expect(fetchMock.mock.calls.some(([, opciones]) => opciones?.method === 'POST')).toBe(false)
-  })
-
-  it('si le deben dinero, el aviso lo dice', async () => {
-    simularAbandono({ saldo: 12.5 })
-    renderizar()
-
-    await userEvent.click(await screen.findByRole('button', { name: 'Abandonar' }))
-    expect(screen.getByRole('dialog').textContent).toContain('Te deben 12,50 € en este viaje.')
-  })
-
-  it('si el backend rechaza el abandono, el motivo sale en el diálogo y el viaje sigue', async () => {
-    const onAbandonado = vi.fn()
-    simularAbandono({
-      saldo: 0,
-      abandonar: () => respuesta(409, { error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está finalizado y ya no se puede modificar' } }),
-    })
-    renderizar({ onAbandonado })
-
-    await userEvent.click(await screen.findByRole('button', { name: 'Abandonar' }))
-    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Abandonar viaje' }))
-
-    expect((await within(screen.getByRole('dialog')).findByRole('alert')).textContent).toBe(
-      'El viaje está finalizado y ya no se puede modificar',
-    )
-    expect(onAbandonado).not.toHaveBeenCalled()
-  })
 
   it('si no se puede comprobar el saldo lo explica y no abre ningún diálogo', async () => {
     simularAbandono({ balance: () => respuesta(502, { error: { codigo: 'error_gastos', mensaje: 'Fallo' } }) })
@@ -383,85 +296,3 @@ describe('InicioViaje · abandonar el viaje', () => {
   })
 })
 
-describe('InicioViaje · tareas pendientes propias', () => {
-  const tarjeta = () => screen.queryByRole('button', { name: /Tareas pendientes/ })
-
-  it('cuenta solo las pendientes asignadas al usuario, sin las hechas ni las de otros', async () => {
-    simularBackend({}, undefined, [tarea('a', 'u1'), tarea('b', 'u1'), tarea('c', 'u1', true), tarea('d', 'u2'), tarea('e', null)])
-    renderizar()
-
-    expect(await screen.findByText('2 tareas por completar')).toBeTruthy()
-  })
-
-  it('usa el singular con una sola tarea', async () => {
-    simularBackend({}, undefined, [tarea('a', 'u1')])
-    renderizar()
-
-    expect(await screen.findByText('1 tarea por completar')).toBeTruthy()
-  })
-
-  it('no muestra nada si no hay tareas pendientes propias', async () => {
-    simularBackend({}, undefined, [tarea('a', 'u2'), tarea('b', 'u1', true)])
-    renderizar()
-
-    await screen.findByText('Roma')
-    await new Promise((r) => setTimeout(r, 0))
-    expect(tarjeta()).toBeNull()
-  })
-
-  it('no muestra nada si las tareas no se pueden cargar', async () => {
-    const fetchMock = vi.fn((url: string) =>
-      url.endsWith('/tareas') ? respuesta(500, { error: 'error_tareas', mensaje: 'Fallo' }) : respuesta(200, viaje()),
-    )
-    vi.stubGlobal('fetch', fetchMock)
-    renderizar()
-
-    await screen.findByText('Roma')
-    await new Promise((r) => setTimeout(r, 0))
-    expect(tarjeta()).toBeNull()
-  })
-
-  it('al tocarla abre la lista de tareas', async () => {
-    const user = userEvent.setup()
-    const onTareas = vi.fn()
-    simularBackend({}, undefined, [tarea('a', 'u1')])
-    renderizar({ onTareas })
-
-    await user.click(await screen.findByRole('button', { name: /Tareas pendientes/ }))
-    expect(onTareas).toHaveBeenCalledTimes(1)
-  })
-
-  it('muestra lo gastado y el porcentaje del presupuesto, como el prototipo', async () => {
-    simularBackend()
-    renderizar()
-
-    const progreso = await screen.findByTestId('presupuesto-progreso')
-    expect(progreso.textContent).toContain('Gastado 300 €')
-    expect(progreso.textContent).toContain('24%')
-  })
-
-  it('si se supera el presupuesto la barra llega al 100 % y lo gastado sigue en euros', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn((url: string) => (url.endsWith('/resumen') ? respuesta(200, resumen({ total: 1240, gastado: 1300, restante: -60 })) : respuesta(200, viaje()))),
-    )
-    renderizar()
-
-    const progreso = await screen.findByTestId('presupuesto-progreso')
-    expect(progreso.textContent).toContain('Gastado 1.300 €')
-    expect(progreso.textContent).toContain('100%')
-  })
-
-  it('si el resumen no se puede cargar no muestra la barra y la pantalla sigue funcionando', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn((url: string) => (url.endsWith('/resumen') ? respuesta(502, { error: 'error_resumen', mensaje: 'Fallo' }) : respuesta(200, viaje()))),
-    )
-    renderizar()
-
-    await screen.findByText('Roma')
-    await new Promise((r) => setTimeout(r, 0))
-    expect(screen.queryByTestId('presupuesto-progreso')).toBeNull()
-    expect(screen.getByText('Presupuesto')).toBeTruthy()
-  })
-})

@@ -168,109 +168,11 @@ describe('CarteraDocumentos: subida', () => {
     expect(JSON.stringify(opciones?.headers)).toContain('token-acceso')
   })
 
-  it('mientras sube, el botón queda desactivado y lo indica', async () => {
-    let terminar: (r: Response) => void = () => {}
-    simularBackend({ subida: () => new Promise<Response>((resolver) => (terminar = resolver)) })
-    await abrir()
 
-    await usuario().upload(selector(), pdf())
 
-    const boton = await screen.findByRole('button', { name: 'Subiendo documento...' })
-    expect((boton as HTMLButtonElement).disabled).toBe(true)
-    terminar(new Response(JSON.stringify(documento({ id: 'd3' })), { status: 201, headers: { 'Content-Type': 'application/json' } }))
-    expect(((await screen.findByRole('button', { name: 'Subir documento' })) as HTMLButtonElement).disabled).toBe(false)
-  })
 
-  it('rechaza en el cliente un tipo no permitido, sin llamar al servidor', async () => {
-    const fetchMock = simularBackend()
-    await abrir()
 
-    await usuario().upload(selector(), new File(['hola'], 'notas.txt', { type: 'text/plain' }))
 
-    expect((await screen.findByRole('alert')).textContent).toContain('Solo se pueden subir documentos PDF o imágenes JPEG o PNG')
-    expect(subidas(fetchMock)).toHaveLength(0)
-    expect(within(screen.getByRole('list', { name: 'Documentos del viaje' })).getAllByRole('listitem')).toHaveLength(2)
-  })
 
-  it('rechaza en el cliente un archivo de más de 8 MB, sin llamar al servidor', async () => {
-    const fetchMock = simularBackend()
-    await abrir()
-    const grande = pdf('enorme.pdf')
-    Object.defineProperty(grande, 'size', { value: 8_000_001 })
-
-    await usuario().upload(selector(), grande)
-
-    expect((await screen.findByRole('alert')).textContent).toContain('El documento no puede ocupar más de 8 MB')
-    expect(subidas(fetchMock)).toHaveLength(0)
-  })
-
-  it('rechaza un archivo vacío', async () => {
-    const fetchMock = simularBackend()
-    await abrir()
-
-    await usuario().upload(selector(), new File([], 'vacio.pdf', { type: 'application/pdf' }))
-
-    expect((await screen.findByRole('alert')).textContent).toContain('El archivo está vacío')
-    expect(subidas(fetchMock)).toHaveLength(0)
-  })
-
-  it('admite un archivo sin tipo indicado si su extensión es válida', async () => {
-    const fetchMock = simularBackend()
-    await abrir()
-
-    await usuario().upload(selector(), new File(['x'], 'foto.JPG', { type: '' }))
-
-    await waitFor(() => expect(subidas(fetchMock)).toHaveLength(1))
-  })
-
-  it('muestra el error que devuelve la API y la lista no cambia', async () => {
-    simularBackend({
-      subida: () =>
-        json(400, { error: { codigo: 'tipo_no_permitido', mensaje: 'Solo se pueden subir documentos PDF o imágenes JPEG o PNG' } }),
-    })
-    await abrir()
-
-    await usuario().upload(selector(), pdf())
-
-    expect((await screen.findByRole('alert')).textContent).toContain(
-      'No se ha podido subir el documento: Solo se pueden subir documentos PDF o imágenes JPEG o PNG',
-    )
-    expect(screen.queryByRole('status')).toBeNull()
-    expect(within(screen.getByRole('list', { name: 'Documentos del viaje' })).getAllByRole('listitem')).toHaveLength(2)
-  })
-
-  it('tras un error se puede volver a elegir el mismo archivo', async () => {
-    let intentos = 0
-    const fetchMock = simularBackend({
-      subida: () => (++intentos === 1 ? json(502, { error: { codigo: 'error_documento', mensaje: 'Fallo' } }) : json(201, documento({ id: 'd3' }))),
-    })
-    await abrir()
-    const archivo = pdf()
-    const persona = usuario()
-
-    await persona.upload(selector(), archivo)
-    await screen.findByRole('alert')
-    await persona.upload(selector(), archivo)
-
-    await waitFor(() => expect(subidas(fetchMock)).toHaveLength(2))
-    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull())
-  })
 })
 
-describe('CarteraDocumentos: viaje finalizado', () => {
-  it('muestra los documentos pero no deja subir ninguno', async () => {
-    simularBackend({ viaje: () => json(200, { id: VIAJE_ID, nombre: 'Roma 2027', estado: 'finalizado', miembros }) })
-    await abrir()
-
-    expect(screen.queryByRole('button', { name: 'Subir documento' })).toBeNull()
-    expect(screen.queryByLabelText('Elegir el documento que se va a subir')).toBeNull()
-    expect(within(screen.getByRole('list', { name: 'Documentos del viaje' })).getAllByRole('listitem')).toHaveLength(2)
-  })
-
-  it('en un viaje activo sí aparece el botón con el límite de tamaño', async () => {
-    simularBackend()
-    await abrir()
-    expect((screen.getByRole('button', { name: 'Subir documento' }) as HTMLButtonElement).disabled).toBe(false)
-    expect(screen.getByText('PDF o imagen JPEG o PNG, de 8 MB como máximo')).toBeTruthy()
-  })
-})

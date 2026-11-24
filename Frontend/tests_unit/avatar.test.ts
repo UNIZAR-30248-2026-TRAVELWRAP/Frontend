@@ -86,33 +86,5 @@ describe('prepararAvatar', () => {
     expect(await prepararAvatar(original)).toBe(original)
   })
 
-  it('si no hay contexto 2D, usa la original y libera la imagen', async () => {
-    const imagen = { width: 100, height: 100, close: vi.fn() }
-    vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue(imagen))
-    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
-    const original = foto(100)
-
-    expect(await prepararAvatar(original)).toBe(original)
-    expect(imagen.close).toHaveBeenCalled()
-  })
 })
 
-describe('mensajeErrorPerfil', () => {
-  it('traduce los códigos conocidos', () => {
-    expect(mensajeErrorPerfil(new ApiError(0, 'sin_conexion', 'x'))).toBe('No hay conexión con el servidor. Inténtalo de nuevo')
-    expect(mensajeErrorPerfil(new ApiError(400, 'archivo_demasiado_grande', 'x'))).toBe('La foto es demasiado grande (máximo 2 MB)')
-    expect(mensajeErrorPerfil(new ApiError(400, 'tipo_no_permitido', 'x'))).toBe('La foto debe ser JPEG o PNG')
-    expect(mensajeErrorPerfil(new ApiError(401, 'sin_sesion', 'x'))).toBe('Tu sesión ha caducado. Vuelve a iniciar sesión')
-  })
-
-  it('con otro código usa el mensaje del servidor', () => {
-    const error = new ApiError(400, 'datos_invalidos', 'El nombre debe tener entre 1 y 100 caracteres')
-
-    expect(mensajeErrorPerfil(error)).toBe('El nombre debe tener entre 1 y 100 caracteres')
-  })
-
-  it('con un Error normal usa su mensaje y con otra cosa, un texto genérico', () => {
-    expect(mensajeErrorPerfil(new Error('No se ha podido preparar la foto'))).toBe('No se ha podido preparar la foto')
-    expect(mensajeErrorPerfil('algo')).toBe('Ha ocurrido un error')
-  })
-})

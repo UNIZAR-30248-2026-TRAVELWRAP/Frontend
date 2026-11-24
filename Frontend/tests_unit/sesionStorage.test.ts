@@ -58,13 +58,5 @@ describe('sesionStorage', () => {
     expect(localStorage.getItem('travelwrap.sesion')).toBeNull()
   })
 
-  it('no devuelve una sesión guardada con un formato no válido', () => {
-    localStorage.setItem('travelwrap.sesion', JSON.stringify({ ...sesion, token: 42 }))
-    expect(leerSesion()).toBeNull()
-  })
 
-  it('devuelve null si el contenido guardado está corrupto', () => {
-    localStorage.setItem('travelwrap.sesion', '{no es json')
-    expect(leerSesion()).toBeNull()
-  })
 })

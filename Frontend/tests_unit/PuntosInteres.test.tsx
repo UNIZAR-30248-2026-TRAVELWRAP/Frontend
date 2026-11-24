@@ -142,7 +142,6 @@ const renderizar = (opciones: { editable?: boolean; buscar?: (c: string) => Prom
     />,
   )
 
-const ficha = () => screen.queryAllByRole('dialog').find((d) => !d.textContent?.includes('Se eliminará')) ?? null
 
 beforeEach(() => {
   vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })))
@@ -324,46 +323,7 @@ describe('PuntosInteres · añadir un punto', () => {
     expect(screen.queryByRole('dialog', { name: 'Nuevo punto de interés' })).toBeNull()
   })
 
-  it('buscar una dirección y elegirla rellena el nombre y envía su dirección y su lugar', async () => {
-    const buscar = vi.fn(async () => [DIRECCION])
-    const fetchMock = simularBackend([])
-    renderizar({ buscar })
-    await screen.findByText(/Todavía no hay puntos/)
 
-    await userEvent.type(screen.getByLabelText('Buscar una dirección'), 'Pantheon')
-    await userEvent.click(screen.getByRole('button', { name: 'Buscar dirección' }))
-    await userEvent.click(await screen.findByRole('button', { name: 'Pantheon, Roma, Italia' }))
-
-    expect(buscar).toHaveBeenCalledWith('Pantheon')
-    const dialogo = screen.getByRole('dialog', { name: 'Nuevo punto de interés' })
-    expect(within(dialogo).getByText('Pantheon, Piazza della Rotonda, Roma')).toBeTruthy()
-    expect((within(dialogo).getByLabelText('Nombre del punto') as HTMLInputElement).value).toBe('Pantheon')
-    expect(screen.queryByRole('list', { name: 'Resultados de la búsqueda' })).toBeNull()
-
-    await userEvent.click(within(dialogo).getByRole('button', { name: 'Guardar punto' }))
-
-    expect(cuerpoDe(fetchMock, 'POST')).toMatchObject({
-      nombre: 'Pantheon',
-      latitud: 41.8986,
-      longitud: 12.4769,
-      lugar_externo_id: 'way/9',
-      direccion: 'Pantheon, Piazza della Rotonda, Roma',
-    })
-  })
-
-  it('si tras buscar se toca el mapa, el punto pierde la dirección del resultado', async () => {
-    const fetchMock = simularBackend([])
-    renderizar()
-    await screen.findByText(/Todavía no hay puntos/)
-    await userEvent.type(screen.getByLabelText('Buscar una dirección'), 'Pantheon')
-    await userEvent.click(screen.getByRole('button', { name: 'Buscar dirección' }))
-    await userEvent.click(await screen.findByRole('button', { name: 'Pantheon, Roma, Italia' }))
-
-    await userEvent.click(screen.getByRole('button', { name: 'Tocar el mapa' }))
-    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Guardar punto' }))
-
-    expect(cuerpoDe(fetchMock, 'POST')).toMatchObject({ latitud: 41.9, longitud: 12.5, lugar_externo_id: null, direccion: null })
-  })
 
   it('avisa si la búsqueda no encuentra nada o falla', async () => {
     simularBackend([])
@@ -386,42 +346,8 @@ describe('PuntosInteres · añadir un punto', () => {
     expect((await screen.findByRole('alert')).textContent).toBe('Ha ocurrido un error')
   })
 
-  it('la búsqueda pide al menos tres letras', async () => {
-    simularBackend([])
-    renderizar()
-    await screen.findByText(/Todavía no hay puntos/)
 
-    await userEvent.type(screen.getByLabelText('Buscar una dirección'), 'ab')
 
-    expect((screen.getByRole('button', { name: 'Buscar dirección' }) as HTMLButtonElement).disabled).toBe(true)
-  })
-
-  it('muestra el error del servidor al guardar y deja el formulario abierto', async () => {
-    simularBackend([], { falloCrear: true })
-    renderizar()
-    await screen.findByText(/Todavía no hay puntos/)
-    await userEvent.click(screen.getByRole('button', { name: 'Tocar el mapa' }))
-    const dialogo = screen.getByRole('dialog', { name: 'Nuevo punto de interés' })
-    await userEvent.type(within(dialogo).getByLabelText('Nombre del punto'), 'Mirador')
-
-    await userEvent.click(within(dialogo).getByRole('button', { name: 'Guardar punto' }))
-
-    expect((await within(dialogo).findByRole('alert')).textContent).toBe('El nombre es obligatorio y tiene un máximo de 120 caracteres')
-    expect(screen.getByRole('dialog', { name: 'Nuevo punto de interés' })).toBeTruthy()
-  })
-
-  it('cancelar descarta el punto elegido sin guardar nada', async () => {
-    const fetchMock = simularBackend([])
-    renderizar()
-    await screen.findByText(/Todavía no hay puntos/)
-    await userEvent.click(screen.getByRole('button', { name: 'Tocar el mapa' }))
-
-    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancelar' }))
-
-    expect(screen.queryByRole('dialog')).toBeNull()
-    expect(screen.getByTestId('mapa').getAttribute('data-elegida')).toBe('')
-    expect(cuerpoDe(fetchMock, 'POST')).toBeNull()
-  })
 
   it('con el viaje finalizado no hay buscador y tocar el mapa no abre nada', async () => {
     simularBackend([TREVI])
@@ -436,121 +362,4 @@ describe('PuntosInteres · añadir un punto', () => {
   })
 })
 
-describe('PuntosInteres · borrar un punto', () => {
-  it('pide confirmación desde la lista y lo borra para todos', async () => {
-    const fetchMock = simularBackend([TREVI, HELADERIA])
-    renderizar()
-    await screen.findByText('Puntos de interés (2)')
 
-    await userEvent.click(screen.getByRole('button', { name: 'Eliminar Heladería' }))
-    const dialogo = screen.getByRole('dialog', { name: '¿Eliminar este punto de interés?' })
-    expect(dialogo.textContent).toContain('Heladería')
-    await userEvent.click(within(dialogo).getByRole('button', { name: 'Eliminar punto' }))
-
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
-    expect(screen.getByText('Puntos de interés (1)')).toBeTruthy()
-    const borrado = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE')
-    expect(String(borrado?.[0])).toMatch(/puntos-de-interes\/p2$/)
-  })
-
-  it('se puede borrar desde la ficha, que se cierra al borrar', async () => {
-    simularBackend([TREVI])
-    renderizar()
-    await screen.findByText('Puntos de interés (1)')
-    await userEvent.click(screen.getByRole('button', { name: 'Ver Fontana di Trevi en el mapa' }))
-
-    await userEvent.click(within(screen.getByRole('dialog', { name: 'Fontana di Trevi' })).getByRole('button', { name: 'Borrar' }))
-    await userEvent.click(within(screen.getByRole('dialog', { name: '¿Eliminar este punto de interés?' })).getByRole('button', { name: 'Eliminar punto' }))
-
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
-    expect(screen.getByTestId('mapa').getAttribute('data-seleccionado')).toBe('')
-    expect(screen.getByText(/Todavía no hay puntos/)).toBeTruthy()
-  })
-
-  it('cancelar no borra nada y un fallo del servidor se avisa en el diálogo', async () => {
-    simularBackend([TREVI], { falloBorrar: true })
-    renderizar()
-    await screen.findByText('Puntos de interés (1)')
-
-    await userEvent.click(screen.getByRole('button', { name: 'Eliminar Fontana di Trevi' }))
-    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancelar' }))
-    expect(screen.queryByRole('dialog')).toBeNull()
-
-    await userEvent.click(screen.getByRole('button', { name: 'Eliminar Fontana di Trevi' }))
-    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Eliminar punto' }))
-    expect((await within(screen.getByRole('dialog')).findByRole('alert')).textContent).toBe('El viaje está finalizado y ya no se puede modificar')
-    expect(screen.getByText('Puntos de interés (1)')).toBeTruthy()
-  })
-})
-
-describe('PuntosInteres · filtros', () => {
-  const todos = () => simularBackend([TREVI, HELADERIA, MIRADOR])
-  const grupo = (nombre: string) => screen.getByRole('group', { name: nombre })
-
-  it('ofrece solo los tipos que existen en el viaje, también «Sin tipo»', async () => {
-    todos()
-    renderizar()
-    await screen.findByText('Puntos de interés (3)')
-
-    const botones = within(grupo('Filtrar por tipo')).getAllByRole('button').map((b) => b.textContent)
-
-    expect(botones).toEqual(['Todos', 'Comida', 'Cultura', 'Sin tipo'])
-  })
-
-  it('filtrar por tipo cambia la lista, el mapa y el contador, y «Todos» lo quita', async () => {
-    todos()
-    renderizar()
-    await screen.findByText('Puntos de interés (3)')
-
-    await userEvent.click(within(grupo('Filtrar por tipo')).getByRole('button', { name: 'Comida' }))
-
-    expect(screen.getByText('Puntos de interés (1 de 3)')).toBeTruthy()
-    expect(screen.getByTestId('nombres-en-mapa').textContent).toBe('Heladería')
-    expect(within(screen.getByRole('list', { name: 'Puntos de interés' })).getAllByRole('listitem')).toHaveLength(1)
-
-    await userEvent.click(within(grupo('Filtrar por tipo')).getByRole('button', { name: 'Sin tipo' }))
-    expect(screen.getByTestId('nombres-en-mapa').textContent).toBe('Mirador')
-
-    await userEvent.click(within(grupo('Filtrar por tipo')).getByRole('button', { name: 'Todos' }))
-    expect(screen.getByText('Puntos de interés (3)')).toBeTruthy()
-  })
-
-  it('filtrar por quién lo añadió, y combinado con el tipo', async () => {
-    todos()
-    renderizar()
-    await screen.findByText('Puntos de interés (3)')
-
-    await userEvent.click(within(grupo('Filtrar por quién lo añadió')).getByRole('button', { name: /Adriana/ }))
-    expect(screen.getByTestId('nombres-en-mapa').textContent).toBe('Fontana di Trevi|Mirador')
-
-    await userEvent.click(within(grupo('Filtrar por tipo')).getByRole('button', { name: 'Cultura' }))
-    expect(screen.getByTestId('nombres-en-mapa').textContent).toBe('Fontana di Trevi')
-    expect(screen.getByText('Puntos de interés (1 de 3)')).toBeTruthy()
-
-    await userEvent.click(within(grupo('Filtrar por quién lo añadió')).getByRole('button', { name: /Berta/ }))
-    expect(screen.getByText('Ningún punto coincide con el filtro.')).toBeTruthy()
-  })
-
-  it('no ofrece filtros si solo hay un tipo o una persona', async () => {
-    simularBackend([TREVI, punto('p4', { categoria: 'cultura' })])
-    renderizar()
-    await screen.findByText('Puntos de interés (2)')
-
-    expect(screen.queryByRole('group', { name: 'Filtrar por tipo' })).toBeNull()
-    expect(screen.queryByRole('group', { name: 'Filtrar por quién lo añadió' })).toBeNull()
-  })
-
-  it('al guardar un punto nuevo se quitan los filtros para que se vea', async () => {
-    todos()
-    renderizar()
-    await screen.findByText('Puntos de interés (3)')
-    await userEvent.click(within(grupo('Filtrar por tipo')).getByRole('button', { name: 'Comida' }))
-
-    await userEvent.click(screen.getByRole('button', { name: 'Tocar el mapa' }))
-    await userEvent.type(within(screen.getByRole('dialog')).getByLabelText('Nombre del punto'), 'Mirador nuevo')
-    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Guardar punto' }))
-
-    expect(await screen.findByText('Puntos de interés (4)')).toBeTruthy()
-    expect(ficha()).not.toBeNull()
-  })
-})

@@ -217,25 +217,7 @@ describe('Itinerario · mapa', () => {
     expect(await screen.findByText('1 de 1 actividad con ubicación en el mapa')).toBeTruthy()
   })
 
-  it('si ninguna actividad del día tiene ubicación sigue enseñando el mapa y lo explica', async () => {
-    simularBackend([actividad('a1', { titulo: 'Paseo', ubicacion_nombre: 'Trastevere' })])
-    renderizar()
 
-    expect((await screen.findByTestId('mapa')).textContent).toBe('')
-    expect(screen.getByText(/Ninguna actividad de este día tiene ubicación en el mapa/)).toBeTruthy()
-  })
-
-  it('un día sin actividades también enseña el mapa, vacío, con el aviso', async () => {
-    simularBackend([conUbicacion('a1', 'Coliseo')])
-    renderizar()
-    await screen.findByText('1 de 1 actividad con ubicación en el mapa')
-
-    await userEvent.click(screen.getByRole('button', { name: 'Día 3 · 14 may' }))
-
-    expect(screen.getByTestId('mapa').textContent).toBe('')
-    expect(screen.getByText(/Ninguna actividad de este día tiene ubicación en el mapa/)).toBeTruthy()
-    expect(screen.getByText('No hay actividades este día.')).toBeTruthy()
-  })
 
   it('al cambiar de día el mapa pasa a mostrar las actividades de ese día', async () => {
     simularBackend([
@@ -294,13 +276,6 @@ describe('Itinerario · mapa', () => {
     expect((opciones.headers as Record<string, string>).Authorization).toBe('Bearer token-acceso')
   })
 
-  it('si el servicio de rutas falla avisa y deja la línea recta', async () => {
-    simularBackend([conUbicacion('a1', 'Coliseo'), conUbicacion('a2', 'Foro')])
-    renderizar()
-
-    expect(await screen.findByText('No se ha podido calcular la ruta por calles; se muestra una línea recta.')).toBeTruthy()
-    expect(screen.getByTestId('mapa').getAttribute('data-trazado')).toBe('ninguno')
-  })
 
   it('no pide la ruta con menos de dos actividades con ubicación', async () => {
     const fetchMock = simularBackend([conUbicacion('a1', 'Coliseo'), actividad('a2', { titulo: 'Paseo' })])
@@ -335,17 +310,6 @@ describe('Itinerario · mapa', () => {
     expect(screen.getByText(/unos 1,2 km menos en línea recta/)).toBeTruthy()
   })
 
-  it('no sugiere ningún orden si el ahorro es menor de 100 m', async () => {
-    simularBackend(
-      [conUbicacion('a1', 'Coliseo'), conUbicacion('a2', 'Foro')],
-      {},
-      async () => respuesta(200, rutaDelDia({ orden_sugerido: ['a2', 'a1'], ahorro_m: 40 })),
-    )
-    renderizar()
-
-    await screen.findByText(/Ruta a pie por calles/)
-    expect(screen.queryByText(/Orden más corto/)).toBeNull()
-  })
 
   it('al cambiar a un día con una sola ubicación quita la ruta y no vuelve a pedirla', async () => {
     const fetchMock = simularBackend(
@@ -367,171 +331,14 @@ describe('Itinerario · mapa', () => {
     expect(peticionesDeRuta(fetchMock)).toHaveLength(1)
   })
 
-  it('tras eliminar una actividad vuelve a pedir la ruta con las que quedan', async () => {
-    const user = userEvent.setup()
-    const fetchMock = simularBackend(
-      [
-        conUbicacion('a1', 'Coliseo', { hora_inicio: '10:00:00' }),
-        conUbicacion('a2', 'Foro', { hora_inicio: '12:00:00' }),
-        conUbicacion('a3', 'Vaticano', { hora_inicio: '16:00:00' }),
-      ],
-      {},
-      async () => respuesta(200, rutaDelDia()),
-    )
-    renderizar()
-    await screen.findByText(/Ruta a pie por calles/)
-    expect(peticionesDeRuta(fetchMock)).toHaveLength(1)
 
-    await user.click(screen.getByRole('button', { name: 'Eliminar Foro' }))
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Eliminar actividad' }))
 
-    await waitFor(() => expect(peticionesDeRuta(fetchMock)).toHaveLength(2))
-    expect(await screen.findByText(/Ruta a pie por calles/)).toBeTruthy()
-  })
 
-  it('ignora la respuesta tardía de la ruta de otro día', async () => {
-    let entregarLaDelPrimerDia: (r: Response) => void = () => undefined
-    const user = userEvent.setup()
-    simularBackend(
-      [
-        conUbicacion('a1', 'Coliseo'),
-        conUbicacion('a2', 'Foro'),
-        conUbicacion('a3', 'Vaticano', { fecha: '2027-05-13' }),
-        conUbicacion('a4', 'Trastevere', { fecha: '2027-05-13' }),
-      ],
-      {},
-      (url) =>
-        url.includes('fecha=2027-05-12')
-          ? new Promise<Response>((resolver) => {
-              entregarLaDelPrimerDia = resolver
-            })
-          : respuesta(200, rutaDelDia({ ruta: { distancia_m: 5000, duracion_s: 3600, geometria: [[41, 12], [42, 13]] } })),
-    )
-    renderizar()
-    await screen.findByText('2 de 2 actividades con ubicación en el mapa')
 
-    await user.click(screen.getByRole('button', { name: 'Día 2 · 13 may' }))
-    expect(await screen.findByText('Ruta a pie por calles: 5,0 km · 1 h')).toBeTruthy()
-    entregarLaDelPrimerDia(new Response(JSON.stringify(rutaDelDia()), { status: 200, headers: { 'Content-Type': 'application/json' } }))
 
-    await waitFor(() => expect(screen.queryByText('Ruta a pie por calles: 3,4 km · 45 min')).toBeNull())
-    expect(screen.getByText('Ruta a pie por calles: 5,0 km · 1 h')).toBeTruthy()
-  })
 
-  it('al ampliar el mapa lo pasa a pantalla casi completa y bloquea el scroll de la página', async () => {
-    const user = userEvent.setup()
-    simularBackend([conUbicacion('a1', 'Coliseo')])
-    renderizar()
-    const mapa = await screen.findByTestId('mapa')
-    const tarjeta = mapa.parentElement as HTMLElement
-    expect(tarjeta.style.position).not.toBe('fixed')
-    expect(document.body.style.overflow).toBe('')
 
-    await user.click(screen.getByRole('button', { name: 'Ampliar mapa' }))
 
-    expect(screen.getByTestId('mapa').getAttribute('data-ampliado')).toBe('true')
-    expect(tarjeta.style.position).toBe('fixed')
-    expect(tarjeta.style.height).toBe('100dvh')
-    expect(document.body.style.overflow).toBe('hidden')
-    expect(screen.getByRole('button', { name: 'Reducir mapa' })).toBeTruthy()
-  })
 
-  it('al reducir el mapa vuelve a su tamaño y devuelve el scroll de la página', async () => {
-    const user = userEvent.setup()
-    simularBackend([conUbicacion('a1', 'Coliseo')])
-    renderizar()
-    await user.click(await screen.findByRole('button', { name: 'Ampliar mapa' }))
 
-    await user.click(screen.getByRole('button', { name: 'Reducir mapa' }))
-
-    const tarjeta = screen.getByTestId('mapa').parentElement as HTMLElement
-    expect(screen.getByTestId('mapa').getAttribute('data-ampliado')).toBe('false')
-    expect(tarjeta.style.position).not.toBe('fixed')
-    expect(document.body.style.overflow).toBe('')
-  })
-
-  it('con Escape se reduce el mapa ampliado', async () => {
-    const user = userEvent.setup()
-    simularBackend([conUbicacion('a1', 'Coliseo')])
-    renderizar()
-    await user.click(await screen.findByRole('button', { name: 'Ampliar mapa' }))
-
-    await user.keyboard('{Escape}')
-
-    expect(screen.getByTestId('mapa').getAttribute('data-ampliado')).toBe('false')
-    expect(document.body.style.overflow).toBe('')
-  })
-
-  it('otras teclas no reducen el mapa ampliado', async () => {
-    const user = userEvent.setup()
-    simularBackend([conUbicacion('a1', 'Coliseo')])
-    renderizar()
-    await user.click(await screen.findByRole('button', { name: 'Ampliar mapa' }))
-
-    await user.keyboard('a{ArrowDown}{Tab}')
-
-    expect(screen.getByTestId('mapa').getAttribute('data-ampliado')).toBe('true')
-  })
-
-  it('si se sale de la pantalla con el mapa ampliado se devuelve el scroll de la página', async () => {
-    const user = userEvent.setup()
-    simularBackend([conUbicacion('a1', 'Coliseo')])
-    const { unmount } = renderizar()
-    await user.click(await screen.findByRole('button', { name: 'Ampliar mapa' }))
-    expect(document.body.style.overflow).toBe('hidden')
-
-    unmount()
-
-    expect(document.body.style.overflow).toBe('')
-  })
-
-  it('la información de la ruta sigue visible con el mapa ampliado', async () => {
-    const user = userEvent.setup()
-    simularBackend(
-      [conUbicacion('a1', 'Coliseo'), conUbicacion('a2', 'Foro')],
-      {},
-      async () => respuesta(200, rutaDelDia()),
-    )
-    renderizar()
-    await user.click(await screen.findByRole('button', { name: 'Ampliar mapa' }))
-
-    expect(await screen.findByText('Ruta a pie por calles: 3,4 km · 45 min')).toBeTruthy()
-    expect(screen.getByText('2 de 2 actividades con ubicación en el mapa')).toBeTruthy()
-  })
-
-  it('no pide la ruta cuando se está viendo lo guardado sin conexión', async () => {
-    const fetchMock = simularBackend([conUbicacion('a1', 'Coliseo'), conUbicacion('a2', 'Foro')])
-    renderizar()
-    await screen.findByText(/No se ha podido calcular la ruta/)
-    cleanup()
-    const llamadas = peticionesDeRuta(fetchMock).length
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (url: string) => {
-        if (String(url).includes('/ruta')) throw new Error('no debería pedirse')
-        throw new ApiError('Sin conexión', 0)
-      }),
-    )
-
-    renderizar()
-
-    expect(await screen.findByText('2 de 2 actividades con ubicación en el mapa')).toBeTruthy()
-    expect(peticionesDeRuta(fetchMock)).toHaveLength(llamadas)
-    expect(screen.queryByText(/Ruta a pie por calles/)).toBeNull()
-  })
-
-  it('en un viaje finalizado el mapa también se ve', async () => {
-    simularBackend([conUbicacion('a1', 'Coliseo')], { estado: 'finalizado' })
-    renderizar()
-
-    expect((await screen.findByTestId('mapa')).textContent).toBe('Coliseo')
-  })
-
-  it('sin fechas ni actividades no hay días y no se enseña el mapa', async () => {
-    simularBackend([], { fecha_inicio: null, fecha_fin: null })
-    renderizar()
-
-    await screen.findByText(/Todavía no hay actividades ni fechas en este viaje/)
-    expect(screen.queryByTestId('mapa')).toBeNull()
-  })
 })

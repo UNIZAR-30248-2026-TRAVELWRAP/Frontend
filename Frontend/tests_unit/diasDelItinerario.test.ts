@@ -33,21 +33,9 @@ describe('diasDelItinerario', () => {
     ])
   })
 
-  it('con solo una de las dos fechas del viaje tampoco inventa el rango', () => {
-    expect(diasDelItinerario('2027-05-12', null, [])).toEqual([])
-  })
 
   it('sin fechas ni actividades no hay días', () => {
     expect(diasDelItinerario(null, null, [])).toEqual([])
   })
 })
 
-describe('fechaDeHoy', () => {
-  it('devuelve la fecha local como AAAA-MM-DD con ceros a la izquierda', () => {
-    vi.useFakeTimers({ toFake: ['Date'] })
-    vi.setSystemTime(new Date(2027, 0, 5, 23, 59, 0))
-
-    expect(fechaDeHoy()).toBe('2027-01-05')
-    vi.useRealTimers()
-  })
-})

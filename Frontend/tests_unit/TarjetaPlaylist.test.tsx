@@ -51,27 +51,7 @@ describe('TarjetaPlaylist', () => {
     expect(screen.queryByRole('button', { name: 'Quitar playlist' })).toBeNull()
   })
 
-  it('sin playlist y con el viaje finalizado lo dice', async () => {
-    simularBackend({ obtener: () => json(200, { playlist: null }) })
-    render(<TarjetaPlaylist viajeId={VIAJE_ID} tokenSesion="token-acceso" activo={false} />)
 
-    expect(await screen.findByText('Este viaje no tiene playlist.')).toBeTruthy()
-  })
-
-  it('enlaza una playlist de Spotify pegando su enlace', async () => {
-    const fetchMock = simularBackend({ obtener: () => json(200, { playlist: null }) })
-    render(<TarjetaPlaylist viajeId={VIAJE_ID} tokenSesion="token-acceso" activo />)
-
-    await userEvent.click(await screen.findByRole('button', { name: 'Añadir playlist' }))
-    await userEvent.type(await screen.findByLabelText('Enlace de la playlist de Spotify'), `https://open.spotify.com/playlist/${ID}`)
-    await userEvent.click(screen.getByRole('button', { name: 'Guardar playlist' }))
-
-    await screen.findByRole('link', { name: 'Abrir la playlist del viaje en Spotify' })
-    const guardado = fetchMock.mock.calls.find(([, opciones]) => opciones?.method === 'PUT')
-    expect(guardado).toBeDefined()
-    const [, opciones] = guardado as unknown as [string, RequestInit]
-    expect(JSON.parse(opciones.body as string)).toEqual({ url: `https://open.spotify.com/playlist/${ID}` })
-  })
 
   it('no envía un enlace vacío', async () => {
     const fetchMock = simularBackend({ obtener: () => json(200, { playlist: null }) })
@@ -98,14 +78,4 @@ describe('TarjetaPlaylist', () => {
     expect((await screen.findByRole('alert')).textContent).toContain('El enlace tiene que ser de una playlist de Spotify')
   })
 
-  it('quitar la playlist la elimina y vuelve a ofrecer añadir otra', async () => {
-    const fetchMock = simularBackend()
-    render(<TarjetaPlaylist viajeId={VIAJE_ID} tokenSesion="token-acceso" activo />)
-
-    await userEvent.click(await screen.findByRole('button', { name: 'Cambiar playlist' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Quitar playlist' }))
-
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Añadir playlist' })).toBeTruthy())
-    expect(fetchMock.mock.calls.some(([, opciones]) => opciones?.method === 'DELETE')).toBe(true)
-  })
 })

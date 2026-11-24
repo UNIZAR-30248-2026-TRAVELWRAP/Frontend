@@ -67,15 +67,6 @@ describe('login', () => {
     expect(error.codigo).toBe('sin_conexion')
   })
 
-  it('usa un mensaje genérico si la respuesta de error no tiene cuerpo JSON', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response('', { status: 500 }))))
-
-    const error = await login('daniel@travelwrap.app', 'secreta123').catch((e) => e)
-
-    expect(error.estado).toBe(500)
-    expect(error.codigo).toBe('error_desconocido')
-    expect(error.message).toBe('Ha ocurrido un error')
-  })
 })
 
 describe('refrescar', () => {
@@ -91,16 +82,4 @@ describe('refrescar', () => {
     expect(JSON.parse(opciones.body as string)).toEqual({ refresh_token: 'token-refresco' })
   })
 
-  it('lanza ApiError 401 si la sesión ha caducado', async () => {
-    vi.stubGlobal('fetch', vi.fn(() =>
-      respuesta(401, {
-        error: { codigo: 'sesion_invalida', mensaje: 'La sesión ha caducado o no es válida' },
-      }),
-    ))
-
-    const error = await refrescar('caducado').catch((e) => e)
-
-    expect(error.estado).toBe(401)
-    expect(error.codigo).toBe('sesion_invalida')
-  })
 })

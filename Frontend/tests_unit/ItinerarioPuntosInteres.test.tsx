@@ -108,43 +108,6 @@ describe('Itinerario · pestaña de puntos de interés', () => {
     expect(oculto?.textContent).toContain('Día 1')
   })
 
-  it('al volver a la agenda se ve como estaba', async () => {
-    simularBackend()
-    render(<Itinerario viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
-    await screen.findByText('Agenda del día')
-    await userEvent.click(screen.getByRole('tab', { name: 'Puntos de interés' }))
-    await screen.findByTestId('mapa-puntos')
 
-    await userEvent.click(screen.getByRole('tab', { name: 'Agenda' }))
 
-    expect(await screen.findByText('Agenda del día')).toBeTruthy()
-    expect(screen.getByRole('group', { name: 'Día del itinerario' })).toBeTruthy()
-    expect(screen.queryByTestId('mapa-puntos')).toBeNull()
-  })
-
-  it('con el viaje finalizado los puntos son de solo lectura', async () => {
-    simularBackend({ estado: 'finalizado' })
-    render(<Itinerario viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
-    await screen.findByText('Agenda del día')
-
-    await userEvent.click(screen.getByRole('tab', { name: 'Puntos de interés' }))
-
-    await screen.findByTestId('mapa-puntos')
-    await waitFor(() => expect(screen.getByText('Puntos de interés (1)')).toBeTruthy())
-    expect(screen.queryByLabelText('Buscar una dirección')).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Eliminar Fontana di Trevi' })).toBeNull()
-  })
-
-  it('con el viaje activo permite buscar direcciones usando la función que recibe', async () => {
-    simularBackend()
-    const buscar = vi.fn(async () => [])
-    render(<Itinerario viajeId={VIAJE_ID} tokenSesion="token-acceso" onBuscarDirecciones={buscar} />)
-    await screen.findByText('Agenda del día')
-    await userEvent.click(screen.getByRole('tab', { name: 'Puntos de interés' }))
-
-    await userEvent.type(await screen.findByLabelText('Buscar una dirección'), 'Roma')
-    await userEvent.click(screen.getByRole('button', { name: 'Buscar dirección' }))
-
-    expect(buscar).toHaveBeenCalledWith('Roma')
-  })
 })

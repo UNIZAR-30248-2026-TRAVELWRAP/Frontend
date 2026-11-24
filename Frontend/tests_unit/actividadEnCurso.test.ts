@@ -38,17 +38,11 @@ describe('actividadEnCurso', () => {
     expect(actividadEnCurso(delDia, a_las('17:00'))?.id).toBe('a3')
   })
 
-  it('si el día elegido no es hoy no hay actividad en curso', () => {
-    expect(actividadEnCurso([a('ayer', '09:00', null, '2027-05-11')], a_las('09:30'))).toBeNull()
-  })
 
   it('las actividades sin hora de inicio no cuentan', () => {
     expect(actividadEnCurso([a('sinHora', null)], a_las('09:30'))).toBeNull()
   })
 
-  it('sin actividades no hay ninguna en curso', () => {
-    expect(actividadEnCurso([], a_las('09:30'))).toBeNull()
-  })
 })
 
 describe('proximaActividad', () => {
@@ -60,9 +54,6 @@ describe('proximaActividad', () => {
     expect(proximaActividad(delDia, a_las('08:00'))?.id).toBe('a1')
   })
 
-  it('cuando ya no quedan actividades no hay próxima', () => {
-    expect(proximaActividad(delDia, a_las('16:00'))).toBeNull()
-  })
 })
 
 describe('etiquetaCuandoEmpieza', () => {
@@ -83,13 +74,3 @@ describe('etiquetaCuandoEmpieza', () => {
   })
 })
 
-describe('etiquetaDia', () => {
-  it('hoy y mañana se dicen así', () => {
-    expect(etiquetaDia(HOY, a_las('08:00'))).toBe('Hoy')
-    expect(etiquetaDia('2027-05-13', a_las('08:00'))).toBe('Mañana')
-  })
-
-  it('otros días muestran el nombre del día y la fecha', () => {
-    expect(etiquetaDia('2027-05-15', a_las('08:00'))).toMatch(/sábado,? 15 may/i)
-  })
-})

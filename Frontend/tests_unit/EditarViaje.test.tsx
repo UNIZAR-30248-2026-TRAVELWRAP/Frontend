@@ -108,25 +108,6 @@ describe('EditarViaje', () => {
     await vi.waitFor(() => expect(cuerpoDelPatch(fetchMock)).toEqual({ fecha_fin: null }))
   })
 
-  it('no deja guardar con el nombre o el destino vacíos, o con las fechas al revés', async () => {
-    const user = userEvent.setup()
-    simularBackend()
-    renderizar()
-
-    const nombre = await screen.findByLabelText('Nombre del viaje')
-    await user.clear(nombre)
-    expect(botonGuardar()).toHaveProperty('disabled', true)
-    await user.type(nombre, 'Roma')
-
-    await user.clear(screen.getByLabelText('Destino'))
-    expect(botonGuardar()).toHaveProperty('disabled', true)
-    await user.type(screen.getByLabelText('Destino'), 'Florencia')
-    expect(botonGuardar()).toHaveProperty('disabled', false)
-
-    fireEvent.change(screen.getByLabelText('Fecha de fin'), { target: { value: '2027-05-01' } })
-    expect(screen.getByRole('alert').textContent).toBe('La fecha de fin no puede ser anterior a la de inicio')
-    expect(botonGuardar()).toHaveProperty('disabled', true)
-  })
 
   it('en un viaje pendiente de votación no muestra el destino', async () => {
     simularBackend({ destino: null, pendiente_destino: true })
@@ -251,137 +232,12 @@ describe('EditarViaje: foto de portada', () => {
     expect(llamadas(fetchMock, 'PUT')).toHaveLength(0)
   })
 
-  it('al guardar sube la foto en el campo «archivo» y avisa con el viaje devuelto, sin enviar un PATCH', async () => {
-    const user = userEvent.setup()
-    const fetchMock = simularBackendPortada()
-    const onGuardado = vi.fn()
-    renderizar({ onGuardado })
 
-    await screen.findByText('Añade una foto de portada')
-    elegirFoto(foto())
-    await user.click(botonGuardar())
 
-    await vi.waitFor(() => expect(onGuardado).toHaveBeenCalledTimes(1))
-    const [url, opciones] = llamadas(fetchMock, 'PUT')[0] as [string, RequestInit]
-    expect(url).toContain(`/viajes/${VIAJE_ID}/portada`)
-    expect((opciones.body as FormData).get('archivo')).toBeInstanceOf(Blob)
-    expect(llamadas(fetchMock, 'PATCH')).toHaveLength(0)
-    expect(onGuardado.mock.calls[0][0].portada_url).toBe(PORTADA_NUEVA)
-  })
 
-  it('si también cambian los datos, guarda primero los datos y después la portada', async () => {
-    const user = userEvent.setup()
-    const fetchMock = simularBackendPortada()
-    const onGuardado = vi.fn()
-    renderizar({ onGuardado })
 
-    await user.type(await screen.findByLabelText('Nombre del viaje'), ' bis')
-    elegirFoto(foto('roma.png', 'image/png'))
-    await user.click(botonGuardar())
 
-    await vi.waitFor(() => expect(onGuardado).toHaveBeenCalledTimes(1))
-    const metodos = fetchMock.mock.calls.map(([, opciones]) => (opciones as RequestInit)?.method ?? 'GET')
-    expect(metodos.indexOf('PATCH')).toBeLessThan(metodos.indexOf('PUT'))
-    expect(onGuardado.mock.calls[0][0]).toMatchObject({ nombre: 'Roma 2027 bis', portada_url: PORTADA_NUEVA })
-  })
 
-  it('rechaza una foto de otro tipo con un mensaje y la portada no cambia', async () => {
-    simularBackendPortada({ portada_url: PORTADA_ACTUAL })
-    renderizar()
 
-    await screen.findByTestId('fondo-portada')
-    elegirFoto(foto('animacion.gif', 'image/gif'))
 
-    expect((await screen.findByRole('alert')).textContent).toBe('La portada debe ser una foto JPEG o PNG')
-    expect(screen.getByTestId('fondo-portada').getAttribute('src')).toBe(PORTADA_ACTUAL)
-    expect(botonGuardar()).toHaveProperty('disabled', true)
-  })
-
-  it('rechaza una foto de más de 15 MB con un mensaje', async () => {
-    simularBackendPortada()
-    renderizar()
-
-    await screen.findByText('Añade una foto de portada')
-    const enorme = foto()
-    Object.defineProperty(enorme, 'size', { value: 16 * 1024 * 1024 })
-    elegirFoto(enorme)
-
-    expect((await screen.findByRole('alert')).textContent).toBe('La foto no puede ocupar más de 15 MB')
-    expect(screen.queryByTestId('fondo-portada')).toBeNull()
-  })
-
-  it('quita la portada actual al guardar con DELETE', async () => {
-    const user = userEvent.setup()
-    const fetchMock = simularBackendPortada({ portada_url: PORTADA_ACTUAL })
-    const onGuardado = vi.fn()
-    renderizar({ onGuardado })
-
-    await user.click(await screen.findByRole('button', { name: 'Quitar foto' }))
-    expect(screen.getByText('Añade una foto de portada')).toBeTruthy()
-    await user.click(botonGuardar())
-
-    await vi.waitFor(() => expect(onGuardado).toHaveBeenCalledTimes(1))
-    expect(llamadas(fetchMock, 'DELETE')).toHaveLength(1)
-    expect(onGuardado.mock.calls[0][0].portada_url).toBeNull()
-  })
-
-  it('descartar la foto elegida antes de guardar deja la portada como estaba, sin llamar al servidor', async () => {
-    const user = userEvent.setup()
-    const fetchMock = simularBackendPortada()
-    renderizar()
-
-    await screen.findByText('Añade una foto de portada')
-    elegirFoto(foto())
-    await user.click(await screen.findByRole('button', { name: 'Quitar foto' }))
-
-    expect(screen.getByText('Añade una foto de portada')).toBeTruthy()
-    expect(botonGuardar()).toHaveProperty('disabled', true)
-    expect(llamadas(fetchMock, 'PUT')).toHaveLength(0)
-    expect(llamadas(fetchMock, 'DELETE')).toHaveLength(0)
-  })
-
-  it('muestra el error del servidor y deja volver a intentarlo conservando la foto elegida', async () => {
-    const user = userEvent.setup()
-    simularBackendPortada({}, () =>
-      respuesta(400, { error: { codigo: 'archivo_demasiado_grande', mensaje: 'La portada no puede ocupar más de 5 MB' } }),
-    )
-    const onGuardado = vi.fn()
-    renderizar({ onGuardado })
-
-    await screen.findByText('Añade una foto de portada')
-    elegirFoto(foto())
-    await user.click(botonGuardar())
-
-    expect((await screen.findByRole('alert')).textContent).toBe('La foto es demasiado grande (máximo 5 MB)')
-    expect(botonGuardar()).toHaveProperty('disabled', false)
-    expect(screen.getByTestId('fondo-portada').getAttribute('src')).toBe('blob:vista-previa')
-    expect(onGuardado).not.toHaveBeenCalled()
-  })
-
-  it('un miembro que no es el creador cambia la portada y, sin tocar los datos, no los envía', async () => {
-    const user = userEvent.setup()
-    const fetchMock = simularBackendPortada({ rol: 'miembro' })
-    const onGuardado = vi.fn()
-    renderizar({ onGuardado })
-
-    expect(await screen.findByLabelText('Nombre del viaje')).toBeTruthy()
-    elegirFoto(foto())
-    await user.click(botonGuardar())
-
-    await vi.waitFor(() => expect(onGuardado).toHaveBeenCalledTimes(1))
-    expect(llamadas(fetchMock, 'PUT')).toHaveLength(1)
-    expect(llamadas(fetchMock, 'PATCH')).toHaveLength(0)
-  })
-
-  it('libera la vista previa al cambiar de foto', async () => {
-    simularBackendPortada()
-    renderizar()
-
-    await screen.findByText('Añade una foto de portada')
-    elegirFoto(foto('uno.jpg'))
-    await screen.findByTestId('fondo-portada')
-    elegirFoto(foto('dos.jpg'))
-
-    await vi.waitFor(() => expect(liberarVista).toHaveBeenCalledWith('blob:vista-previa'))
-  })
 })

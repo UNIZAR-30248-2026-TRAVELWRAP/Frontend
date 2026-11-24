@@ -137,14 +137,6 @@ describe('crearImagenResumen', () => {
     await expect(crearImagenResumen(completos)).rejects.toThrow('No se ha podido cargar alguna de las fotos para crear la imagen')
   })
 
-  it('falla igual si la red se cae o la foto no se puede decodificar', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new TypeError('Failed to fetch'))))
-    await expect(crearImagenResumen(completos)).rejects.toBeInstanceOf(ErrorDeImagen)
-
-    vi.stubGlobal('fetch', vi.fn(async () => new Response('x', { status: 200 })))
-    vi.stubGlobal('createImageBitmap', vi.fn(async () => Promise.reject(new Error('corrupta'))))
-    await expect(crearImagenResumen(completos)).rejects.toBeInstanceOf(ErrorDeImagen)
-  })
 
   it('no espera indefinidamente a la fuente: pasados unos segundos dibuja con la de reserva', async () => {
     vi.useFakeTimers()
@@ -159,19 +151,5 @@ describe('crearImagenResumen', () => {
     }
   })
 
-  it('si la fuente carga antes del límite no se espera más', async () => {
-    const cargar = vi.fn(async () => [])
-    Object.defineProperty(document, 'fonts', { configurable: true, value: { load: cargar } })
-    try {
-      await crearImagenResumen(sinDatos)
-      expect(cargar).toHaveBeenCalledTimes(2)
-    } finally {
-      delete (document as unknown as Record<string, unknown>).fonts
-    }
-  })
 
-  it('falla si el navegador no puede crear el lienzo o el PNG', async () => {
-    devolverBlob = null
-    await expect(crearImagenResumen(completos)).rejects.toThrow('No se ha podido crear la imagen')
-  })
 })

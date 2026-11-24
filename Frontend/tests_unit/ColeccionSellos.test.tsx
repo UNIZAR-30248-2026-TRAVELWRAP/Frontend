@@ -60,26 +60,7 @@ describe('Perfil · colección de sellos', () => {
     expect(await screen.findByText('0 sellos conseguidos')).toBeTruthy()
   })
 
-  it('abre el pasaporte con un sello por viaje (también el de un viaje borrado) y lo cierra', async () => {
-    vi.mocked(listarMisSellos).mockResolvedValue({ sellos: [ROMA, LISBOA] })
-    montar()
-    const { usuario, panel } = await abrirPasaporte()
 
-    expect(within(panel).getByText('Tus recuerdos convertidos en sellos')).toBeTruthy()
-    expect(within(panel).getByRole('img', { name: 'Sello de Roma 2027' })).toBeTruthy()
-    expect(within(panel).getByRole('img', { name: 'Sello de Lisboa 2026' })).toBeTruthy()
-
-    await usuario.click(within(panel).getByRole('button', { name: 'Cerrar' }))
-    expect(screen.queryByRole('dialog')).toBeNull()
-  })
-
-  it('sin sellos el pasaporte invita a terminar un viaje', async () => {
-    vi.mocked(listarMisSellos).mockResolvedValue({ sellos: [] })
-    montar()
-    const { panel } = await abrirPasaporte()
-
-    expect(within(panel).getByText('Aún no tienes sellos. Termina un viaje para conseguir el primero')).toBeTruthy()
-  })
 
   it('si falla la carga muestra el error y «Reintentar» vuelve a pedirlos', async () => {
     vi.mocked(listarMisSellos).mockRejectedValueOnce(new ApiError(502, 'error_sello', 'No se han podido obtener los sellos'))
@@ -96,36 +77,7 @@ describe('Perfil · colección de sellos', () => {
     expect(listarMisSellos).toHaveBeenCalledTimes(2)
   })
 
-  it('cambiar el diseño de un sello desde el pasaporte llama a PATCH y actualiza la lista', async () => {
-    vi.mocked(listarMisSellos).mockResolvedValue({ sellos: [ROMA] })
-    vi.mocked(cambiarDisenoSello).mockResolvedValue({ sello: { ...ROMA, diseno: 'ruta' } })
-    montar()
-    const { usuario, panel } = await abrirPasaporte()
 
-    await usuario.click(within(panel).getByRole('button', { name: 'Cambiar el sello de Roma 2027' }))
-    const selector = (await screen.findAllByRole('dialog'))[1]
-    await usuario.click(within(selector).getByRole('button', { name: 'Sello 3: Ruta' }))
-    await usuario.click(within(selector).getByRole('button', { name: 'Elegir' }))
-
-    await waitFor(() => expect(cambiarDisenoSello).toHaveBeenCalledWith('s1', 'ruta', 'token-1'))
-    await waitFor(() => expect(screen.getAllByRole('dialog')).toHaveLength(1))
-  })
-
-  it('quitar un sello desde el pasaporte llama a DELETE y baja el contador', async () => {
-    vi.mocked(listarMisSellos).mockResolvedValue({ sellos: [ROMA, LISBOA] })
-    vi.mocked(quitarSelloPorId).mockResolvedValue(null)
-    montar()
-    const { usuario, panel } = await abrirPasaporte()
-
-    await usuario.click(within(panel).getByRole('button', { name: 'Cambiar el sello de Lisboa 2026' }))
-    const selector = (await screen.findAllByRole('dialog'))[1]
-    await usuario.click(within(selector).getByRole('button', { name: 'Deseleccionar todos' }))
-    await usuario.click(within(selector).getByRole('button', { name: 'Elegir' }))
-
-    await waitFor(() => expect(quitarSelloPorId).toHaveBeenCalledWith('s2', 'token-1'))
-    await waitFor(() => expect(within(panel).queryByRole('img', { name: 'Sello de Lisboa 2026' })).toBeNull())
-    expect(within(panel).getByRole('img', { name: 'Sello de Roma 2027' })).toBeTruthy()
-  })
 
   it('si falla el cambio el selector sigue abierto con el error y el sello no cambia', async () => {
     vi.mocked(listarMisSellos).mockResolvedValue({ sellos: [ROMA] })

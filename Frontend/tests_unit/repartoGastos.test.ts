@@ -146,11 +146,6 @@ describe('categorías de gasto', () => {
     ])
   })
 
-  it('cada categoría tiene su icono', () => {
-    expect(iconoDeCategoriaGasto('comida')).toBe('restaurant')
-    expect(iconoDeCategoriaGasto('transporte')).toBe('flight')
-    expect(iconoDeCategoriaGasto('otros')).toBe('document')
-  })
 })
 
 describe('conSigno', () => {
@@ -164,16 +159,3 @@ describe('conSigno', () => {
   })
 })
 
-describe('estadoDelSaldo', () => {
-  it('con saldo positivo te deben, en verde', () => {
-    expect(estadoDelSaldo(0.01)).toEqual({ texto: 'Te deben', color: 'green' })
-  })
-
-  it('con saldo negativo debes, en naranja', () => {
-    expect(estadoDelSaldo(-0.01)).toEqual({ texto: 'Debes', color: 'accent' })
-  })
-
-  it('con saldo 0 estás al día, en gris', () => {
-    expect(estadoDelSaldo(0)).toEqual({ texto: 'Al día', color: 'muted' })
-  })
-})

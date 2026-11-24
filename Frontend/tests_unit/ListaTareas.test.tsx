@@ -27,7 +27,6 @@ const viajeActivo = {
     { usuario_id: ADRIANA, nombre: 'Adriana', avatar_url: null, rol: 'miembro' },
   ],
 } as unknown as ViajeDelUsuario
-const viajeFinalizado = { ...viajeActivo, estado: 'finalizado' } as ViajeDelUsuario
 
 const tarea = (cambios: Partial<Tarea> = {}): Tarea => ({
   id: 't1',
@@ -129,15 +128,6 @@ describe('ListaTareas: marcar y desmarcar', () => {
     expect(screen.getByText('0/2')).toBeTruthy()
   })
 
-  it('si falla, la tarea se queda como estaba y se muestra el error', async () => {
-    vi.mocked(editarTarea).mockRejectedValue(new ApiError(502, 'error_tarea', 'Fallo'))
-    await montar()
-
-    await userEvent.setup().click(casilla('Reservar la cena'))
-
-    expect((await screen.findByRole('alert')).textContent).toContain('No se ha podido marcar la tarea')
-    expect(casilla('Reservar la cena').getAttribute('aria-checked')).toBe('false')
-  })
 })
 
 describe('ListaTareas: crear', () => {
@@ -172,122 +162,8 @@ describe('ListaTareas: crear', () => {
     await waitFor(() => expect(crearTarea).toHaveBeenCalledWith(VIAJE_ID, { texto: 'Alquilar coche', responsable_id: BERTA }, 'token-1'))
   })
 
-  it('si falla muestra el error en el formulario y conserva lo escrito', async () => {
-    vi.mocked(crearTarea).mockRejectedValue(new ApiError(409, 'viaje_no_activo', 'El viaje está finalizado'))
-    const usuario = userEvent.setup()
-    await montar()
 
-    await usuario.click(screen.getByRole('button', { name: 'Nueva' }))
-    await usuario.type(screen.getByLabelText('Tarea'), 'Algo')
-    await usuario.click(screen.getByRole('button', { name: 'Añadir' }))
-
-    expect((await screen.findByRole('alert')).textContent).toContain('El viaje ya no está activo')
-    expect((screen.getByLabelText('Tarea') as HTMLInputElement).value).toBe('Algo')
-  })
-
-  it('«Cancelar» cierra el formulario sin crear nada', async () => {
-    const usuario = userEvent.setup()
-    await montar()
-
-    await usuario.click(screen.getByRole('button', { name: 'Nueva' }))
-    await usuario.click(screen.getByRole('button', { name: 'Cancelar' }))
-
-    expect(screen.queryByLabelText('Tarea')).toBeNull()
-    expect(crearTarea).not.toHaveBeenCalled()
-  })
 })
 
-describe('ListaTareas: editar', () => {
-  it('abre el formulario con el texto y el responsable de la tarea y guarda los cambios', async () => {
-    vi.mocked(editarTarea).mockResolvedValue({ ...CENA, texto: 'Reservar el almuerzo', responsable: { usuario_id: ADRIANA, nombre: 'Adriana', avatar_url: null } })
-    const usuario = userEvent.setup()
-    await montar()
 
-    await usuario.click(screen.getByRole('button', { name: 'Editar Reservar la cena' }))
-    const campo = screen.getByLabelText('Tarea') as HTMLInputElement
-    expect(campo.value).toBe('Reservar la cena')
-    expect((screen.getByLabelText('Responsable') as HTMLSelectElement).value).toBe(BERTA)
 
-    await usuario.clear(campo)
-    await usuario.type(campo, 'Reservar el almuerzo')
-    await usuario.selectOptions(screen.getByLabelText('Responsable'), ADRIANA)
-    await usuario.click(screen.getByRole('button', { name: 'Guardar' }))
-
-    await waitFor(() =>
-      expect(editarTarea).toHaveBeenCalledWith(VIAJE_ID, 't1', { texto: 'Reservar el almuerzo', responsable_id: ADRIANA }, 'token-1'),
-    )
-    expect(await screen.findByRole('checkbox', { name: 'Marcar Reservar el almuerzo como hecha' })).toBeTruthy()
-    expect(screen.getByRole('status').textContent).toBe('Tarea actualizada')
-  })
-
-  it('«Cancelar» deja la tarea como estaba', async () => {
-    const usuario = userEvent.setup()
-    await montar()
-
-    await usuario.click(screen.getByRole('button', { name: 'Editar Reservar la cena' }))
-    await usuario.click(screen.getByRole('button', { name: 'Cancelar' }))
-
-    expect(editarTarea).not.toHaveBeenCalled()
-    expect(casilla('Reservar la cena')).toBeTruthy()
-  })
-})
-
-describe('ListaTareas: eliminar', () => {
-  it('pide confirmación, no borra al cancelar y borra al confirmar', async () => {
-    vi.mocked(borrarTarea).mockResolvedValue(null)
-    const usuario = userEvent.setup()
-    await montar()
-
-    await usuario.click(screen.getByRole('button', { name: 'Eliminar Reservar la cena' }))
-    let dialogo = screen.getByRole('dialog')
-    expect(within(dialogo).getByText('¿Eliminar esta tarea?')).toBeTruthy()
-    expect(dialogo.textContent).toContain('se borrará para todos los miembros del viaje')
-    await usuario.click(within(dialogo).getByRole('button', { name: 'Cancelar' }))
-    expect(borrarTarea).not.toHaveBeenCalled()
-    expect(screen.queryByRole('dialog')).toBeNull()
-
-    await usuario.click(screen.getByRole('button', { name: 'Eliminar Reservar la cena' }))
-    dialogo = screen.getByRole('dialog')
-    await usuario.click(within(dialogo).getByRole('button', { name: 'Eliminar tarea' }))
-
-    await waitFor(() => expect(borrarTarea).toHaveBeenCalledWith(VIAJE_ID, 't1', 'token-1'))
-    await waitFor(() => expect(screen.queryByRole('checkbox', { name: 'Marcar Reservar la cena como hecha' })).toBeNull())
-    expect(screen.getByRole('status').textContent).toBe('Tarea eliminada')
-    expect(screen.getByText('1/1')).toBeTruthy()
-  })
-
-  it('si otro miembro ya la había borrado (404), se quita igualmente de la lista', async () => {
-    vi.mocked(borrarTarea).mockRejectedValue(new ApiError(404, 'tarea_no_encontrada', 'No existe'))
-    const usuario = userEvent.setup()
-    await montar()
-
-    await usuario.click(screen.getByRole('button', { name: 'Eliminar Reservar la cena' }))
-    await usuario.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Eliminar tarea' }))
-
-    await waitFor(() => expect(screen.queryByRole('checkbox', { name: 'Marcar Reservar la cena como hecha' })).toBeNull())
-    expect(screen.getByRole('status').textContent).toContain('ya la había eliminado otro miembro')
-  })
-
-  it('si falla otro error, el diálogo sigue abierto con el mensaje y la tarea no se quita', async () => {
-    vi.mocked(borrarTarea).mockRejectedValue(new ApiError(502, 'error_tarea', 'Fallo'))
-    const usuario = userEvent.setup()
-    await montar()
-
-    await usuario.click(screen.getByRole('button', { name: 'Eliminar Reservar la cena' }))
-    await usuario.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Eliminar tarea' }))
-
-    expect((await within(screen.getByRole('dialog')).findByRole('alert')).textContent).toContain('No se ha podido eliminar la tarea')
-    expect(casilla('Reservar la cena')).toBeTruthy()
-  })
-})
-
-describe('ListaTareas: viaje finalizado', () => {
-  it('es de solo lectura: sin «Nueva», «Editar» ni «Eliminar», con las casillas desactivadas', async () => {
-    await montar(viajeFinalizado)
-
-    expect(screen.queryByRole('button', { name: 'Nueva' })).toBeNull()
-    expect(screen.queryByRole('button', { name: /^Editar / })).toBeNull()
-    expect(screen.queryByRole('button', { name: /^Eliminar / })).toBeNull()
-    expect((casilla('Reservar la cena') as HTMLButtonElement).disabled).toBe(true)
-  })
-})

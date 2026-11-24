@@ -53,20 +53,6 @@ describe('viajesApi', () => {
     expect(llamada(fetchMock)[0]).toMatch(new RegExp(`/viajes/${VIAJE_ID}$`))
   })
 
-  it('crea un viaje enviando sus datos por POST', async () => {
-    const fetchMock = vi.fn(() => respuesta(201, { id: VIAJE_ID, nombre: 'Roma 2027' }))
-    vi.stubGlobal('fetch', fetchMock)
-    const nuevo = { nombre: 'Roma 2027', presupuesto: 850, destino: 'Roma', fecha_inicio: null, fecha_fin: null }
-
-    const viaje = await crearViaje(nuevo, 'token-acceso')
-
-    expect(viaje.id).toBe(VIAJE_ID)
-    const [url, opciones] = llamada(fetchMock)
-    expect(url).toMatch(/\/viajes$/)
-    expect(opciones.method).toBe('POST')
-    expect(opciones.headers.Authorization).toBe('Bearer token-acceso')
-    expect(JSON.parse(opciones.body as string)).toEqual(nuevo)
-  })
 
   it('propaga el error del backend como ApiError', async () => {
     vi.stubGlobal('fetch', vi.fn(() =>

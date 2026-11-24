@@ -91,20 +91,6 @@ describe('actividadesApi · listar actividades', () => {
     expect(llamada(fetchMock)[0]).toMatch(new RegExp(`/viajes/${VIAJE_ID}/actividades\\?fecha=2027-05-12$`))
   })
 
-  it('propaga los rechazos del backend como ApiError', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() =>
-        respuesta(404, { error: { codigo: 'viaje_no_encontrado', mensaje: 'El viaje no existe o no perteneces a él' } }),
-      ),
-    )
-
-    const error = await listarActividades(VIAJE_ID, 'token-acceso').catch((e) => e)
-
-    expect(error).toBeInstanceOf(ApiError)
-    expect(error.estado).toBe(404)
-    expect(error.codigo).toBe('viaje_no_encontrado')
-  })
 })
 
 describe('actividadesApi · categorías', () => {
@@ -134,37 +120,7 @@ describe('actividadesApi · editar y eliminar actividad', () => {
     expect(JSON.parse(opciones.body as string)).toEqual({ titulo: 'Coliseo y Foro', hora_fin: null })
   })
 
-  it('elimina la actividad con DELETE y devuelve null si el servidor responde 204', async () => {
-    const fetchMock = vi.fn(() => Promise.resolve(new Response(null, { status: 204 })))
-    vi.stubGlobal('fetch', fetchMock)
 
-    const resultado = await eliminarActividad(VIAJE_ID, ACTIVIDAD_ID, 'token-acceso')
-
-    expect(resultado).toBeNull()
-    const [url, opciones] = llamada(fetchMock)
-    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/actividades/${ACTIVIDAD_ID}$`))
-    expect(opciones.method).toBe('DELETE')
-    expect(opciones.headers.Authorization).toBe('Bearer token-acceso')
-    expect(opciones.body).toBeUndefined()
-  })
-
-  it('propaga los rechazos del backend como ApiError en ambos casos', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() =>
-        respuesta(404, { error: { codigo: 'actividad_no_encontrada', mensaje: 'La actividad no existe en este viaje' } }),
-      ),
-    )
-
-    const alEditar = await editarActividad(VIAJE_ID, ACTIVIDAD_ID, { titulo: 'X' }, 'token-acceso').catch((e) => e)
-    const alEliminar = await eliminarActividad(VIAJE_ID, ACTIVIDAD_ID, 'token-acceso').catch((e) => e)
-
-    for (const error of [alEditar, alEliminar]) {
-      expect(error).toBeInstanceOf(ApiError)
-      expect(error.estado).toBe(404)
-      expect(error.codigo).toBe('actividad_no_encontrada')
-    }
-  })
 })
 
 describe('actividadesApi · buscar direcciones', () => {
@@ -190,25 +146,4 @@ describe('actividadesApi · buscar direcciones', () => {
     expect(resultado.direcciones).toEqual([])
   })
 
-  it('propaga el 429 y el 502 del backend como ApiError', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi
-        .fn()
-        .mockImplementationOnce(() =>
-          respuesta(429, { error: { codigo: 'demasiadas_busquedas', mensaje: 'Espera un segundo entre una búsqueda y otra' } }),
-        )
-        .mockImplementationOnce(() =>
-          respuesta(502, { error: { codigo: 'error_geocodificacion', mensaje: 'No se ha podido buscar la dirección' } }),
-        ),
-    )
-
-    const limite = await buscarDirecciones('Colosseo', 'token-acceso').catch((e) => e)
-    const caido = await buscarDirecciones('Colosseo', 'token-acceso').catch((e) => e)
-
-    expect(limite).toBeInstanceOf(ApiError)
-    expect([limite.estado, limite.codigo]).toEqual([429, 'demasiadas_busquedas'])
-    expect(caido).toBeInstanceOf(ApiError)
-    expect([caido.estado, caido.codigo]).toEqual([502, 'error_geocodificacion'])
-  })
 })

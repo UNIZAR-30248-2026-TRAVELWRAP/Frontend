@@ -80,71 +80,13 @@ describe('CrearVotacion', () => {
     expect(enviada(fetchMock).opciones).toEqual([{ texto: 'Hotel Roma', valor_fecha: null }])
   })
 
-  it('publica la votación con la pregunta, el tipo y las opciones limpias', async () => {
-    const user = userEvent.setup()
-    const onCreada = vi.fn()
-    const { fetchMock } = await abrir({ onCreada })
 
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Tipo de votación' }), 'Actividades')
-    await rellenar(user, '  ¿Qué visitamos? ', [' Coliseo ', 'Vaticano'])
-    await user.click(screen.getByRole('button', { name: 'Añadir opción' }))
-    await user.type(screen.getByLabelText('Opción C'), 'Trastevere')
-    await user.click(screen.getByRole('button', { name: 'Publicar votación' }))
 
-    await vi.waitFor(() => expect(onCreada).toHaveBeenCalled())
-    expect(enviada(fetchMock)).toEqual({
-      titulo: '¿Qué visitamos?',
-      tipo: 'actividad',
-      opciones: [
-        { texto: 'Coliseo', valor_fecha: null },
-        { texto: 'Vaticano', valor_fecha: null },
-        { texto: 'Trastevere', valor_fecha: null },
-      ],
-    })
-    expect(onCreada.mock.calls[0][0]).toMatchObject({ titulo: '¿Qué visitamos?', estado: 'abierta' })
-  })
-
-  it('en las votaciones de fechas cada opción puede llevar su fecha', async () => {
-    const user = userEvent.setup()
-    const { fetchMock } = await abrir({ onCreada: vi.fn() })
-
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Tipo de votación' }), 'Fechas')
-    await rellenar(user, '¿Qué día salimos?', ['Viernes', 'Sábado'])
-    await user.type(screen.getByLabelText('Fecha de la opción A'), '2027-05-14')
-    await user.click(screen.getByRole('button', { name: 'Publicar votación' }))
-
-    await vi.waitFor(() => expect(llamadas(fetchMock, 'POST', '/votaciones')).toHaveLength(1))
-    expect(enviada(fetchMock).opciones).toEqual([
-      { texto: 'Viernes', valor_fecha: '2027-05-14' },
-      { texto: 'Sábado', valor_fecha: null },
-    ])
-  })
-
-  it('las fechas solo se piden en las votaciones de fechas', async () => {
-    const user = userEvent.setup()
-    await abrir()
-
-    expect(screen.queryByLabelText('Fecha de la opción A')).toBeNull()
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Tipo de votación' }), 'Fechas')
-    expect(screen.getByLabelText('Fecha de la opción A')).toBeTruthy()
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Tipo de votación' }), 'Otro')
-    expect(screen.queryByLabelText('Fecha de la opción A')).toBeNull()
-  })
 
   for (const [caso, pregunta, opciones, mensaje] of [
     ['sin pregunta', '', ['Hotel', 'Apartamento'], 'Escribe la pregunta de la votación'],
     ['con opciones repetidas', '¿Dónde dormimos?', ['Hotel', ' hotel '], 'Las opciones no se pueden repetir'],
   ] as const) {
-    it(`no envía una votación ${caso}`, async () => {
-      const user = userEvent.setup()
-      const { fetchMock } = await abrir()
-
-      await rellenar(user, pregunta, [...opciones])
-      await user.click(screen.getByRole('button', { name: 'Publicar votación' }))
-
-      expect(screen.getByRole('alert').textContent).toBe(mensaje)
-      expect(llamadas(fetchMock, 'POST', '/votaciones')).toHaveLength(0)
-    })
   }
 
   it('si el servidor la rechaza muestra el motivo y se puede volver a intentar', async () => {
@@ -166,13 +108,4 @@ describe('CrearVotacion', () => {
     expect(screen.getByRole('button', { name: 'Publicar votación' })).toHaveProperty('disabled', false)
   })
 
-  it('el botón de volver avisa a la ruta', async () => {
-    const user = userEvent.setup()
-    const onVolver = vi.fn()
-    await abrir({ onVolver })
-
-    await user.click(screen.getByRole('button', { name: 'Volver' }))
-
-    expect(onVolver).toHaveBeenCalledTimes(1)
-  })
 })

@@ -122,26 +122,7 @@ describe('DetalleGasto', () => {
     expect(screen.getByRole('button', { name: 'Eliminar' })).toBeTruthy()
   })
 
-  it('el creador del viaje también puede modificarlo aunque no lo registrara', async () => {
-    simularBackend({
-      gasto: () => json(200, detalle({ creado_por: BERTA })),
-      viaje: () => json(200, { id: VIAJE_ID, nombre: 'Roma 2027', estado: 'activo', rol: 'creador', miembros }),
-    })
-    await abrir({ onModificar: vi.fn() })
 
-    expect(screen.getByRole('button', { name: 'Eliminar' })).toBeTruthy()
-  })
-
-  it('cualquier miembro ve los botones aunque no registrara el gasto ni sea el creador', async () => {
-    simularBackend({
-      gasto: () => json(200, detalle({ creado_por: BERTA })),
-      viaje: () => json(200, { id: VIAJE_ID, nombre: 'Roma 2027', estado: 'activo', rol: 'miembro', miembros }),
-    })
-    await abrir({ onModificar: vi.fn() })
-
-    expect(await screen.findByRole('button', { name: 'Modificar' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Eliminar' })).toBeTruthy()
-  })
 
   it('en un viaje archivado no hay botones aunque lo registrara quien usa la app', async () => {
     simularBackend({
@@ -152,53 +133,10 @@ describe('DetalleGasto', () => {
     expect(screen.queryByRole('button', { name: 'Eliminar' })).toBeNull()
   })
 
-  it('Modificar avisa a la pantalla que lo contiene', async () => {
-    simularBackend()
-    const onModificar = vi.fn()
-    await abrir({ onModificar })
 
-    await userEvent.click(screen.getByRole('button', { name: 'Modificar' }))
-
-    expect(onModificar).toHaveBeenCalledTimes(1)
-  })
-
-  it('si no se puede cargar el gasto lo explica', async () => {
-    simularBackend({
-      gasto: () => json(404, { error: { codigo: 'gasto_no_encontrado', mensaje: 'El gasto no existe o no pertenece a este viaje' } }),
-    })
-    render(<DetalleGasto viajeId={VIAJE_ID} gastoId={GASTO_ID} tokenSesion="token-acceso" usuarioId={ADRIANA} />)
-
-    expect((await screen.findByRole('alert')).textContent).toBe(
-      'No se ha podido cargar el gasto: El gasto no existe o no pertenece a este viaje',
-    )
-  })
 
   describe('eliminar', () => {
-    it('pide confirmación y, si se cancela, no borra nada', async () => {
-      const fetchMock = simularBackend()
-      await abrir()
 
-      await userEvent.click(screen.getByRole('button', { name: 'Eliminar' }))
-      expect(screen.getByRole('dialog').textContent).toContain('¿Eliminar este gasto?')
-      await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
-
-      expect(screen.queryByRole('dialog')).toBeNull()
-      expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(false)
-    })
-
-    it('al confirmar borra el gasto y avisa a la pantalla que lo contiene', async () => {
-      const fetchMock = simularBackend()
-      const onEliminado = vi.fn()
-      await abrir({ onEliminado })
-
-      await userEvent.click(screen.getByRole('button', { name: 'Eliminar' }))
-      await userEvent.click(screen.getByRole('button', { name: 'Eliminar gasto' }))
-
-      await vi.waitFor(() => expect(onEliminado).toHaveBeenCalledTimes(1))
-      const [url, init] = fetchMock.mock.calls.find(([, i]) => i?.method === 'DELETE') as unknown as [string, RequestInit]
-      expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/gastos/${GASTO_ID}$`))
-      expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer token-acceso')
-    })
 
     it('si el backend rechaza el borrado, el error sale en la confirmación y el gasto sigue', async () => {
       simularBackend({

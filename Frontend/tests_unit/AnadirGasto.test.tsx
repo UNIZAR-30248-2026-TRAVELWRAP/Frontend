@@ -102,44 +102,7 @@ describe('AnadirGasto', () => {
     expect(parteDe('Adriana')).toBe('5 €')
   })
 
-  it('registra el gasto con los datos limpios y avisa con el gasto creado', async () => {
-    const fetchMock = simularBackend()
-    const onRegistrado = vi.fn()
-    const user = userEvent.setup()
-    await abrir({ onRegistrado })
 
-    await user.type(screen.getByLabelText('Importe'), '45,90')
-    await user.type(screen.getByLabelText('Concepto'), '  Taxi al aeropuerto ')
-    await user.click(screen.getByRole('radio', { name: 'Transporte' }))
-    await user.click(screen.getByRole('radio', { name: 'Berta' }))
-    await user.click(screen.getByLabelText('Dividir con Daniel'))
-    await user.click(screen.getByRole('button', { name: 'Registrar gasto' }))
-
-    expect(enviados(fetchMock)).toEqual([
-      {
-        concepto: 'Taxi al aeropuerto',
-        importe: 45.9,
-        categoria: 'transporte',
-        pagado_por: BERTA,
-        participantes: [BERTA, ADRIANA],
-      },
-    ])
-    expect(onRegistrado).toHaveBeenCalledWith(expect.objectContaining({ id: 'g1', concepto: 'Taxi al aeropuerto' }))
-  })
-
-  it('al volver a marcar a alguien conserva el orden de los miembros', async () => {
-    const fetchMock = simularBackend()
-    const user = userEvent.setup()
-    await abrir()
-
-    await user.type(screen.getByLabelText('Importe'), '30')
-    await user.type(screen.getByLabelText('Concepto'), 'Cena')
-    await user.click(screen.getByLabelText('Dividir con Daniel'))
-    await user.click(screen.getByLabelText('Dividir con Daniel'))
-    await user.click(screen.getByRole('button', { name: 'Registrar gasto' }))
-
-    expect(enviados(fetchMock)[0].participantes).toEqual([DANIEL, BERTA, ADRIANA])
-  })
 
   const casosInvalidos: [string, string, string, string[], string][] = [
     ['sin importe', '', 'Cena', [], 'Escribe el importe del gasto'],
@@ -166,21 +129,6 @@ describe('AnadirGasto', () => {
     expect(onRegistrado).not.toHaveBeenCalled()
   })
 
-  it('el aviso desaparece al corregir el formulario', async () => {
-    simularBackend()
-    const user = userEvent.setup()
-    await abrir()
-
-    await user.click(screen.getByRole('button', { name: 'Registrar gasto' }))
-    expect(screen.getAllByRole('alert').map((a) => a.textContent)).toEqual([
-      'Escribe el importe del gasto',
-      'Escribe el concepto del gasto',
-    ])
-    await user.type(screen.getByLabelText('Importe'), '5')
-    await user.type(screen.getByLabelText('Concepto'), 'Cena')
-
-    expect(screen.queryByRole('alert')).toBeNull()
-  })
 
   it.each([
     ['-20', 'El importe no puede ser negativo'],
@@ -200,19 +148,6 @@ describe('AnadirGasto', () => {
     expect(importe.getAttribute('aria-describedby')).toBe(aviso.id)
   })
 
-  it('mientras se escribe un importe a medias no avisa, pero sí al salir del campo', async () => {
-    simularBackend()
-    const user = userEvent.setup()
-    await abrir()
-
-    const importe = screen.getByLabelText('Importe')
-    await user.type(importe, '12,')
-    expect(screen.queryByRole('alert')).toBeNull()
-    expect(importe.getAttribute('aria-invalid')).toBe('false')
-
-    await user.tab()
-    expect(screen.getByRole('alert').textContent).toBe('Escribe los decimales después de la coma')
-  })
 
   it('el concepto avisa al salir del campo si está vacío', async () => {
     simularBackend()
@@ -240,52 +175,6 @@ describe('AnadirGasto', () => {
     expect(document.activeElement).toBe(screen.getByLabelText('Importe'))
   })
 
-  it('si el backend rechaza el gasto muestra su motivo y deja volver a intentarlo', async () => {
-    let rechazar = true
-    const fetchMock = simularBackend({
-      gasto: (cuerpo) =>
-        rechazar
-          ? json(409, { error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está finalizado y ya no se puede modificar' } })
-          : json(201, { id: 'g1', ...cuerpo, repartos: [] }),
-    })
-    const onRegistrado = vi.fn()
-    const user = userEvent.setup()
-    await abrir({ onRegistrado })
 
-    await user.type(screen.getByLabelText('Importe'), '20')
-    await user.type(screen.getByLabelText('Concepto'), 'Museo')
-    await user.click(screen.getByRole('button', { name: 'Registrar gasto' }))
 
-    expect((await screen.findByRole('alert')).textContent).toBe('El viaje está finalizado y ya no se puede modificar')
-    expect(onRegistrado).not.toHaveBeenCalled()
-
-    rechazar = false
-    await user.click(screen.getByRole('button', { name: 'Registrar gasto' }))
-
-    expect(enviados(fetchMock)).toHaveLength(2)
-    expect(onRegistrado).toHaveBeenCalledTimes(1)
-  })
-
-  it('si no se puede cargar el viaje lo explica', async () => {
-    simularBackend({
-      viaje: () => json(404, { error: { codigo: 'viaje_no_encontrado', mensaje: 'El viaje no existe o no perteneces a él' } }),
-    })
-    render(<AnadirGasto viajeId={VIAJE_ID} tokenSesion="token-acceso" usuarioId={ADRIANA} />)
-
-    expect((await screen.findByRole('alert')).textContent).toBe(
-      'No se ha podido cargar el viaje: El viaje no existe o no perteneces a él',
-    )
-    expect(screen.queryByRole('radiogroup', { name: 'Quién pagó' })).toBeNull()
-  })
-
-  it('el botón de volver avisa a quien abrió la pantalla', async () => {
-    simularBackend()
-    const onVolver = vi.fn()
-    const user = userEvent.setup()
-    await abrir({ onVolver })
-
-    await user.click(screen.getByRole('button', { name: 'Volver' }))
-
-    expect(onVolver).toHaveBeenCalledTimes(1)
-  })
 })

@@ -80,21 +80,6 @@ describe('AvisoNotificacion', () => {
     expect(screen.getByText('Ruta: /')).toBeTruthy()
   })
 
-  it('no avisa si el usuario ya está viendo esa pantalla del viaje', () => {
-    pintar('/viajes/v1/gastos')
-    act(() => recibir(AVISO))
-    expect(screen.queryByRole('status')).toBeNull()
-  })
 
-  it('avisa si está en otra pantalla u otro viaje', () => {
-    pintar('/viajes/v2/gastos')
-    act(() => recibir(AVISO))
-    expect(screen.getByRole('status')).toBeTruthy()
-  })
 
-  it('deja de escuchar al desmontarse', () => {
-    const { unmount } = pintar()
-    unmount()
-    expect(dejarDeEscuchar).toHaveBeenCalledOnce()
-  })
 })

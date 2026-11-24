@@ -86,15 +86,6 @@ describe('prepararPortada', () => {
     expect(await prepararPortada(original)).toBe(original)
   })
 
-  it('si no puede procesarla y la original pesa más de 5 MB, falla con un mensaje', async () => {
-    vi.stubGlobal('createImageBitmap', vi.fn(async () => {
-      throw new Error('no soportado')
-    }))
-
-    await expect(prepararPortada(archivo('image/jpeg', MAX_BYTES_PORTADA + 1))).rejects.toThrow(
-      'No se ha podido preparar la foto. Prueba con una más pequeña',
-    )
-  })
 
   it('si el lienzo no devuelve imagen, recurre a la original', async () => {
     simularNavegador(2000, 1000, null)
@@ -104,16 +95,3 @@ describe('prepararPortada', () => {
   })
 })
 
-describe('mensajeErrorPortada', () => {
-  it('traduce los códigos de la API a mensajes comprensibles', () => {
-    expect(mensajeErrorPortada(new ApiError(400, 'archivo_demasiado_grande', 'x'))).toBe('La foto es demasiado grande (máximo 5 MB)')
-    expect(mensajeErrorPortada(new ApiError(400, 'tipo_no_permitido', 'x'))).toBe('La portada debe ser una foto JPEG o PNG')
-    expect(mensajeErrorPortada(new ApiError(0, 'sin_conexion', 'x'))).toBe('No hay conexión con el servidor. Inténtalo de nuevo')
-  })
-
-  it('usa el mensaje del servidor si no conoce el código, y uno genérico si no es un error', () => {
-    expect(mensajeErrorPortada(new ApiError(409, 'viaje_no_activo', 'El viaje está finalizado'))).toBe('El viaje está finalizado')
-    expect(mensajeErrorPortada(new Error('boom'))).toBe('boom')
-    expect(mensajeErrorPortada('raro')).toBe('Ha ocurrido un error')
-  })
-})

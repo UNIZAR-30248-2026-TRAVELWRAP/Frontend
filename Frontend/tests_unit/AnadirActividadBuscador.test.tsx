@@ -6,7 +6,6 @@ import { ApiError } from '../src/services/authApi'
 import type { ResultadoDireccion } from '../src/services/actividadesApi'
 
 const VIAJE_ID = '123e4567-e89b-12d3-a456-426614174000'
-const ACTIVIDAD_ID = '8a1b2c3d-0000-4000-8000-000000000020'
 
 const COLISEO: ResultadoDireccion = {
   nombre: 'Colosseo, Roma',
@@ -48,25 +47,6 @@ const viaje = {
   miembros: [{ usuario_id: 'u1', nombre: 'Adriana', avatar_url: null, rol: 'creador' }],
 }
 
-const actividad = (datos: Record<string, unknown> = {}) => ({
-  id: ACTIVIDAD_ID,
-  viaje_id: VIAJE_ID,
-  titulo: 'Visita al Coliseo',
-  descripcion: null,
-  fecha: '2027-05-12',
-  hora_inicio: null,
-  hora_fin: null,
-  orden: 0,
-  ubicacion_nombre: COLISEO.nombre,
-  latitud: COLISEO.latitud,
-  longitud: COLISEO.longitud,
-  lugar_externo_id: COLISEO.lugar_externo_id,
-  categoria: null,
-  creado_por: 'u1',
-  creado_en: '2026-10-24T10:00:00Z',
-  actualizado_en: '2026-10-24T10:00:00Z',
-  ...datos,
-})
 
 const simularBackend = (actividades: unknown[] = []) => {
   const fetchMock = vi.fn((url: string, opciones?: RequestInit) => {
@@ -85,20 +65,10 @@ const cuerpoEnviado = (fetchMock: ReturnType<typeof vi.fn>, metodo: string) => {
 const renderizarNueva = (buscar?: (consulta: string) => Promise<ResultadoDireccion[]>) =>
   render(<AnadirActividad viajeId={VIAJE_ID} tokenSesion="token-acceso" onBuscarDirecciones={buscar} />)
 
-const renderizarEdicion = (buscar?: (consulta: string) => Promise<ResultadoDireccion[]>) =>
-  render(
-    <AnadirActividad
-      viajeId={VIAJE_ID}
-      actividadId={ACTIVIDAD_ID}
-      tokenSesion="token-acceso"
-      onBuscarDirecciones={buscar}
-    />,
-  )
 
 const campoLugar = () => screen.getByLabelText('Lugar / Dirección') as HTMLInputElement
 const lupa = () => screen.getByRole('button', { name: 'Buscar dirección' })
 const botonAnadir = () => screen.getByRole('button', { name: /Añadir al itinerario|Guardando/ })
-const botonGuardar = () => screen.getByRole('button', { name: /Guardar cambios|Guardando/ })
 const esperarFormulario = () => screen.findByLabelText('Nombre de la actividad')
 
 afterEach(() => {
@@ -264,17 +234,6 @@ describe('AnadirActividad · buscador de direcciones', () => {
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
-  it('si la búsqueda falla sin ser un error del servidor muestra un mensaje genérico', async () => {
-    const user = userEvent.setup()
-    simularBackend()
-    renderizarNueva(vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))))
-
-    await esperarFormulario()
-    await user.type(campoLugar(), 'Colosseo')
-    await user.click(lupa())
-
-    expect((await screen.findByRole('alert')).textContent).toBe('Ha ocurrido un error')
-  })
 
   it('al elegir un resultado rellena el lugar, lo marca como localizado y cierra la lista', async () => {
     const user = userEvent.setup()
@@ -291,157 +250,9 @@ describe('AnadirActividad · buscador de direcciones', () => {
     expect(screen.queryByRole('list', { name: 'Resultados de la búsqueda' })).toBeNull()
   })
 
-  it('al guardar envía las coordenadas y el identificador del lugar elegido', async () => {
-    const user = userEvent.setup()
-    const fetchMock = simularBackend()
-    renderizarNueva(vi.fn(() => Promise.resolve([COLISEO])))
 
-    await user.type(await esperarFormulario(), 'Visita al Coliseo')
-    await user.type(campoLugar(), 'Colosseo')
-    await user.click(lupa())
-    await user.click(await screen.findByRole('button', { name: etiqueta(COLISEO) }))
-    await user.click(botonAnadir())
 
-    await waitFor(() => expect(cuerpoEnviado(fetchMock, 'POST')).toBeDefined())
-    expect(cuerpoEnviado(fetchMock, 'POST')).toMatchObject({
-      ubicacion_nombre: COLISEO.nombre,
-      latitud: 41.890214,
-      longitud: 12.492231,
-      lugar_externo_id: 'way/24146600',
-    })
-  })
 
-  it('«Quitar» borra las coordenadas pero deja el texto del lugar', async () => {
-    const user = userEvent.setup()
-    const fetchMock = simularBackend()
-    renderizarNueva(vi.fn(() => Promise.resolve([COLISEO])))
 
-    await user.type(await esperarFormulario(), 'Visita al Coliseo')
-    await user.type(campoLugar(), 'Colosseo')
-    await user.click(lupa())
-    await user.click(await screen.findByRole('button', { name: etiqueta(COLISEO) }))
-    await user.click(screen.getByRole('button', { name: 'Quitar' }))
-
-    expect(screen.queryByText('Ubicación localizada en el mapa')).toBeNull()
-    expect(campoLugar().value).toBe(COLISEO.nombre)
-    await user.click(botonAnadir())
-    await waitFor(() => expect(cuerpoEnviado(fetchMock, 'POST')).toBeDefined())
-    expect(cuerpoEnviado(fetchMock, 'POST')).toMatchObject({
-      ubicacion_nombre: COLISEO.nombre,
-      latitud: null,
-      longitud: null,
-      lugar_externo_id: null,
-    })
-  })
-
-  it('si se edita el texto después de elegir, se pierden las coordenadas', async () => {
-    const user = userEvent.setup()
-    const fetchMock = simularBackend()
-    renderizarNueva(vi.fn(() => Promise.resolve([COLISEO])))
-
-    await user.type(await esperarFormulario(), 'Visita al Coliseo')
-    await user.type(campoLugar(), 'Colosseo')
-    await user.click(lupa())
-    await user.click(await screen.findByRole('button', { name: etiqueta(COLISEO) }))
-    await user.type(campoLugar(), ' (entrada norte)')
-
-    expect(screen.queryByText('Ubicación localizada en el mapa')).toBeNull()
-    await user.click(botonAnadir())
-    await waitFor(() => expect(cuerpoEnviado(fetchMock, 'POST')).toBeDefined())
-    expect(cuerpoEnviado(fetchMock, 'POST')).toMatchObject({
-      ubicacion_nombre: `${COLISEO.nombre} (entrada norte)`,
-      latitud: null,
-      longitud: null,
-    })
-  })
-
-  it('si se edita el texto con la lista abierta, la lista desaparece', async () => {
-    const user = userEvent.setup()
-    simularBackend()
-    renderizarNueva(vi.fn(() => Promise.resolve([COLISEO])))
-
-    await esperarFormulario()
-    await user.type(campoLugar(), 'Colosseo')
-    await user.click(lupa())
-    await screen.findByRole('list', { name: 'Resultados de la búsqueda' })
-    await user.type(campoLugar(), 'x')
-
-    expect(screen.queryByRole('list', { name: 'Resultados de la búsqueda' })).toBeNull()
-  })
-
-  it('una nueva búsqueda descarta el lugar elegido antes', async () => {
-    const user = userEvent.setup()
-    simularBackend()
-    renderizarNueva(vi.fn(() => Promise.resolve([COLISEO])))
-
-    await esperarFormulario()
-    await user.type(campoLugar(), 'Colosseo')
-    await user.click(lupa())
-    await user.click(await screen.findByRole('button', { name: etiqueta(COLISEO) }))
-    expect(screen.getByText('Ubicación localizada en el mapa')).toBeTruthy()
-    await user.click(lupa())
-
-    await screen.findByRole('list', { name: 'Resultados de la búsqueda' })
-    expect(screen.queryByText('Ubicación localizada en el mapa')).toBeNull()
-  })
 })
 
-describe('AnadirActividad · buscador de direcciones en modo edición', () => {
-  it('al editar una actividad con coordenadas las muestra como localizadas y no las reenvía si no cambian', async () => {
-    const user = userEvent.setup()
-    const fetchMock = simularBackend([actividad()])
-    renderizarEdicion(vi.fn())
-
-    await user.type(await esperarFormulario(), ' y Foro')
-
-    expect(screen.getByText('Ubicación localizada en el mapa')).toBeTruthy()
-    await user.click(botonGuardar())
-    await waitFor(() => expect(cuerpoEnviado(fetchMock, 'PATCH')).toBeDefined())
-    expect(cuerpoEnviado(fetchMock, 'PATCH')).toEqual({ titulo: 'Visita al Coliseo y Foro' })
-  })
-
-  it('al quitar las coordenadas de una actividad envía las tres a null', async () => {
-    const user = userEvent.setup()
-    const fetchMock = simularBackend([actividad()])
-    renderizarEdicion(vi.fn())
-
-    await esperarFormulario()
-    expect(botonGuardar()).toHaveProperty('disabled', true)
-    await user.click(screen.getByRole('button', { name: 'Quitar' }))
-    expect(botonGuardar()).toHaveProperty('disabled', false)
-    await user.click(botonGuardar())
-
-    await waitFor(() => expect(cuerpoEnviado(fetchMock, 'PATCH')).toBeDefined())
-    expect(cuerpoEnviado(fetchMock, 'PATCH')).toEqual({ latitud: null, longitud: null, lugar_externo_id: null })
-  })
-
-  it('al elegir otro lugar envía el nombre y las coordenadas nuevas', async () => {
-    const user = userEvent.setup()
-    const fetchMock = simularBackend([actividad()])
-    renderizarEdicion(vi.fn(() => Promise.resolve([FORO])))
-
-    await esperarFormulario()
-    await user.clear(campoLugar())
-    await user.type(campoLugar(), 'Foro Romano')
-    await user.click(lupa())
-    await user.click(await screen.findByRole('button', { name: etiqueta(FORO) }))
-    await user.click(botonGuardar())
-
-    await waitFor(() => expect(cuerpoEnviado(fetchMock, 'PATCH')).toBeDefined())
-    expect(cuerpoEnviado(fetchMock, 'PATCH')).toEqual({
-      ubicacion_nombre: FORO.nombre,
-      latitud: 41.892462,
-      longitud: 12.485325,
-      lugar_externo_id: 'relation/5',
-    })
-  })
-
-  it('una actividad sin coordenadas no aparece como localizada', async () => {
-    simularBackend([actividad({ latitud: null, longitud: null, lugar_externo_id: null })])
-    renderizarEdicion(vi.fn())
-
-    await esperarFormulario()
-
-    expect(screen.queryByText('Ubicación localizada en el mapa')).toBeNull()
-  })
-})

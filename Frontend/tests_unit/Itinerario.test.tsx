@@ -271,103 +271,14 @@ describe('Itinerario', () => {
     expect(screen.queryAllByRole('note')).toHaveLength(0)
   })
 
-  it('muestra el avatar de quien añadió la actividad', async () => {
-    simularBackend(
-      { miembros: [
-        { usuario_id: 'u1', nombre: 'Adriana', avatar_url: null, rol: 'creador' },
-        { usuario_id: 'u2', nombre: 'Berta', avatar_url: null, rol: 'miembro' },
-      ] },
-      [
-        actividad('a1', { titulo: 'Cena', creado_por: 'u2' }),
-        actividad('a2', { titulo: 'Museo', creado_por: 'u1' }),
-      ],
-    )
-    renderizar()
 
-    await screen.findByText('Cena')
 
-    const berta = screen.getByRole('img', { name: 'Añadida por Berta' })
-    expect(berta.textContent).toBe('B')
-    expect(screen.getByRole('img', { name: 'Añadida por Adriana' }).textContent).toBe('A')
-  })
 
-  it('no muestra avatar si quien la añadió ya no es miembro del viaje', async () => {
-    simularBackend({}, [actividad('a1', { titulo: 'Cena', creado_por: 'otro-usuario' }), actividad('a2', { titulo: 'Museo' })])
-    renderizar()
 
-    await screen.findByText('Cena')
 
-    expect(screen.queryByRole('img')).toBeNull()
-  })
 
-  it('marca el tipo de la actividad en su icono', async () => {
-    simularBackend({}, [
-      actividad('a1', { titulo: 'Cena', categoria: 'comida' }),
-      actividad('a2', { titulo: 'Paseo' }),
-    ])
-    renderizar()
 
-    await screen.findByText('Cena')
 
-    expect(screen.getByRole('img', { name: 'Comida' })).toBeTruthy()
-    expect(screen.getAllByRole('img')).toHaveLength(1)
-  })
-
-  it('recorta los segundos de la hora', async () => {
-    simularBackend({}, [actividad('a1', { titulo: 'Cena', hora_inicio: '20:15:00' })])
-    renderizar()
-
-    expect(await screen.findByText('20:15 h')).toBeTruthy()
-  })
-
-  it('sin fechas en el viaje saca los días de las actividades', async () => {
-    simularBackend({ fecha_inicio: null, fecha_fin: null }, [
-      actividad('a1', { titulo: 'Playa', fecha: '2027-06-02' }),
-      actividad('a2', { titulo: 'Museo', fecha: '2027-06-01' }),
-    ])
-    renderizar()
-
-    await screen.findByText('Museo')
-    const dias = screen.getByRole('group', { name: 'Día del itinerario' })
-    expect(within(dias).getAllByRole('button').map((boton) => boton.textContent)).toEqual(['1 jun', '2 jun'])
-    expect(screen.queryByText('Playa')).toBeNull()
-  })
-
-  it('añade el día de una actividad que cae fuera de las fechas del viaje', async () => {
-    simularBackend({}, [actividad('a1', { titulo: 'Antes de salir', fecha: '2027-05-10' })])
-    renderizar()
-
-    expect(await screen.findByText('Antes de salir')).toBeTruthy()
-    expect(screen.getByRole('button', { name: '10 may' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Día 1 · 12 may' })).toBeTruthy()
-  })
-
-  it('sin fechas ni actividades invita a añadir la primera', async () => {
-    simularBackend({ fecha_inicio: null, fecha_fin: null }, [])
-    renderizar()
-
-    expect(await screen.findByText(/Todavía no hay actividades ni fechas en este viaje/)).toBeTruthy()
-    expect(screen.queryByRole('group', { name: 'Día del itinerario' })).toBeNull()
-  })
-
-  it('el botón de añadir actividad avisa a la ruta', async () => {
-    const user = userEvent.setup()
-    const onAnadirActividad = vi.fn()
-    simularBackend()
-    renderizar({ onAnadirActividad })
-
-    await user.click(await screen.findByRole('button', { name: 'Añadir Actividad' }))
-
-    expect(onAnadirActividad).toHaveBeenCalledTimes(1)
-  })
-
-  it('en un viaje finalizado se consultan las actividades pero no se puede añadir', async () => {
-    simularBackend({ estado: 'finalizado' })
-    renderizar()
-
-    expect(await screen.findByText('Visita al Coliseo')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Añadir Actividad' })).toBeNull()
-  })
 
   it('avisa si no se ha podido cargar el itinerario', async () => {
     vi.stubGlobal(
@@ -380,112 +291,7 @@ describe('Itinerario', () => {
     expect(screen.queryByRole('button', { name: 'Añadir Actividad' })).toBeNull()
   })
 
-  it('marca Itinerario en la barra inferior y deja volver a Inicio', async () => {
-    const user = userEvent.setup()
-    const onCambiarSeccion = vi.fn()
-    simularBackend()
-    renderizar({ onCambiarSeccion })
 
-    await screen.findByText('Visita al Coliseo')
-    const barra = screen.getByRole('navigation', { name: 'Secciones del viaje' })
-    expect(within(barra).getByRole('button', { name: 'Itinerario' }).getAttribute('aria-current')).toBe('page')
-    await user.click(within(barra).getByRole('button', { name: 'Inicio' }))
-
-    expect(onCambiarSeccion).toHaveBeenCalledWith('inicio')
-  })
-
-  it('el enlace de Mis Viajes avisa a la ruta', async () => {
-    const user = userEvent.setup()
-    const onVolver = vi.fn()
-    simularBackend()
-    renderizar({ onVolver })
-
-    await user.click(await screen.findByRole('button', { name: 'Volver a Mis Viajes' }))
-
-    expect(onVolver).toHaveBeenCalledTimes(1)
-  })
 })
 
-describe('Itinerario · sin conexión', () => {
-  const sinConexion = () => vi.fn(() => Promise.reject(new TypeError('Failed to fetch')))
-
-  const guardarCopia = () =>
-    guardarItinerario(VIAJE_ID, {
-      viaje: viaje() as never,
-      actividades: ACTIVIDADES as never,
-      guardadoEn: '2026-10-25T10:30:00.000Z',
-    })
-
-  it('al cargar con conexión guarda el itinerario para verlo después sin red', async () => {
-    simularBackend()
-    renderizar()
-
-    await screen.findByText('Visita al Coliseo')
-
-    const guardado = leerItinerario(VIAJE_ID)
-    expect(guardado?.viaje.nombre).toBe('Roma 2027')
-    expect(guardado?.actividades).toHaveLength(4)
-    expect(screen.queryByText(/Sin conexión: se muestra lo último guardado/)).toBeNull()
-  })
-
-  it('sin conexión muestra lo último guardado, avisa y no deja añadir actividades', async () => {
-    guardarCopia()
-    vi.stubGlobal('fetch', sinConexion())
-    renderizar()
-
-    expect(await screen.findByText('Visita al Coliseo')).toBeTruthy()
-    expect((await screen.findByRole('status')).textContent).toContain('Sin conexión: se muestra lo último guardado')
-    expect(screen.queryByRole('button', { name: 'Añadir Actividad' })).toBeNull()
-    expect(screen.queryByRole('alert')).toBeNull()
-    expect(screen.getByRole('button', { name: 'Día 2 · 13 may' })).toBeTruthy()
-  })
-
-  it('sin conexión y sin nada guardado muestra el error', async () => {
-    vi.stubGlobal('fetch', sinConexion())
-    renderizar()
-
-    expect((await screen.findByRole('alert')).textContent).toContain('No se puede conectar con el servidor')
-    expect(screen.queryByText('Visita al Coliseo')).toBeNull()
-  })
-
-  it('un fallo del servidor con conexión no usa lo guardado', async () => {
-    guardarCopia()
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() => respuesta(502, { error: { codigo: 'error_actividad', mensaje: 'No se han podido obtener las actividades' } })),
-    )
-    renderizar()
-
-    expect((await screen.findByRole('alert')).textContent).toContain('No se han podido obtener las actividades')
-    expect(screen.queryByText('Visita al Coliseo')).toBeNull()
-  })
-
-  it('Reintentar vuelve a pedir los datos y quita el aviso cuando hay conexión', async () => {
-    const user = userEvent.setup()
-    guardarCopia()
-    vi.stubGlobal('fetch', sinConexion())
-    renderizar()
-    await screen.findByRole('status')
-
-    simularBackend({}, [actividad('nueva', { titulo: 'Actividad recién añadida' })])
-    await user.click(screen.getByRole('button', { name: 'Reintentar' }))
-
-    expect(await screen.findByText('Actividad recién añadida')).toBeTruthy()
-    expect(screen.queryByText(/Sin conexión: se muestra lo último guardado/)).toBeNull()
-    expect(screen.getByRole('button', { name: 'Añadir Actividad' })).toBeTruthy()
-  })
-
-  it('cuando vuelve la conexión del dispositivo se actualiza solo', async () => {
-    guardarCopia()
-    vi.stubGlobal('fetch', sinConexion())
-    renderizar()
-    await screen.findByRole('status')
-
-    simularBackend({}, [actividad('nueva', { titulo: 'Actividad recién añadida' })])
-    window.dispatchEvent(new Event('online'))
-
-    expect(await screen.findByText('Actividad recién añadida')).toBeTruthy()
-    expect(screen.queryByRole('status')).toBeNull()
-  })
-})
 

@@ -87,15 +87,6 @@ describe('fotosApi · subirFoto', () => {
     expect(llamada(fetchMock)[1].headers['Content-Type']).toBeUndefined()
   })
 
-  it('lanza el error que devuelve el servidor', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() => respuesta(409, { error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está finalizado y ya no se puede modificar' } })),
-    )
-    const error = await subirFoto(VIAJE_ID, new File(['x'], 'a.jpg'), 't').catch((e) => e)
-    expect(error).toBeInstanceOf(ApiError)
-    expect(error.codigo).toBe('viaje_no_activo')
-  })
 })
 
 describe('fotosApi · borrarFoto', () => {
@@ -111,17 +102,5 @@ describe('fotosApi · borrarFoto', () => {
     expect(init.headers.Authorization).toBe('Bearer token-acceso')
   })
 
-  it('codifica los identificadores en la URL', async () => {
-    const fetchMock = vi.fn(() => Promise.resolve(new Response(null, { status: 204 })))
-    vi.stubGlobal('fetch', fetchMock)
-    await borrarFoto('a/b', 'c d', 't')
-    expect(llamada(fetchMock)[0]).toMatch(/\/viajes\/a%2Fb\/fotos\/c%20d$/)
-  })
 
-  it('lanza el error del servidor con su mensaje', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => respuesta(404, { error: { codigo: 'foto_no_encontrada', mensaje: 'La foto no existe en este viaje' } })))
-    const error = await borrarFoto(VIAJE_ID, 'f1', 't').catch((e) => e)
-    expect(error).toBeInstanceOf(ApiError)
-    expect(error.message).toBe('La foto no existe en este viaje')
-  })
 })

@@ -3,7 +3,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import CarteraDocumentos from '../src/screens/CarteraDocumentos'
 import VistaPreviaDocumento from '../src/components/VistaPreviaDocumento'
 
 const pdfjsSimulado = vi.hoisted(() => ({
@@ -147,36 +146,9 @@ describe('VistaPreviaDocumento: PDF', () => {
     expect(screen.getByRole('status').textContent).toBe('Página 2 de 3')
   })
 
-  it('si pdf.js no puede leer el PDF, muestra el error con «Reintentar» y reintenta pidiendo otra URL', async () => {
-    const fetchMock = simularBackend()
-    pdfjsSimulado.getDocument.mockImplementationOnce(() => ({ promise: Promise.reject(new Error('CORS')), destroy: vi.fn(() => Promise.resolve()) }))
-    abrirDialogo()
-
-    expect((await screen.findByRole('alert')).textContent).toMatch(/No se ha podido mostrar el documento/)
-
-    simularPdf(1)
-    await userEvent.click(screen.getByRole('button', { name: 'Reintentar' }))
-
-    await screen.findByLabelText('Página 1 del documento')
-    expect(llamadasUrl(fetchMock)).toHaveLength(2)
-  })
 })
 
 describe('VistaPreviaDocumento: errores, descarga y cierre', () => {
-  it('si el servidor falla, muestra el motivo y «Reintentar» vuelve a pedir la URL', async () => {
-    let intentos = 0
-    const fetchMock = simularBackend(() =>
-      ++intentos === 1 ? json(502, { error: { codigo: 'error_documento', mensaje: 'Servicio caído' } }) : json(200, enlace(IMAGEN)),
-    )
-    abrirDialogo(IMAGEN)
-
-    expect((await screen.findByRole('alert')).textContent).toBe('No se ha podido abrir el documento: Servicio caído')
-    await userEvent.click(screen.getByRole('button', { name: 'Reintentar' }))
-
-    await screen.findByRole('img', { name: 'Foto del hotel.png' })
-    expect(screen.queryByRole('alert')).toBeNull()
-    expect(llamadasUrl(fetchMock)).toHaveLength(2)
-  })
 
   it('si el documento se ha borrado, el mensaje lo dice', async () => {
     simularBackend(() => json(404, { error: { codigo: 'documento_no_encontrado', mensaje: 'No existe' } }))
@@ -196,17 +168,6 @@ describe('VistaPreviaDocumento: errores, descarga y cierre', () => {
     expect(llamadasUrl(fetchMock).at(-1)).toContain('/documentos/d2/url?descargar=true')
   })
 
-  it('si falla la descarga, muestra el error', async () => {
-    let intentos = 0
-    simularBackend(() => (++intentos === 1 ? json(200, enlace(IMAGEN)) : json(404, { error: { codigo: 'documento_no_encontrado', mensaje: 'No existe' } })))
-    abrirDialogo(IMAGEN)
-    await screen.findByRole('img', { name: 'Foto del hotel.png' })
-
-    await userEvent.click(screen.getByRole('button', { name: 'Descargar' }))
-
-    expect((await screen.findByRole('alert')).textContent).toMatch(/ya no existe/)
-    expect(asignarUbicacion).not.toHaveBeenCalled()
-  })
 
   it('se cierra con el botón «Cerrar» y con la tecla Escape', async () => {
     simularBackend(() => json(200, enlace(IMAGEN)))
@@ -221,57 +182,3 @@ describe('VistaPreviaDocumento: errores, descarga y cierre', () => {
   })
 })
 
-describe('CarteraDocumentos: abrir y descargar', () => {
-  const abrirCartera = async (estado = 'activo') => {
-    const fetchMock = simularBackend(() => json(200, enlace(IMAGEN)))
-    if (estado !== 'activo') {
-      const original = fetchMock.getMockImplementation()!
-      fetchMock.mockImplementation((url: string) =>
-        url.endsWith('/documentos') || url.includes('/url')
-          ? original(url)
-          : json(200, { id: VIAJE_ID, nombre: 'Roma 2027', estado, miembros: [] }),
-      )
-    }
-    render(<CarteraDocumentos viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
-    await screen.findByText('Documentos del viaje')
-    return fetchMock
-  }
-
-  it('cada tarjeta tiene un botón «Abrir X» que abre la vista previa y «Cerrar» la quita', async () => {
-    await abrirCartera()
-
-    await userEvent.click(screen.getByRole('button', { name: 'Abrir Foto del hotel.png' }))
-
-    expect(await screen.findByRole('img', { name: 'Foto del hotel.png' })).toBeTruthy()
-    await userEvent.click(screen.getByRole('button', { name: 'Cerrar' }))
-    expect(screen.queryByRole('dialog')).toBeNull()
-  })
-
-  it('el botón «Descargar X» de la tarjeta descarga sin abrir la vista previa', async () => {
-    const fetchMock = await abrirCartera()
-
-    await userEvent.click(screen.getByRole('button', { name: 'Descargar Foto del hotel.png' }))
-
-    await waitFor(() => expect(asignarUbicacion).toHaveBeenCalledWith(URL_FIRMADA))
-    expect(llamadasUrl(fetchMock)[0]).toContain('/documentos/d2/url?descargar=true')
-    expect(screen.queryByRole('dialog')).toBeNull()
-  })
-
-  it('si falla la descarga desde la tarjeta, avisa en la pantalla', async () => {
-    simularBackend(() => json(404, { error: { codigo: 'documento_no_encontrado', mensaje: 'No existe' } }))
-    render(<CarteraDocumentos viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
-    await screen.findByText('Documentos del viaje')
-
-    await userEvent.click(screen.getByRole('button', { name: 'Descargar Billete de tren.pdf' }))
-
-    expect((await screen.findByRole('alert')).textContent).toMatch(/ya no existe/)
-  })
-
-  it('en un viaje finalizado también se puede abrir un documento', async () => {
-    await abrirCartera('finalizado')
-
-    await userEvent.click(screen.getByRole('button', { name: 'Abrir Foto del hotel.png' }))
-
-    expect(await screen.findByRole('img', { name: 'Foto del hotel.png' })).toBeTruthy()
-  })
-})

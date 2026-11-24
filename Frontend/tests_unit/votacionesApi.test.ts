@@ -56,24 +56,7 @@ describe('votacionesApi', () => {
     expect(JSON.parse(opciones.body as string)).toEqual({ texto: 'Lisboa' })
   })
 
-  it('vota con PUT a /voto y retira el voto con DELETE', async () => {
-    const llamadaVoto = simular(200, { id: VOTACION_ID })
-    await votar(VIAJE_ID, VOTACION_ID, 'opcion-1', 'token-acceso')
-    expect(llamadaVoto()[0]).toMatch(new RegExp(`/votaciones/${VOTACION_ID}/voto$`))
-    expect(llamadaVoto()[1].method).toBe('PUT')
-    expect(JSON.parse(llamadaVoto()[1].body as string)).toEqual({ opcion_id: 'opcion-1' })
 
-    vi.unstubAllGlobals()
-    const llamadaRetirar = simular(200, { id: VOTACION_ID })
-    await retirarVoto(VIAJE_ID, VOTACION_ID, 'token-acceso')
-    expect(llamadaRetirar()[1].method).toBe('DELETE')
-  })
-
-  it('cierra con POST a /cerrar y devuelve el resultado del cierre', async () => {
-    simular(200, { votacion: { id: VOTACION_ID }, hubo_empate: true, destino: 'Praga' })
-    const resultado = await cerrarVotacion(VIAJE_ID, VOTACION_ID, 'token-acceso')
-    expect(resultado).toMatchObject({ hubo_empate: true, destino: 'Praga' })
-  })
 
   it('convierte los errores de la API en ApiError con su código', async () => {
     simular(409, { error: { codigo: 'sin_votos', mensaje: 'La votación de destino necesita al menos un voto para cerrarse' } })

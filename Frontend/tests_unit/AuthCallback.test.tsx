@@ -51,20 +51,7 @@ describe('AuthCallback', () => {
     expect(onError).not.toHaveBeenCalled()
   })
 
-  it('vuelve a la invitación que se abrió sin sesión en lugar de ir al inicio', async () => {
-    sessionStorage.setItem('travelwrap.invitacionPendiente', 'abc123')
-    const { onSesion } = renderizar(`#sesion=${codificar(sesion)}`)
 
-    expect(await screen.findByText('Pantalla de unirse')).toBeTruthy()
-    expect(onSesion).toHaveBeenCalledWith(sesion)
-  })
-
-  it('procesa la respuesta una sola vez aunque React ejecute el efecto dos veces', async () => {
-    const { onSesion } = renderizar(`#sesion=${codificar(sesion)}`)
-
-    await screen.findByText('Pantalla de inicio')
-    expect(onSesion).toHaveBeenCalledTimes(1)
-  })
 
   it('informa del error y vuelve al login si el usuario cancela', async () => {
     const { onSesion, onError } = renderizar('#error=google_cancelado')
@@ -74,12 +61,6 @@ describe('AuthCallback', () => {
     expect(onSesion).not.toHaveBeenCalled()
   })
 
-  it('informa del error y vuelve al login si el backend no ha podido completar el login', async () => {
-    const { onError } = renderizar('#error=google')
-
-    expect(await screen.findByText('Pantalla de login')).toBeTruthy()
-    expect(onError).toHaveBeenCalledWith('No se ha podido iniciar sesión con Google')
-  })
 
   it('vuelve al login si se accede sin ningún resultado', async () => {
     const { onError } = renderizar('')

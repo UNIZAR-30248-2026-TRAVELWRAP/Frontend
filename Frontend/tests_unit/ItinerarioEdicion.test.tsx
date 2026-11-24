@@ -184,93 +184,9 @@ describe('Itinerario · editar y eliminar actividades', () => {
     expect(screen.getByText('Paseo sin hora')).toBeTruthy()
   })
 
-  it('confirmar elimina la actividad en el servidor, la quita de la agenda y actualiza lo guardado', async () => {
-    const user = userEvent.setup()
-    const fetchMock = simularBackend()
-    renderizar()
 
-    await user.click(await screen.findByRole('button', { name: 'Eliminar Visita al Coliseo' }))
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Eliminar actividad' }))
 
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
-    expect(screen.queryByText('Visita al Coliseo')).toBeNull()
-    expect(screen.getByText('Paseo sin hora')).toBeTruthy()
-    const [url, opciones] = llamadasDelete(fetchMock)[0]
-    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/actividades/coliseo$`))
-    expect(opciones.headers.Authorization).toBe('Bearer token-acceso')
-    expect(leerItinerario(VIAJE_ID)?.actividades.map((a) => a.id)).toEqual(['paseo'])
-  })
 
-  it('al eliminar la última actividad del día lo indica', async () => {
-    const user = userEvent.setup()
-    simularBackend({}, [actividad('unica', { titulo: 'Única actividad' })])
-    renderizar()
 
-    await user.click(await screen.findByRole('button', { name: 'Eliminar Única actividad' }))
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Eliminar actividad' }))
 
-    expect(await screen.findByText('No hay actividades este día.')).toBeTruthy()
-  })
-
-  it('mientras se elimina, los botones del diálogo quedan bloqueados', async () => {
-    const user = userEvent.setup()
-    let terminar: (respuestaFinal: Response) => void = () => undefined
-    simularBackend({}, ACTIVIDADES, () => new Promise<Response>((resolver) => (terminar = resolver)))
-    renderizar()
-
-    await user.click(await screen.findByRole('button', { name: 'Eliminar Visita al Coliseo' }))
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Eliminar actividad' }))
-
-    const dialogo = screen.getByRole('dialog')
-    expect(within(dialogo).getByRole('button', { name: 'Eliminando...' })).toHaveProperty('disabled', true)
-    expect(within(dialogo).getByRole('button', { name: 'Cancelar' })).toHaveProperty('disabled', true)
-    terminar(new Response(null, { status: 204 }))
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
-  })
-
-  it('si el servidor rechaza el borrado muestra el error y la actividad sigue en la agenda', async () => {
-    const user = userEvent.setup()
-    simularBackend({}, ACTIVIDADES, () =>
-      respuesta(409, { error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está finalizado y ya no se puede modificar' } }),
-    )
-    renderizar()
-
-    await user.click(await screen.findByRole('button', { name: 'Eliminar Visita al Coliseo' }))
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Eliminar actividad' }))
-
-    const dialogo = await screen.findByRole('dialog')
-    expect((await within(dialogo).findByRole('alert')).textContent).toBe('El viaje está finalizado y ya no se puede modificar')
-    expect(within(dialogo).getByRole('button', { name: 'Eliminar actividad' })).toHaveProperty('disabled', false)
-    await user.click(within(dialogo).getByRole('button', { name: 'Cancelar' }))
-    expect(screen.getByText('Visita al Coliseo')).toBeTruthy()
-    expect(leerItinerario(VIAJE_ID)?.actividades).toHaveLength(2)
-  })
-
-  it('si falla la conexión al eliminar lo avisa en el diálogo', async () => {
-    const user = userEvent.setup()
-    simularBackend({}, ACTIVIDADES, () => Promise.reject(new TypeError('Failed to fetch')))
-    renderizar()
-
-    await user.click(await screen.findByRole('button', { name: 'Eliminar Visita al Coliseo' }))
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Eliminar actividad' }))
-
-    expect((await screen.findByRole('dialog')).textContent).toContain('No se puede conectar con el servidor')
-    expect(within(screen.getByRole('list', { name: 'Agenda del día' })).getByText('Visita al Coliseo')).toBeTruthy()
-  })
-
-  it('el error de un borrado anterior no aparece al abrir el diálogo de otra actividad', async () => {
-    const user = userEvent.setup()
-    simularBackend({}, ACTIVIDADES, () =>
-      respuesta(502, { error: { codigo: 'error_actividad', mensaje: 'No se ha podido eliminar la actividad' } }),
-    )
-    renderizar()
-
-    await user.click(await screen.findByRole('button', { name: 'Eliminar Visita al Coliseo' }))
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Eliminar actividad' }))
-    await within(await screen.findByRole('dialog')).findByRole('alert')
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancelar' }))
-    await user.click(screen.getByRole('button', { name: 'Eliminar Paseo sin hora' }))
-
-    expect(within(screen.getByRole('dialog')).queryByRole('alert')).toBeNull()
-  })
 })

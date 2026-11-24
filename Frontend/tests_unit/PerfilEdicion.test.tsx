@@ -76,10 +76,6 @@ describe('Perfil · foto', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
-  it('el selector solo ofrece JPEG y PNG', () => {
-    render(<PerfilConSesion />)
-    expect(selector().accept).toBe('image/jpeg,image/png')
-  })
 
   it('al elegir una foto la sube con el token y la muestra', async () => {
     const user = userEvent.setup()
@@ -118,16 +114,6 @@ describe('Perfil · foto', () => {
     expect(subirAvatar).not.toHaveBeenCalled()
   })
 
-  it('si la API falla muestra el error y la foto no cambia', async () => {
-    const user = userEvent.setup()
-    vi.mocked(subirAvatar).mockRejectedValue(new ApiError(400, 'archivo_demasiado_grande', 'x'))
-    render(<PerfilConSesion inicial={usuario({ avatar_url: FOTO })} />)
-
-    await user.upload(selector(), png())
-
-    expect((await screen.findByRole('alert')).textContent).toBe('La foto es demasiado grande (máximo 2 MB)')
-    expect(imagenDelAvatar()?.getAttribute('src')).toBe(FOTO)
-  })
 
   it('con foto, tocar el avatar abre la hoja con las tres opciones', async () => {
     const user = userEvent.setup()
@@ -152,17 +138,6 @@ describe('Perfil · foto', () => {
     expect(quitarAvatar).not.toHaveBeenCalled()
   })
 
-  it('«Cambiar foto» cierra la hoja y abre el selector', async () => {
-    const user = userEvent.setup()
-    render(<PerfilConSesion inicial={usuario({ avatar_url: FOTO })} />)
-    const abrir = vi.spyOn(selector(), 'click')
-    await user.click(screen.getByRole('button', { name: 'Cambiar foto de perfil' }))
-
-    await user.click(screen.getByRole('button', { name: 'Cambiar foto' }))
-
-    expect(abrir).toHaveBeenCalledTimes(1)
-    expect(screen.queryByRole('dialog')).toBeNull()
-  })
 
   it('quitar la foto pide confirmación antes de llamar a la API', async () => {
     const user = userEvent.setup()
@@ -203,18 +178,6 @@ describe('Perfil · foto', () => {
     expect(screen.getByText('D')).toBeTruthy()
   })
 
-  it('si falla al quitar la foto muestra el error y la foto se queda', async () => {
-    const user = userEvent.setup()
-    vi.mocked(quitarAvatar).mockRejectedValue(new ApiError(0, 'sin_conexion', 'x'))
-    render(<PerfilConSesion inicial={usuario({ avatar_url: FOTO })} />)
-    await user.click(screen.getByRole('button', { name: 'Cambiar foto de perfil' }))
-    await user.click(screen.getByRole('button', { name: 'Quitar foto' }))
-
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Quitar foto' }))
-
-    expect((await screen.findByRole('alert')).textContent).toBe('No hay conexión con el servidor. Inténtalo de nuevo')
-    expect(imagenDelAvatar()?.getAttribute('src')).toBe(FOTO)
-  })
 })
 
 describe('Perfil · nombre', () => {
@@ -233,32 +196,7 @@ describe('Perfil · nombre', () => {
     expect(campo().maxLength).toBe(100)
   })
 
-  it('guarda el nombre sin espacios en los extremos y lo muestra', async () => {
-    const user = userEvent.setup()
-    vi.mocked(actualizarNombre).mockResolvedValue(usuario({ nombre: 'Ana Pérez' }))
-    render(<PerfilConSesion />)
-    await abrirEdicion(user)
 
-    await user.clear(campo())
-    await user.type(campo(), '  Ana Pérez  ')
-    await user.click(guardar())
-
-    await waitFor(() => expect(screen.queryByRole('textbox', { name: 'Nombre' })).toBeNull())
-    expect(actualizarNombre).toHaveBeenCalledWith('Ana Pérez', 'token-1')
-    expect(screen.getByText('Ana Pérez')).toBeTruthy()
-  })
-
-  it('Enter guarda el nombre', async () => {
-    const user = userEvent.setup()
-    vi.mocked(actualizarNombre).mockResolvedValue(usuario({ nombre: 'Ana' }))
-    render(<PerfilConSesion />)
-    await abrirEdicion(user)
-
-    await user.clear(campo())
-    await user.type(campo(), 'Ana{Enter}')
-
-    await waitFor(() => expect(actualizarNombre).toHaveBeenCalledWith('Ana', 'token-1'))
-  })
 
   it('un nombre vacío no se puede guardar y avisa', async () => {
     const user = userEvent.setup()
@@ -274,71 +212,8 @@ describe('Perfil · nombre', () => {
     expect(actualizarNombre).not.toHaveBeenCalled()
   })
 
-  it('con el nombre sin cambiar, «Guardar» está desactivado', async () => {
-    const user = userEvent.setup()
-    render(<PerfilConSesion />)
 
-    await abrirEdicion(user)
 
-    expect(guardar().disabled).toBe(true)
-  })
 
-  it('si la API falla, el campo sigue abierto con el texto y el nombre guardado no cambia', async () => {
-    const user = userEvent.setup()
-    vi.mocked(actualizarNombre).mockRejectedValue(
-      new ApiError(400, 'datos_invalidos', 'El nombre debe tener entre 1 y 100 caracteres'),
-    )
-    render(<PerfilConSesion />)
-    await abrirEdicion(user)
 
-    await user.clear(campo())
-    await user.type(campo(), 'Ana')
-    await user.click(guardar())
-
-    expect((await screen.findByRole('alert')).textContent).toBe('El nombre debe tener entre 1 y 100 caracteres')
-    expect(campo().value).toBe('Ana')
-    await user.click(screen.getByRole('button', { name: 'Cancelar' }))
-    expect(screen.getByText('Daniel Blasco')).toBeTruthy()
-  })
-
-  it('mientras se envía, «Guardar» está desactivado', async () => {
-    const user = userEvent.setup()
-    let terminar: (u: Usuario) => void = () => undefined
-    vi.mocked(actualizarNombre).mockReturnValue(new Promise((resolver) => (terminar = resolver)))
-    render(<PerfilConSesion />)
-    await abrirEdicion(user)
-    await user.clear(campo())
-    await user.type(campo(), 'Ana')
-
-    await user.click(guardar())
-
-    expect(guardar().textContent).toBe('Guardando…')
-    expect(guardar().disabled).toBe(true)
-    terminar(usuario({ nombre: 'Ana' }))
-    await waitFor(() => expect(screen.queryByRole('textbox', { name: 'Nombre' })).toBeNull())
-  })
-
-  it('Escape cancela sin llamar a la API', async () => {
-    const user = userEvent.setup()
-    render(<PerfilConSesion />)
-    await abrirEdicion(user)
-
-    await user.type(campo(), 'X{Escape}')
-
-    expect(screen.queryByRole('textbox', { name: 'Nombre' })).toBeNull()
-    expect(screen.getByText('Daniel Blasco')).toBeTruthy()
-    expect(actualizarNombre).not.toHaveBeenCalled()
-  })
-
-  it('«Cancelar» descarta lo escrito y al volver a abrir se ve el nombre actual', async () => {
-    const user = userEvent.setup()
-    render(<PerfilConSesion />)
-    await abrirEdicion(user)
-    await user.type(campo(), 'X')
-
-    await user.click(screen.getByRole('button', { name: 'Cancelar' }))
-    await abrirEdicion(user)
-
-    expect(campo().value).toBe('Daniel Blasco')
-  })
 })

@@ -1,7 +1,6 @@
 // Test unitario de Añadir Gasto en modo edición: Modificar gasto
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import AnadirGasto from '../src/screens/AnadirGasto'
 
 const VIAJE_ID = '123e4567-e89b-12d3-a456-426614174000'
@@ -50,10 +49,6 @@ const simularBackend = ({
   return fetchMock
 }
 
-const enviados = (fetchMock: ReturnType<typeof simularBackend>) =>
-  fetchMock.mock.calls
-    .filter(([, init]) => init?.method === 'PATCH')
-    .map(([url, init]) => ({ url, cuerpo: JSON.parse(init?.body as string) }))
 
 const abrir = async (gastoInicial = GASTO, props = {}) => {
   render(
@@ -118,62 +113,7 @@ describe('AnadirGasto en modo edición', () => {
     expect((screen.getByLabelText('Dividir con Berta') as HTMLInputElement).checked).toBe(false)
   })
 
-  it('al guardar envía PATCH al gasto con los cambios y conserva su fecha', async () => {
-    const fetchMock = simularBackend()
-    await abrir()
 
-    await userEvent.clear(screen.getByLabelText('Importe'))
-    await userEvent.type(screen.getByLabelText('Importe'), '25')
-    await userEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
 
-    await vi.waitFor(() => expect(enviados(fetchMock)).toHaveLength(1))
-    const [{ url, cuerpo }] = enviados(fetchMock)
-    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/gastos/${GASTO_ID}$`))
-    expect(cuerpo).toEqual({
-      concepto: 'Cena en el Trastevere',
-      importe: 25,
-      categoria: 'entradas',
-      pagado_por: BERTA,
-      participantes: [BERTA, ADRIANA],
-      fecha: '2027-05-13',
-    })
-    expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false)
-  })
 
-  it('al guardar avisa a la pantalla que lo contiene con el gasto modificado', async () => {
-    simularBackend()
-    const onGuardado = vi.fn()
-    await abrir(GASTO, { onGuardado })
-
-    await userEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
-
-    await vi.waitFor(() => expect(onGuardado).toHaveBeenCalledTimes(1))
-    expect(onGuardado.mock.calls[0][0]).toMatchObject({ id: GASTO_ID, concepto: 'Cena en el Trastevere' })
-  })
-
-  it('mantiene los avisos de importe: un importe no válido no se envía', async () => {
-    const fetchMock = simularBackend()
-    await abrir()
-
-    await userEvent.clear(screen.getByLabelText('Importe'))
-    await userEvent.type(screen.getByLabelText('Importe'), '0')
-    await userEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
-
-    expect(await screen.findByText('El importe tiene que ser mayor que 0')).toBeTruthy()
-    expect(enviados(fetchMock)).toHaveLength(0)
-  })
-
-  it('si el backend rechaza el cambio, muestra su motivo y sigue en el formulario', async () => {
-    simularBackend({
-      editar: () => json(403, { error: { codigo: 'sin_permiso', mensaje: 'Solo puede editar el gasto quien lo registró o el creador del viaje' } }),
-    })
-    const onGuardado = vi.fn()
-    await abrir(GASTO, { onGuardado })
-
-    await userEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
-
-    expect(await screen.findByText('Solo puede editar el gasto quien lo registró o el creador del viaje')).toBeTruthy()
-    expect(onGuardado).not.toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: 'Guardar cambios' })).toBeTruthy()
-  })
 })

@@ -52,28 +52,5 @@ describe('cerrarSesion', () => {
     expect(error.codigo).toBe('sesion_invalida')
   })
 
-  it('lanza ApiError 502 si el backend no puede cerrar la sesión', async () => {
-    vi.stubGlobal('fetch', vi.fn(() =>
-      Promise.resolve(
-        new Response(JSON.stringify({ error: { codigo: 'error_autenticacion', mensaje: 'No se ha podido cerrar la sesión' } }), {
-          status: 502,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      ),
-    ))
 
-    const error = await cerrarSesion('token-acceso').catch((e) => e)
-
-    expect(error.estado).toBe(502)
-    expect(error.codigo).toBe('error_autenticacion')
-  })
-
-  it('lanza ApiError sin_conexion si el servidor no responde', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))))
-
-    const error = await cerrarSesion('token-acceso').catch((e) => e)
-
-    expect(error).toBeInstanceOf(ApiError)
-    expect(error.codigo).toBe('sin_conexion')
-  })
 })

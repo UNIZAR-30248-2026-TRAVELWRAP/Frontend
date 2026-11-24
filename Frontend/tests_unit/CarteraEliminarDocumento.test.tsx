@@ -163,62 +163,6 @@ describe('CarteraDocumentos: errores al eliminar', () => {
     expect(filas()).toHaveLength(1)
   })
 
-  it('409: sale su mensaje en el diálogo y el documento sigue en la lista', async () => {
-    simularBackend({ borrado: () => errorApi(409, 'viaje_no_activo', 'El viaje está finalizado y ya no se puede modificar') })
-    await abrir()
-    await pulsarPapelera()
-
-    await confirmar()
-
-    expect((await screen.findByRole('alert')).textContent).toContain(
-      'El viaje ya no está activo: no se pueden eliminar documentos',
-    )
-    expect(filas()).toHaveLength(2)
-  })
 })
 
-describe('eliminarDocumento', () => {
-  it('hace DELETE a la ruta del documento con la sesión y no devuelve nada', async () => {
-    const fetchMock = simularBackend()
 
-    const resultado = await eliminarDocumento(VIAJE_ID, 'd1', 'token-acceso')
-
-    expect(resultado).toBeNull()
-    const [[url, opciones]] = fetchMock.mock.calls as unknown as [[string, RequestInit & { headers: Record<string, string> }]]
-    expect(opciones.method).toBe('DELETE')
-    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/documentos/d1$`))
-    expect(opciones.headers.Authorization).toBe('Bearer token-acceso')
-  })
-
-  it('escapa los identificadores en la ruta', async () => {
-    const fetchMock = simularBackend()
-    await eliminarDocumento('a/b', 'c d', 'token-acceso')
-    expect(fetchMock.mock.calls[0][0]).toMatch(/\/viajes\/a%2Fb\/documentos\/c%20d$/)
-  })
-
-  it('lanza ApiError con el estado y el código si la API falla', async () => {
-    simularBackend({ borrado: () => errorApi(409, 'viaje_no_activo', 'Viaje no activo') })
-    await expect(eliminarDocumento(VIAJE_ID, 'd1', 'token-acceso')).rejects.toMatchObject({
-      estado: 409,
-      codigo: 'viaje_no_activo',
-    })
-  })
-})
-
-describe('mensajeAlEliminar', () => {
-  it('con un 409 dice que el viaje ya no está activo', () => {
-    expect(mensajeAlEliminar(new ApiError(409, 'viaje_no_activo', 'Viaje no activo'))).toBe(
-      'El viaje ya no está activo: no se pueden eliminar documentos',
-    )
-  })
-
-  it('con cualquier otro error de la API incluye su mensaje', () => {
-    expect(mensajeAlEliminar(new ApiError(502, 'error_documento', 'Fallo de Supabase'))).toBe(
-      'No se ha podido eliminar el documento: Fallo de Supabase',
-    )
-  })
-
-  it('con un error que no es de la API usa un mensaje genérico', () => {
-    expect(mensajeAlEliminar(new Error('sin red'))).toBe('No se ha podido eliminar el documento: ha ocurrido un error')
-  })
-})

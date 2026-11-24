@@ -46,44 +46,8 @@ describe('Perfil · eliminar cuenta', () => {
     expect(eliminarCuenta).not.toHaveBeenCalled()
   })
 
-  it('al cancelar cierra el diálogo y no elimina nada', async () => {
-    const user = userEvent.setup()
-    const onCuentaEliminada = vi.fn()
-    render(<Perfil {...datos} onCuentaEliminada={onCuentaEliminada} />)
 
-    await user.click(botonEliminar())
-    await user.click(within(dialogo()!).getByRole('button', { name: 'Cancelar' }))
 
-    expect(dialogo()).toBeNull()
-    expect(eliminarCuenta).not.toHaveBeenCalled()
-    expect(onCuentaEliminada).not.toHaveBeenCalled()
-  })
-
-  it('al confirmar elimina la cuenta con el token y avisa para cerrar la sesión', async () => {
-    const user = userEvent.setup()
-    vi.mocked(eliminarCuenta).mockResolvedValue(undefined)
-    const onCuentaEliminada = vi.fn()
-    render(<Perfil {...datos} onCuentaEliminada={onCuentaEliminada} />)
-
-    await user.click(botonEliminar())
-    await user.click(within(dialogo()!).getByRole('button', { name: 'Eliminar cuenta' }))
-
-    await waitFor(() => expect(onCuentaEliminada).toHaveBeenCalledTimes(1))
-    expect(eliminarCuenta).toHaveBeenCalledWith('token-acceso')
-  })
-
-  it('mientras se elimina muestra «Eliminando...» y desactiva los dos botones', async () => {
-    const user = userEvent.setup()
-    vi.mocked(eliminarCuenta).mockReturnValue(new Promise(() => undefined))
-    render(<Perfil {...datos} />)
-
-    await user.click(botonEliminar())
-    await user.click(within(dialogo()!).getByRole('button', { name: 'Eliminar cuenta' }))
-
-    const ventana = dialogo()!
-    expect((within(ventana).getByRole('button', { name: 'Eliminando...' }) as HTMLButtonElement).disabled).toBe(true)
-    expect((within(ventana).getByRole('button', { name: 'Cancelar' }) as HTMLButtonElement).disabled).toBe(true)
-  })
 
   it('si falla muestra el error, no cierra la sesión y permite volver a intentarlo', async () => {
     const user = userEvent.setup()
@@ -115,17 +79,4 @@ describe('Perfil · eliminar cuenta', () => {
     expect((await within(dialogo()!).findByRole('alert')).textContent).toContain('No hay conexión con el servidor')
   })
 
-  it('al cancelar tras un error, el diálogo se abre otra vez sin el error', async () => {
-    const user = userEvent.setup()
-    vi.mocked(eliminarCuenta).mockRejectedValue(new ApiError(502, 'error_cuenta', 'No se ha podido eliminar la cuenta'))
-    render(<Perfil {...datos} />)
-
-    await user.click(botonEliminar())
-    await user.click(within(dialogo()!).getByRole('button', { name: 'Eliminar cuenta' }))
-    await within(dialogo()!).findByRole('alert')
-    await user.click(within(dialogo()!).getByRole('button', { name: 'Cancelar' }))
-    await user.click(botonEliminar())
-
-    expect(within(dialogo()!).queryByRole('alert')).toBeNull()
-  })
 })

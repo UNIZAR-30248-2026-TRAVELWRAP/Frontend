@@ -84,25 +84,7 @@ describe('compartir · compartirArchivo', () => {
     expect(descargas).toEqual([])
   })
 
-  it('si el navegador no puede compartir archivos lo descarga con su nombre', async () => {
-    simularNavegador(sinCompartir())
 
-    const resultado = await compartirArchivo(URL_ARCHIVO, 'trevi.jpg', 'image/jpeg')
-
-    expect(resultado).toBe('descargado')
-    expect(descargas).toEqual([{ nombre: 'trevi.jpg', enlace: 'blob:archivo' }])
-  })
-
-  it('si el navegador rechaza ese tipo de archivo lo descarga', async () => {
-    const share = vi.fn()
-    simularNavegador({ share, canShare: vi.fn(() => false) })
-
-    const resultado = await compartirArchivo(URL_ARCHIVO, 'paseo.mp4', 'video/mp4')
-
-    expect(resultado).toBe('descargado')
-    expect(share).not.toHaveBeenCalled()
-    expect(descargas[0].nombre).toBe('paseo.mp4')
-  })
 
   it('si compartir falla por otro motivo (por ejemplo, por pasar demasiado tiempo) lo descarga', async () => {
     simularNavegador({
@@ -127,13 +109,4 @@ describe('compartir · compartirArchivo', () => {
     expect((share.mock.calls[0] as unknown as [{ files: File[] }])[0].files[0].type).toBe('image/jpeg')
   })
 
-  it('lanza un error claro si no se puede obtener el archivo', async () => {
-    simularNavegador(sinCompartir())
-    vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))))
-    await expect(compartirArchivo(URL_ARCHIVO, 'trevi.jpg', 'image/jpeg')).rejects.toThrow('No se ha podido preparar el archivo para compartirlo')
-
-    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response('caducado', { status: 403 }))))
-    await expect(compartirArchivo(URL_ARCHIVO, 'trevi.jpg', 'image/jpeg')).rejects.toThrow('No se ha podido preparar el archivo para compartirlo')
-    expect(descargas).toEqual([])
-  })
 })

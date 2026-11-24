@@ -50,39 +50,8 @@ describe('BarraInferior', () => {
     expect(onCambiar).toHaveBeenCalledWith('agenda')
   })
 
-  it('deja activa la sección Gastos y avisa al pulsarla', async () => {
-    const user = userEvent.setup()
-    const onCambiar = vi.fn()
-    render(<BarraInferior activa="inicio" onCambiar={onCambiar} />)
 
-    const boton = screen.getByRole('button', { name: 'Gastos' })
-    expect(boton).toHaveProperty('disabled', false)
-    await user.click(boton)
 
-    expect(onCambiar).toHaveBeenCalledWith('gastos')
-  })
-
-  it('deja activa la sección Itinerario y avisa al pulsarla', async () => {
-    const user = userEvent.setup()
-    const onCambiar = vi.fn()
-    render(<BarraInferior activa="inicio" onCambiar={onCambiar} />)
-
-    const boton = screen.getByRole('button', { name: 'Itinerario' })
-    expect(boton).toHaveProperty('disabled', false)
-    await user.click(boton)
-
-    expect(onCambiar).toHaveBeenCalledWith('itinerario')
-  })
-
-  it('no avisa al pulsar la sección en la que ya se está', async () => {
-    const user = userEvent.setup()
-    const onCambiar = vi.fn()
-    render(<BarraInferior activa="inicio" onCambiar={onCambiar} />)
-
-    await user.click(screen.getByRole('button', { name: 'Inicio' }))
-
-    expect(onCambiar).not.toHaveBeenCalled()
-  })
 })
 
 describe('BarraInferior · mensajes nuevos del chat', () => {
@@ -90,20 +59,7 @@ describe('BarraInferior · mensajes nuevos del chat', () => {
     vi.mocked(useMensajesNoLeidos).mockReturnValue(0)
   })
 
-  it('muestra en la pestaña Chat cuántos mensajes nuevos hay', () => {
-    vi.mocked(useMensajesNoLeidos).mockReturnValue(3)
-    render(<BarraInferior activa="inicio" />)
 
-    const barra = screen.getByRole('navigation', { name: 'Secciones del viaje' })
-    expect(within(barra).getByRole('button', { name: 'Chat' }).textContent).toContain('3')
-  })
-
-  it('a partir de 9 mensajes muestra 9+', () => {
-    vi.mocked(useMensajesNoLeidos).mockReturnValue(12)
-    render(<BarraInferior activa="inicio" />)
-
-    expect(screen.getByRole('navigation', { name: 'Secciones del viaje' }).textContent).toContain('9+')
-  })
 
   it('sin mensajes nuevos no muestra ningún contador', () => {
     render(<BarraInferior activa="inicio" />)

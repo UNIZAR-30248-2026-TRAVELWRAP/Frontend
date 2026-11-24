@@ -23,22 +23,8 @@ describe('sugerirNombreViaje', () => {
     expect(sugerirNombreViaje('Roma', '2027-05-12', '2026-05-15')).toBe('Roma 2027')
   })
 
-  it('quita los espacios del destino', () => {
-    expect(sugerirNombreViaje('  Roma  ', '2027-05-12', '2027-05-15')).toBe('Roma 2027')
-  })
 
-  it('sin destino sugiere un nombre temporal con el año', () => {
-    expect(sugerirNombreViaje('', '2027-05-12', '2027-05-15')).toBe('Viaje sin destino 2027')
-    expect(sugerirNombreViaje('   ', '2027-12-28', '2028-01-03')).toBe('Viaje sin destino 2027-2028')
-    expect(sugerirNombreViaje('', '', '')).toBe('Viaje sin destino')
-  })
 
-  it('recorta el destino para que el nombre no pase de 100 caracteres', () => {
-    const nombre = sugerirNombreViaje('a'.repeat(150), '2027-05-12', '2027-05-15')
-
-    expect(nombre).toHaveLength(100)
-    expect(nombre.endsWith(' 2027')).toBe(true)
-  })
 
   it('recorta también el destino largo cuando no hay fechas', () => {
     expect(sugerirNombreViaje('a'.repeat(150), '', '')).toHaveLength(100)

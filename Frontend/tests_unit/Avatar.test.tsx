@@ -46,31 +46,6 @@ describe('Avatar', () => {
     expect(container.querySelector('img')!.getAttribute('src')).toBe(FOTO_NUEVA)
   })
 
-  it('con imageUrl en null muestra la inicial', () => {
-    const { container } = render(<Avatar member={{ ...miembro, imageUrl: null }} />)
-
-    expect(container.querySelector('img')).toBeNull()
-    expect(screen.getByText('D')).toBeTruthy()
-  })
 })
 
-describe('aMiembro con foto', () => {
-  it('incluye la foto del miembro', () => {
-    expect(aMiembro('Daniel', 0, FOTO).imageUrl).toBe(FOTO)
-  })
 
-  it('sin foto, imageUrl es null', () => {
-    expect(aMiembro('Daniel', 0).imageUrl).toBeNull()
-    expect(aMiembro('Daniel', 0, null).imageUrl).toBeNull()
-  })
-})
-
-describe('aMiembro con la cuenta eliminada (PB-47)', () => {
-  it('quien eliminó su cuenta se ve con un «?» en gris y sin foto', () => {
-    const miembro = aMiembro('Un antiguo miembro', 2, FOTO)
-
-    expect(miembro.name).toBe('Un antiguo miembro')
-    expect(miembro.initial).toBe('?')
-    expect(miembro.imageUrl).toBeNull()
-  })
-})

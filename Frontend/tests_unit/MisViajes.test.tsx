@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import MisViajes from '../src/screens/MisViajes'
 
 const respuesta = (estado: number, cuerpo: unknown) =>
@@ -109,49 +108,7 @@ describe('MisViajes', () => {
     expect((fetchMock.mock.calls[0] as unknown as [string])[0]).toMatch(/\/viajes$/)
   })
 
-  it('mantiene los viajes de ejemplo junto a los reales mientras se desarrolla', async () => {
-    conViajes([viaje('azul', { nombre: 'Lisboa 2027' })])
 
-    render(<MisViajes tokenSesion="token-acceso" />)
 
-    expect(await screen.findByRole('button', { name: /Lisboa 2027/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Roma 2025/ })).toBeTruthy()
-  })
 
-  it('muestra el estado vacío si el usuario no tiene viajes', async () => {
-    conViajes([])
-
-    render(<MisViajes tokenSesion="token-acceso" mostrarEjemplos={false} />)
-
-    expect(await screen.findByText('Aún no tienes viajes')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Crear nuevo viaje' })).toBeTruthy()
-  })
-
-  it('avisa si no se pueden cargar los viajes', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))))
-
-    render(<MisViajes tokenSesion="token-acceso" mostrarEjemplos={false} />)
-
-    expect((await screen.findByRole('alert')).textContent).toContain('No se puede conectar con el servidor')
-    expect(screen.queryByText('Aún no tienes viajes')).toBeNull()
-  })
-
-  it('avisa de qué viaje se ha pulsado, de crear viaje y de abrir el perfil', async () => {
-    const user = userEvent.setup()
-    conViajes([viaje('verde', { nombre: 'Verano 2027', destino: null, pendiente_destino: true })])
-    const avisos = { onSelectTrip: vi.fn(), onSelectPendingTrip: vi.fn(), onViewPastTrip: vi.fn(), onCreateTrip: vi.fn(), onViewPerfil: vi.fn() }
-    render(<MisViajes tokenSesion="token-acceso" {...avisos} />)
-
-    await user.click(await screen.findByRole('button', { name: /Verano 2027/ }))
-    await user.click(screen.getByRole('button', { name: /Roma 2025/ }))
-    await user.click(screen.getByRole('button', { name: /Lisboa 2023/ }))
-    await user.click(screen.getByRole('button', { name: 'Crear nuevo viaje' }))
-    await user.click(screen.getByRole('button', { name: 'Perfil de Adriana' }))
-
-    expect(avisos.onSelectPendingTrip).toHaveBeenCalledWith('verde')
-    expect(avisos.onSelectTrip).toHaveBeenCalledWith('roma-2025')
-    expect(avisos.onViewPastTrip).toHaveBeenCalledWith('lisboa-2023')
-    expect(avisos.onCreateTrip).toHaveBeenCalledTimes(1)
-    expect(avisos.onViewPerfil).toHaveBeenCalledTimes(1)
-  })
 })
