@@ -97,9 +97,9 @@ describe('AnadirGasto', () => {
     await user.type(screen.getByLabelText('Importe'), '10')
     await user.click(screen.getByLabelText('Dividir con Berta'))
 
-    expect(parteDe('Daniel')).toBe('5,00 €')
+    expect(parteDe('Daniel')).toBe('5 €')
     expect(parteDe('Berta')).toBeUndefined()
-    expect(parteDe('Adriana')).toBe('5,00 €')
+    expect(parteDe('Adriana')).toBe('5 €')
   })
 
   it('registra el gasto con los datos limpios y avisa con el gasto creado', async () => {

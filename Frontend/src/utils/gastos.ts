@@ -1,4 +1,5 @@
 import type { CategoriaGasto } from "../services/gastosApi"
+import { formatearDinero } from "./dinero"
 
 // Por qué no vale un importe. Se admiten hasta diez cifras enteras y dos decimales, con coma o con punto,
 // como numeric(12,2) en la base de datos
@@ -59,16 +60,8 @@ export const repartirAPartesIguales = (importe: number, participantes: number) =
   return Array.from({ length: participantes }, (_, i) => (base + (i < sobran ? 1 : 0)) / 100)
 }
 
-// 3.5 → "3,50 €"; 1234567.8 → "1.234.567,80 €". Los miles se separan a mano porque Intl en español
-// no separa los números de cuatro cifras (1234,00 €)
-export const conEuros = (cantidad: number) => {
-  const fijo = cantidad.toFixed(2)
-  const negativo = fijo.startsWith("-")
-  const [enteros, decimales] = (negativo ? fijo.slice(1) : fijo).split(".")
-  const grupos: string[] = []
-  for (let fin = enteros.length; fin > 0; fin -= 3) grupos.unshift(enteros.slice(Math.max(0, fin - 3), fin))
-  return `${negativo ? "-" : ""}${grupos.join(".")},${decimales} €`
-}
+// 3.5 → "3,50 €"; 850 → "850 €"; 1234567.8 → "1.234.567,80 €"
+export const conEuros = (cantidad: number) => formatearDinero(cantidad)
 
 // Tamaño de letra para que las cifras largas quepan: hasta `desde` caracteres es `grande`, a partir de
 // `hasta` es `pequeno` y entre medias encoge poco a poco

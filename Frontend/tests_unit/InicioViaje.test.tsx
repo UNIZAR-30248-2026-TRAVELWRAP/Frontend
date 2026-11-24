@@ -340,7 +340,7 @@ describe('InicioViaje · abandonar el viaje', () => {
     renderizar({ onCambiarSeccion })
 
     await userEvent.click(await screen.findByRole('button', { name: 'Abandonar' }))
-    expect(screen.getByRole('dialog').textContent).toContain('Debes 30,00 € en este viaje.')
+    expect(screen.getByRole('dialog').textContent).toContain('Debes 30 € en este viaje.')
     await userEvent.click(screen.getByRole('button', { name: 'Ir a Control de Gastos' }))
 
     expect(onCambiarSeccion).toHaveBeenCalledWith('gastos')

@@ -1,6 +1,7 @@
 // Formato de fechas, importes y miembros de los viajes, compartido por las pantallas que los muestran
 import type { Miembro } from "../components/Avatar"
 import { C } from "../styles/tokens"
+import { formatearDinero } from "./dinero"
 
 const COLORES_MIEMBROS = [C.blue, C.green, C.accent, "#805AD5", C.red]
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
@@ -89,13 +90,8 @@ export const formatearFechasAnterior = (inicio: string | null, fin: string | nul
   return `${a.dia}–${b.dia} ${MESES[b.mes]} ${b.anio}`
 }
 
-// 1240 → "1.240 €"
-export const formatearImporte = (cantidad: number, moneda = "EUR") => {
-  const entero = Math.round(cantidad)
-    .toString()
-    .replace(/\B(?=(\d{3})+(?!\d))/g, ".")
-  return `${entero} ${SIMBOLOS_MONEDA[moneda] ?? moneda}`
-}
+// 1240 → "1.240 €"; 42,5 → "42,50 €"
+export const formatearImporte = (cantidad: number, moneda = "EUR") => formatearDinero(cantidad, SIMBOLOS_MONEDA[moneda] ?? moneda)
 
 // Nombre que el servidor deja en el perfil de quien eliminó su cuenta (PB-47)
 export const NOMBRE_CUENTA_ELIMINADA = "Un antiguo miembro"
