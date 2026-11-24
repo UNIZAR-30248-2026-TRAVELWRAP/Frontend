@@ -247,7 +247,10 @@ test.describe('Itinerario · mapa de las actividades', () => {
 
     await expect(page.getByText(/Orden más corto/)).toBeVisible();
     await expect(page.getByText(/Ruta a pie por calles/)).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Abrir en Google Maps' })).toBeInViewport();
+    // La cabecera con la flecha de volver ocupa una línea más: el enlace queda más abajo y hay que bajar hasta él
+    const enlace = page.getByRole('link', { name: 'Abrir en Google Maps' });
+    await enlace.scrollIntoViewIfNeeded();
+    await expect(enlace).toBeInViewport();
     const [ancho, visible] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
     expect(ancho).toBeLessThanOrEqual(visible);
   });
