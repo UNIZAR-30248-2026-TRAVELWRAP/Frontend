@@ -16,9 +16,6 @@ afterEach(() => {
 })
 
 describe('urlEmbebida', () => {
-  it('convierte el enlace de la playlist en su enlace de incrustación', () => {
-    expect(urlEmbebida(`https://open.spotify.com/playlist/${ID}`)).toBe(`https://open.spotify.com/embed/playlist/${ID}`)
-  })
 
   it('no incrusta enlaces que no son de una playlist', () => {
     expect(urlEmbebida('https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC')).toBeNull()

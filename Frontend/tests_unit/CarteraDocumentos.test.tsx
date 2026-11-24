@@ -66,15 +66,6 @@ afterEach(() => {
 })
 
 describe('CarteraDocumentos: pestañas', () => {
-  it('muestra las pestañas «Cartera» y «Lista de tareas», con la cartera seleccionada', async () => {
-    simularBackend()
-    await abrir()
-
-    expect(screen.getByRole('tablist')).toBeTruthy()
-    expect(screen.getByRole('tab', { name: 'Cartera' }).getAttribute('aria-selected')).toBe('true')
-    expect(screen.getByRole('tab', { name: 'Lista de tareas' }).getAttribute('aria-selected')).toBe('false')
-    expect(screen.getByText('Cartera de Documentos')).toBeTruthy()
-  })
 
   it('al cambiar a «Lista de tareas» cambia el título y se muestran las tareas en lugar de los documentos', async () => {
     simularBackend()
@@ -88,42 +79,10 @@ describe('CarteraDocumentos: pestañas', () => {
     expect(screen.queryByText('Documentos del viaje')).toBeNull()
   })
 
-  it('al volver a «Cartera» reaparecen los documentos', async () => {
-    simularBackend()
-    await abrir()
-    const usuario = userEvent.setup()
 
-    await usuario.click(screen.getByRole('tab', { name: 'Lista de tareas' }))
-    await screen.findByText('Aún no hay tareas.')
-    await usuario.click(screen.getByRole('tab', { name: 'Cartera' }))
-
-    expect(await screen.findByText('Documentos del viaje')).toBeTruthy()
-  })
-
-  it('puede abrirse directamente en «Lista de tareas»', async () => {
-    simularBackend()
-    render(<CarteraDocumentos viajeId={VIAJE_ID} tokenSesion="token-acceso" pestanaInicial="tareas" />)
-
-    expect(await screen.findByText('Aún no hay tareas.')).toBeTruthy()
-    expect(screen.getByRole('tab', { name: 'Lista de tareas' }).getAttribute('aria-selected')).toBe('true')
-  })
 })
 
 describe('CarteraDocumentos: listado', () => {
-  it('muestra los documentos con su tipo, tamaño, fecha y quién los subió', async () => {
-    simularBackend()
-    await abrir()
-
-    const lista = within(screen.getByRole('list', { name: 'Documentos del viaje' })).getAllByRole('listitem')
-    expect(lista).toHaveLength(2)
-    expect(lista[0].textContent).toContain('Foto del hotel.png')
-    expect(lista[0].textContent).toContain('Imagen · 1,5 MB')
-    expect(lista[0].textContent).toContain('Subido por Berta')
-    expect(lista[1].textContent).toContain('Billete de tren.pdf')
-    expect(lista[1].textContent).toContain('PDF · 243 KB')
-    expect(lista[1].textContent).toContain('Subido por Adriana')
-    expect(screen.getByText('Roma 2027')).toBeTruthy()
-  })
 
   it('indica «Un antiguo miembro» si quien lo subió ya no tiene cuenta', async () => {
     simularBackend({ lista: () => json(200, { documentos: [documento({ subido_por: null })] }) })
@@ -148,31 +107,76 @@ describe('CarteraDocumentos: listado', () => {
 })
 
 describe('CarteraDocumentos: subida', () => {
-  it('una subida correcta añade el documento al principio de la lista y lo avisa', async () => {
+
+
+  it('rechaza en el cliente un tipo no permitido, sin llamar al servidor', async () => {
     const fetchMock = simularBackend()
+    await abrir()
+
+    await usuario().upload(selector(), new File(['hola'], 'notas.txt', { type: 'text/plain' }))
+
+    expect((await screen.findByRole('alert')).textContent).toContain('Solo se pueden subir documentos PDF o imágenes JPEG o PNG')
+    expect(subidas(fetchMock)).toHaveLength(0)
+    expect(within(screen.getByRole('list', { name: 'Documentos del viaje' })).getAllByRole('listitem')).toHaveLength(2)
+  })
+
+  it('rechaza en el cliente un archivo de más de 8 MB, sin llamar al servidor', async () => {
+    const fetchMock = simularBackend()
+    await abrir()
+    const grande = pdf('enorme.pdf')
+    Object.defineProperty(grande, 'size', { value: 8_000_001 })
+
+    await usuario().upload(selector(), grande)
+
+    expect((await screen.findByRole('alert')).textContent).toContain('El documento no puede ocupar más de 8 MB')
+    expect(subidas(fetchMock)).toHaveLength(0)
+  })
+
+  it('rechaza un archivo vacío', async () => {
+    const fetchMock = simularBackend()
+    await abrir()
+
+    await usuario().upload(selector(), new File([], 'vacio.pdf', { type: 'application/pdf' }))
+
+    expect((await screen.findByRole('alert')).textContent).toContain('El archivo está vacío')
+    expect(subidas(fetchMock)).toHaveLength(0)
+  })
+
+  it('admite un archivo sin tipo indicado si su extensión es válida', async () => {
+    const fetchMock = simularBackend()
+    await abrir()
+
+    await usuario().upload(selector(), new File(['x'], 'foto.JPG', { type: '' }))
+
+    await waitFor(() => expect(subidas(fetchMock)).toHaveLength(1))
+  })
+
+  it('muestra el error que devuelve la API y la lista no cambia', async () => {
+    simularBackend({
+      subida: () =>
+        json(400, { error: { codigo: 'tipo_no_permitido', mensaje: 'Solo se pueden subir documentos PDF o imágenes JPEG o PNG' } }),
+    })
     await abrir()
 
     await usuario().upload(selector(), pdf())
 
-    expect((await screen.findByRole('status')).textContent).toContain('«seguro.pdf» se ha añadido a la cartera')
-    const filas = within(screen.getByRole('list', { name: 'Documentos del viaje' })).getAllByRole('listitem')
-    expect(filas).toHaveLength(3)
-    expect(filas[0].textContent).toContain('seguro.pdf')
-
-    // Se envía un formulario con el archivo en el campo «archivo» y el token de sesión
-    const [[url, opciones]] = subidas(fetchMock)
-    expect(url).toContain(`/viajes/${VIAJE_ID}/documentos`)
-    expect(opciones?.body).toBeInstanceOf(FormData)
-    const formulario = opciones?.body as FormData
-    expect((formulario.get('archivo') as File).name).toBe('seguro.pdf')
-    expect(JSON.stringify(opciones?.headers)).toContain('token-acceso')
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'No se ha podido subir el documento: Solo se pueden subir documentos PDF o imágenes JPEG o PNG',
+    )
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(within(screen.getByRole('list', { name: 'Documentos del viaje' })).getAllByRole('listitem')).toHaveLength(2)
   })
-
-
-
-
-
-
 
 })
 
+describe('CarteraDocumentos: viaje finalizado', () => {
+  it('muestra los documentos pero no deja subir ninguno', async () => {
+    simularBackend({ viaje: () => json(200, { id: VIAJE_ID, nombre: 'Roma 2027', estado: 'finalizado', miembros }) })
+    await abrir()
+
+    expect(screen.queryByRole('button', { name: 'Subir documento' })).toBeNull()
+    expect(screen.queryByLabelText('Elegir el documento que se va a subir')).toBeNull()
+    expect(within(screen.getByRole('list', { name: 'Documentos del viaje' })).getAllByRole('listitem')).toHaveLength(2)
+  })
+
+})

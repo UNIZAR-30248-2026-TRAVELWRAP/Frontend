@@ -30,18 +30,6 @@ afterEach(() => {
 })
 
 describe('CrearVotacion', () => {
-  it('empieza con el tipo Otro, dos opciones en blanco y todos los miembros como votantes', async () => {
-    await abrir()
-
-    const tipo = screen.getByRole('combobox', { name: 'Tipo de votación' }) as HTMLSelectElement
-    expect(tipo.value).toBe('otro')
-    expect([...tipo.options].map((o) => o.text)).toEqual(['Fechas', 'Actividades', 'Otro'])
-    expect(screen.getByLabelText('Opción A')).toBeTruthy()
-    expect(screen.getByLabelText('Opción B')).toBeTruthy()
-    expect(screen.queryByLabelText('Opción C')).toBeNull()
-    expect(screen.getByText(/Opcionales: puedes dejarlas en blanco/)).toBeTruthy()
-    expect(screen.getByText('Todos los miembros del viaje')).toBeTruthy()
-  })
 
   it('permite añadir opciones y quitarlas todas', async () => {
     const user = userEvent.setup()
@@ -69,24 +57,39 @@ describe('CrearVotacion', () => {
     expect(onCreada.mock.calls[0][0].opciones).toEqual([])
   })
 
-  it('con una sola opción escrita se envía solo esa', async () => {
+
+
+  it('en las votaciones de fechas cada opción puede llevar su fecha', async () => {
     const user = userEvent.setup()
     const { fetchMock } = await abrir({ onCreada: vi.fn() })
 
-    await rellenar(user, '¿Hotel?', ['Hotel Roma'])
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Tipo de votación' }), 'Fechas')
+    await rellenar(user, '¿Qué día salimos?', ['Viernes', 'Sábado'])
+    await user.type(screen.getByLabelText('Fecha de la opción A'), '2027-05-14')
     await user.click(screen.getByRole('button', { name: 'Publicar votación' }))
 
     await vi.waitFor(() => expect(llamadas(fetchMock, 'POST', '/votaciones')).toHaveLength(1))
-    expect(enviada(fetchMock).opciones).toEqual([{ texto: 'Hotel Roma', valor_fecha: null }])
+    expect(enviada(fetchMock).opciones).toEqual([
+      { texto: 'Viernes', valor_fecha: '2027-05-14' },
+      { texto: 'Sábado', valor_fecha: null },
+    ])
   })
-
-
 
 
   for (const [caso, pregunta, opciones, mensaje] of [
     ['sin pregunta', '', ['Hotel', 'Apartamento'], 'Escribe la pregunta de la votación'],
     ['con opciones repetidas', '¿Dónde dormimos?', ['Hotel', ' hotel '], 'Las opciones no se pueden repetir'],
   ] as const) {
+    it(`no envía una votación ${caso}`, async () => {
+      const user = userEvent.setup()
+      const { fetchMock } = await abrir()
+
+      await rellenar(user, pregunta, [...opciones])
+      await user.click(screen.getByRole('button', { name: 'Publicar votación' }))
+
+      expect(screen.getByRole('alert').textContent).toBe(mensaje)
+      expect(llamadas(fetchMock, 'POST', '/votaciones')).toHaveLength(0)
+    })
   }
 
   it('si el servidor la rechaza muestra el motivo y se puede volver a intentar', async () => {

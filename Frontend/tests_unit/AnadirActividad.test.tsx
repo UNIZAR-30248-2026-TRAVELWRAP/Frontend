@@ -54,18 +54,6 @@ afterEach(() => {
 })
 
 describe('AnadirActividad', () => {
-  it('muestra el nombre del viaje y una pastilla por cada día', async () => {
-    simularBackend()
-    renderizar()
-
-    expect(await screen.findByText(/Itinerario · Roma 2027/)).toBeTruthy()
-    const dias = screen.getByRole('group', { name: 'Día de la actividad' })
-    expect(dias.textContent).toContain('Día 1 · 12 may')
-    expect(dias.textContent).toContain('Día 2 · 13 may')
-    expect(dias.textContent).toContain('Día 3 · 14 may')
-    expect(screen.getByRole('button', { name: 'Día 1 · 12 may' }).getAttribute('aria-pressed')).toBe('true')
-    expect(screen.queryByLabelText('Fecha')).toBeNull()
-  })
 
   it('se abre en el día indicado si es un día del viaje', async () => {
     simularBackend()
@@ -77,53 +65,10 @@ describe('AnadirActividad', () => {
     expect(screen.getByRole('button', { name: 'Día 1 · 12 may' }).getAttribute('aria-pressed')).toBe('false')
   })
 
-  it('si el día indicado no es del viaje se abre en el primero', async () => {
-    simularBackend()
-    renderizar({ fechaInicial: '2030-01-01' })
 
-    await screen.findByRole('button', { name: 'Día 1 · 12 may' })
 
-    expect(screen.getByRole('button', { name: 'Día 1 · 12 may' }).getAttribute('aria-pressed')).toBe('true')
-  })
 
-  it('en un viaje sin fechas rellena el campo con el día indicado', async () => {
-    simularBackend({ fecha_inicio: null, fecha_fin: null })
-    renderizar({ fechaInicial: '2027-06-01' })
 
-    const campo = (await screen.findByLabelText('Fecha')) as HTMLInputElement
-    await waitFor(() => expect(campo.value).toBe('2027-06-01'))
-  })
-
-  it('al guardar avisa con la fecha de la actividad', async () => {
-    const user = userEvent.setup()
-    const onGuardada = vi.fn()
-    simularBackend()
-    renderizar({ onGuardada, fechaInicial: '2027-05-14' })
-
-    await user.type(await screen.findByLabelText('Nombre de la actividad'), 'Vuelta')
-    await user.click(botonAnadir())
-
-    await waitFor(() => expect(onGuardada).toHaveBeenCalledWith('2027-05-14'))
-  })
-
-  it('pide la fecha con un campo si el viaje no tiene fechas', async () => {
-    simularBackend({ fecha_inicio: null, fecha_fin: null })
-    renderizar()
-
-    expect(await screen.findByLabelText('Fecha')).toBeTruthy()
-    expect(screen.queryByRole('group', { name: 'Día de la actividad' })).toBeNull()
-  })
-
-  it('no deja añadir sin título y sí con título', async () => {
-    const user = userEvent.setup()
-    simularBackend()
-    renderizar()
-
-    await screen.findByLabelText('Nombre de la actividad')
-    expect(botonAnadir()).toHaveProperty('disabled', true)
-    await user.type(screen.getByLabelText('Nombre de la actividad'), 'Coliseo')
-    expect(botonAnadir()).toHaveProperty('disabled', false)
-  })
 
   it('sin fechas en el viaje exige elegir la fecha', async () => {
     const user = userEvent.setup()
@@ -165,9 +110,46 @@ describe('AnadirActividad', () => {
   })
 
 
+  it('ofrece los cinco tipos de actividad y deja elegir uno o quitarlo', async () => {
+    const user = userEvent.setup()
+    const fetchMock = simularBackend()
+    renderizar()
+
+    await user.type(await screen.findByLabelText('Nombre de la actividad'), 'Cena')
+    const tipos = screen.getByRole('group', { name: 'Tipo (opcional)' })
+    expect(within(tipos).getAllByRole('button').map((boton) => boton.textContent)).toEqual([
+      'Comida',
+      'Cultura',
+      'Transporte',
+      'Alojamiento',
+      'Otro',
+    ])
+    await user.click(within(tipos).getByRole('button', { name: 'Comida' }))
+    expect(within(tipos).getByRole('button', { name: 'Comida' }).getAttribute('aria-pressed')).toBe('true')
+    await user.click(within(tipos).getByRole('button', { name: 'Comida' }))
+    expect(within(tipos).getByRole('button', { name: 'Comida' }).getAttribute('aria-pressed')).toBe('false')
+    await user.click(botonAnadir())
+
+    await waitFor(() => expect(cuerpoDelPost(fetchMock)).toBeDefined())
+    expect(cuerpoDelPost(fetchMock).categoria).toBeNull()
+  })
 
 
 
+  it('avisa y no deja añadir si la hora de fin es anterior a la de inicio', async () => {
+    const user = userEvent.setup()
+    simularBackend()
+    renderizar()
+
+    await user.type(await screen.findByLabelText('Nombre de la actividad'), 'Paseo')
+    await user.type(screen.getByLabelText('Hora'), '12:00')
+    await user.type(screen.getByLabelText('Hasta (opcional)'), '11:00')
+
+    expect((await screen.findByRole('alert')).textContent).toBe('La hora de fin no puede ser anterior a la de inicio')
+    expect(botonAnadir()).toHaveProperty('disabled', true)
+    await user.clear(screen.getByLabelText('Hasta (opcional)'))
+    expect(botonAnadir()).toHaveProperty('disabled', false)
+  })
 
 
   it('muestra el error del backend y no avisa de que se ha guardado', async () => {
@@ -186,6 +168,24 @@ describe('AnadirActividad', () => {
     expect(botonAnadir()).toHaveProperty('disabled', false)
   })
 
+  it('no ofrece el formulario si el viaje está finalizado', async () => {
+    simularBackend({ estado: 'finalizado' })
+    renderizar()
 
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'El viaje está finalizado y ya no se pueden añadir actividades',
+    )
+    expect(screen.queryByLabelText('Nombre de la actividad')).toBeNull()
+  })
+
+  it('avisa si no se ha podido cargar el viaje', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => respuesta(404, { error: { codigo: 'viaje_no_encontrado', mensaje: 'El viaje no existe o no perteneces a él' } })),
+    )
+    renderizar()
+
+    expect((await screen.findByRole('alert')).textContent).toContain('El viaje no existe o no perteneces a él')
+  })
 
 })

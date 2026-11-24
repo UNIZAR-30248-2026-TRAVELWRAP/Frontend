@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import MisViajes from '../src/screens/MisViajes'
 
 const respuesta = (estado: number, cuerpo: unknown) =>
@@ -53,31 +54,6 @@ describe('MisViajes', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('pinta los viajes reales: activos en azul, pendientes en verde y finalizados como anteriores', async () => {
-    conViajes([
-      viaje('azul', { nombre: 'Lisboa 2027' }),
-      viaje('verde', { nombre: 'Verano 2027', destino: null, pendiente_destino: true }),
-      viaje('fin', { nombre: 'Praga 2025', estado: 'finalizado', fecha_inicio: '2025-06-20', fecha_fin: '2025-06-24' }),
-    ])
-
-    render(<MisViajes tokenSesion="token-acceso" mostrarEjemplos={false} />)
-
-    const azul = await screen.findByRole('button', { name: /Lisboa 2027/ })
-    expect(azul.textContent).toMatch(/Próximo · faltan \d+ días/)
-    expect(azul.textContent).toContain('12 – 15 may · 4 días')
-    expect(azul.textContent).toContain('PRESUPUESTO')
-    expect(azul.textContent).toContain('1.240 €')
-    expect(azul.textContent).toContain('DB')
-
-    const verde = screen.getByRole('button', { name: /Verano 2027/ })
-    expect(verde.textContent).toContain('Pendiente de destino')
-
-    const anterior = screen.getByRole('button', { name: /Praga 2025/ })
-    expect(anterior.textContent).toContain('20–24 jun 2025')
-    expect(anterior.textContent).toContain('2 viajeros')
-
-    expect(screen.getByText('Viajes activos')).toBeTruthy()
-  })
 
   it('muestra la portada de fondo en la tarjeta del viaje activo y deja las demás como siempre', async () => {
     const portada = 'https://storage.test/portadas/roma.jpg?token=abc'
@@ -109,6 +85,40 @@ describe('MisViajes', () => {
   })
 
 
+  it('muestra el estado vacío si el usuario no tiene viajes', async () => {
+    conViajes([])
 
+    render(<MisViajes tokenSesion="token-acceso" mostrarEjemplos={false} />)
 
+    expect(await screen.findByText('Aún no tienes viajes')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Crear nuevo viaje' })).toBeTruthy()
+  })
+
+  it('avisa si no se pueden cargar los viajes', async () => {
+    vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))))
+
+    render(<MisViajes tokenSesion="token-acceso" mostrarEjemplos={false} />)
+
+    expect((await screen.findByRole('alert')).textContent).toContain('No se puede conectar con el servidor')
+    expect(screen.queryByText('Aún no tienes viajes')).toBeNull()
+  })
+
+  it('avisa de qué viaje se ha pulsado, de crear viaje y de abrir el perfil', async () => {
+    const user = userEvent.setup()
+    conViajes([viaje('verde', { nombre: 'Verano 2027', destino: null, pendiente_destino: true })])
+    const avisos = { onSelectTrip: vi.fn(), onSelectPendingTrip: vi.fn(), onViewPastTrip: vi.fn(), onCreateTrip: vi.fn(), onViewPerfil: vi.fn() }
+    render(<MisViajes tokenSesion="token-acceso" {...avisos} />)
+
+    await user.click(await screen.findByRole('button', { name: /Verano 2027/ }))
+    await user.click(screen.getByRole('button', { name: /Roma 2025/ }))
+    await user.click(screen.getByRole('button', { name: /Lisboa 2023/ }))
+    await user.click(screen.getByRole('button', { name: 'Crear nuevo viaje' }))
+    await user.click(screen.getByRole('button', { name: 'Perfil de Adriana' }))
+
+    expect(avisos.onSelectPendingTrip).toHaveBeenCalledWith('verde')
+    expect(avisos.onSelectTrip).toHaveBeenCalledWith('roma-2025')
+    expect(avisos.onViewPastTrip).toHaveBeenCalledWith('lisboa-2023')
+    expect(avisos.onCreateTrip).toHaveBeenCalledTimes(1)
+    expect(avisos.onViewPerfil).toHaveBeenCalledTimes(1)
+  })
 })

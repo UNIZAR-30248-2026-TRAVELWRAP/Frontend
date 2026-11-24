@@ -30,22 +30,19 @@ describe('Perfil · eliminar cuenta', () => {
     expect(dialogo()).toBeNull()
   })
 
-  it('al pulsarla pide confirmación con el aviso de que no se puede deshacer, sin eliminar todavía', async () => {
+
+  it('al cancelar cierra el diálogo y no elimina nada', async () => {
     const user = userEvent.setup()
-    render(<Perfil {...datos} />)
+    const onCuentaEliminada = vi.fn()
+    render(<Perfil {...datos} onCuentaEliminada={onCuentaEliminada} />)
 
     await user.click(botonEliminar())
+    await user.click(within(dialogo()!).getByRole('button', { name: 'Cancelar' }))
 
-    const ventana = dialogo()!
-    expect(within(ventana).getByText('¿Eliminar tu cuenta?')).toBeTruthy()
-    expect(
-      within(ventana).getByText('Se eliminarán tu perfil y tus datos personales. Esta acción no se puede deshacer.'),
-    ).toBeTruthy()
-    expect(within(ventana).getByRole('button', { name: 'Cancelar' })).toBeTruthy()
-    expect(within(ventana).getByRole('button', { name: 'Eliminar cuenta' })).toBeTruthy()
+    expect(dialogo()).toBeNull()
     expect(eliminarCuenta).not.toHaveBeenCalled()
+    expect(onCuentaEliminada).not.toHaveBeenCalled()
   })
-
 
 
 

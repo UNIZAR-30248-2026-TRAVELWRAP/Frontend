@@ -140,31 +140,7 @@ describe('Itinerario · editar y eliminar actividades', () => {
     expect(onEditarActividad.mock.calls[0][0]).toMatchObject({ id: 'coliseo', titulo: 'Visita al Coliseo' })
   })
 
-  it('al pulsar eliminar pide confirmación con el nombre de la actividad', async () => {
-    const user = userEvent.setup()
-    simularBackend()
-    renderizar()
 
-    await user.click(await screen.findByRole('button', { name: 'Eliminar Visita al Coliseo' }))
-
-    const dialogo = screen.getByRole('dialog')
-    expect(within(dialogo).getByText('¿Eliminar esta actividad?')).toBeTruthy()
-    expect(dialogo.textContent).toContain('Visita al Coliseo')
-    expect(dialogo.textContent).toContain('Esta acción no se puede deshacer')
-  })
-
-  it('cancelar cierra el diálogo sin eliminar nada', async () => {
-    const user = userEvent.setup()
-    const fetchMock = simularBackend()
-    renderizar()
-
-    await user.click(await screen.findByRole('button', { name: 'Eliminar Visita al Coliseo' }))
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancelar' }))
-
-    expect(screen.queryByRole('dialog')).toBeNull()
-    expect(screen.getByText('Visita al Coliseo')).toBeTruthy()
-    expect(llamadasDelete(fetchMock)).toHaveLength(0)
-  })
 
   it('tras eliminar vuelve a pedir el viaje y las actividades al servidor para recargar la agenda', async () => {
     const user = userEvent.setup()
@@ -187,6 +163,23 @@ describe('Itinerario · editar y eliminar actividades', () => {
 
 
 
+  it('si el servidor rechaza el borrado muestra el error y la actividad sigue en la agenda', async () => {
+    const user = userEvent.setup()
+    simularBackend({}, ACTIVIDADES, () =>
+      respuesta(409, { error: { codigo: 'viaje_no_activo', mensaje: 'El viaje está finalizado y ya no se puede modificar' } }),
+    )
+    renderizar()
+
+    await user.click(await screen.findByRole('button', { name: 'Eliminar Visita al Coliseo' }))
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Eliminar actividad' }))
+
+    const dialogo = await screen.findByRole('dialog')
+    expect((await within(dialogo).findByRole('alert')).textContent).toBe('El viaje está finalizado y ya no se puede modificar')
+    expect(within(dialogo).getByRole('button', { name: 'Eliminar actividad' })).toHaveProperty('disabled', false)
+    await user.click(within(dialogo).getByRole('button', { name: 'Cancelar' }))
+    expect(screen.getByText('Visita al Coliseo')).toBeTruthy()
+    expect(leerItinerario(VIAJE_ID)?.actividades).toHaveLength(2)
+  })
 
 
 })

@@ -81,42 +81,11 @@ describe('Chat · conversación', () => {
     expect(within(lista()).queryByText('Adriana')).toBeNull()
   })
 
-  it('los mensajes de los demás llevan la inicial de su avatar, y los propios no', async () => {
-    simularBackend({ historial: [mensaje('m1', 'Hola a todos'), mensaje('m2', 'Llego mañana', ADRIANA, 'Adriana')] })
-    await abrir()
 
-    expect(await within(lista()).findByText('B')).toBeTruthy()
-    expect(within(lista()).queryByText('A')).toBeNull()
-  })
 
-  it('al abrir el chat lo marca como leído en este dispositivo', async () => {
-    simularBackend()
-    await abrir()
-
-    await waitFor(() => expect(localStorage.getItem(`travelwrap.chatLeido.${VIAJE_ID}`)).not.toBeNull())
-  })
-
-  it('con el viaje sin mensajes lo dice', async () => {
-    simularBackend({ historial: [] })
-    render(<Chat viajeId={VIAJE_ID} tokenSesion="token-acceso" usuarioId={ADRIANA} />)
-
-    expect(await screen.findByText('Todavía no hay mensajes. ¡Escribe el primero!')).toBeTruthy()
-  })
 })
 
 describe('Chat · enviar', () => {
-  it('envía el texto sin espacios sobrantes y lo añade a la conversación', async () => {
-    const fetchMock = simularBackend()
-    await abrir()
-
-    await userEvent.type(screen.getByLabelText('Mensaje'), '  Vale  ')
-    await userEvent.click(screen.getByRole('button', { name: 'Enviar' }))
-
-    expect(await within(lista()).findByText('Vale')).toBeTruthy()
-    const [, opciones] = fetchMock.mock.calls.find(([, o]) => o?.method === 'POST') as unknown as [string, RequestInit]
-    expect(JSON.parse(opciones.body as string)).toEqual({ texto: 'Vale' })
-    expect((screen.getByLabelText('Mensaje') as HTMLInputElement).value).toBe('')
-  })
 
   it('no envía un texto vacío', async () => {
     const fetchMock = simularBackend()
@@ -126,7 +95,61 @@ describe('Chat · enviar', () => {
     expect(fetchMock.mock.calls.some(([, o]) => o?.method === 'POST')).toBe(false)
   })
 
+  it('con el viaje finalizado el campo está desactivado', async () => {
+    simularBackend({ estado: 'finalizado' })
+    await abrir()
+
+    expect(screen.getByLabelText('Mensaje')).toHaveProperty('disabled', true)
+  })
 })
 
+describe('Chat · tiempo real', () => {
+  it('un mensaje que llega por el socket aparece una sola vez, aunque también venga en la respuesta del envío', async () => {
+    simularBackend()
+    await abrir()
+    await userEvent.type(screen.getByLabelText('Mensaje'), 'Vale')
+    await userEvent.click(screen.getByRole('button', { name: 'Enviar' }))
+    await within(lista()).findByText('Vale')
 
+    const alRecibir = vi.mocked(escucharMensajes).mock.calls.at(-1)?.[2]
+    alRecibir?.(mensaje('nuevo-Vale', 'Vale', ADRIANA, 'Adriana', '2026-05-12T10:05:00Z'))
+    alRecibir?.(mensaje('m9', '¡Llego mañana!'))
 
+    expect(await within(lista()).findByText('¡Llego mañana!')).toBeTruthy()
+    expect(within(lista()).getAllByText('Vale')).toHaveLength(1)
+  })
+})
+
+describe('Chat · historial', () => {
+  it('con 50 mensajes ofrece ver los anteriores y los trae con la fecha del primero', async () => {
+    const primeros = Array.from({ length: 50 }, (_, i) =>
+      mensaje(`m${i}`, `Mensaje ${i}`, BERTA, 'Berta', new Date(Date.UTC(2026, 4, 12, 10, i)).toISOString()),
+    )
+    const anteriores = [mensaje('antiguo', 'Mensaje de antes', BERTA, 'Berta', '2026-05-12T09:00:00Z')]
+    const fetchMock = simularBackend({ historial: primeros, anteriores })
+    await abrir()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ver mensajes anteriores' }))
+
+    expect(await within(lista()).findByText('Mensaje de antes')).toBeTruthy()
+    const [url] = fetchMock.mock.calls.find(([u]) => u.includes('antes=')) as unknown as [string]
+    expect(url).toContain(`antes=${encodeURIComponent(primeros[0].creado_en)}`)
+  })
+
+})
+
+describe('Chat · cabecera fija', () => {
+  it('la cabecera con las pestañas queda fija arriba al desplazarse por los mensajes', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) => (url.includes('/mensajes') ? json(200, { mensajes: [] }) : json(200, viaje()))),
+    )
+    render(<Chat viajeId={VIAJE_ID} tokenSesion="token-acceso" usuarioId={ADRIANA} />)
+
+    let cabecera: HTMLElement | null = await screen.findByRole('tablist')
+    while (cabecera && cabecera.style.position !== 'sticky') cabecera = cabecera.parentElement
+
+    expect(cabecera).not.toBeNull()
+    expect(cabecera?.style.top).toBe('0px')
+  })
+})

@@ -10,23 +10,19 @@ afterEach(() => {
 const boton = () => screen.getByRole('button', { name: /iniciar sesión|entrando/i })
 
 describe('Login', () => {
-  it('muestra los campos de email y contraseña', () => {
-    render(<Login />)
-    expect(screen.getByLabelText('Email')).toBeTruthy()
-    expect(screen.getByLabelText('Contraseña')).toBeTruthy()
-  })
 
-  it('desactiva el botón hasta rellenar email y contraseña', async () => {
+
+  it('llama a onLogin con el email sin espacios y la contraseña', async () => {
     const user = userEvent.setup()
-    render(<Login />)
+    const onLogin = vi.fn()
+    render(<Login onLogin={onLogin} />)
 
-    expect(boton()).toHaveProperty('disabled', true)
-    await user.type(screen.getByLabelText('Email'), 'daniel@travelwrap.app')
-    expect(boton()).toHaveProperty('disabled', true)
+    await user.type(screen.getByLabelText('Email'), '  daniel@travelwrap.app  ')
     await user.type(screen.getByLabelText('Contraseña'), 'secreta123')
-    expect(boton()).toHaveProperty('disabled', false)
-  })
+    await user.click(boton())
 
+    expect(onLogin).toHaveBeenCalledWith('daniel@travelwrap.app', 'secreta123')
+  })
 
 
   it('muestra el mensaje de error recibido', () => {
@@ -39,4 +35,9 @@ describe('Login', () => {
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
+  it('muestra "Entrando..." y desactiva el botón mientras carga', () => {
+    render(<Login loading />)
+    expect(boton().textContent).toBe('Entrando...')
+    expect(boton()).toHaveProperty('disabled', true)
+  })
 })

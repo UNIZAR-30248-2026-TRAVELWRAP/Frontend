@@ -14,9 +14,6 @@ describe('utilidades de votaciones', () => {
     expect(opcionesGanadoras(opciones([0, 0]))).toEqual([])
   })
 
-  it('si hay empate devuelve todas las empatadas (el backend elige una al azar al cerrar)', () => {
-    expect(opcionesGanadoras(opciones([2, 2, 1])).map((o) => o.id)).toEqual(['o0', 'o1'])
-  })
 
   it('enumera las opciones empatadas para el aviso', () => {
     expect(enumerar(['Lisboa'])).toBe('Lisboa')

@@ -1,6 +1,7 @@
 // Test unitario de Añadir Gasto en modo edición: Modificar gasto
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import AnadirGasto from '../src/screens/AnadirGasto'
 
 const VIAJE_ID = '123e4567-e89b-12d3-a456-426614174000'
@@ -49,6 +50,10 @@ const simularBackend = ({
   return fetchMock
 }
 
+const enviados = (fetchMock: ReturnType<typeof simularBackend>) =>
+  fetchMock.mock.calls
+    .filter(([, init]) => init?.method === 'PATCH')
+    .map(([url, init]) => ({ url, cuerpo: JSON.parse(init?.body as string) }))
 
 const abrir = async (gastoInicial = GASTO, props = {}) => {
   render(
@@ -78,42 +83,55 @@ describe('AnadirGasto en modo edición', () => {
     expect(screen.queryByText('Añadir Gasto')).toBeNull()
   })
 
-  it('rellena los datos del gasto: importe con coma, concepto, categoría y quién pagó', async () => {
-    simularBackend()
+
+
+
+  it('al guardar envía PATCH al gasto con los cambios y conserva su fecha', async () => {
+    const fetchMock = simularBackend()
     await abrir()
 
-    expect((screen.getByLabelText('Importe') as HTMLInputElement).value).toBe('60,5')
-    expect((screen.getByLabelText('Concepto') as HTMLInputElement).value).toBe('Cena en el Trastevere')
-    expect(screen.getByRole('radio', { name: 'Entradas' }).getAttribute('aria-checked')).toBe('true')
-    expect(screen.getByRole('radio', { name: 'Berta' }).getAttribute('aria-checked')).toBe('true')
-    expect(screen.getByRole('radio', { name: 'Adriana' }).getAttribute('aria-checked')).toBe('false')
-  })
+    await userEvent.clear(screen.getByLabelText('Importe'))
+    await userEvent.type(screen.getByLabelText('Importe'), '25')
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
 
-  it('se divide solo entre los participantes del reparto original', async () => {
-    simularBackend()
-    await abrir()
-
-    expect((screen.getByLabelText('Dividir con Berta') as HTMLInputElement).checked).toBe(true)
-    expect((screen.getByLabelText('Dividir con Adriana') as HTMLInputElement).checked).toBe(true)
-    expect((screen.getByLabelText('Dividir con Daniel') as HTMLInputElement).checked).toBe(false)
-  })
-
-  it('quien ya no es miembro no se preselecciona como participante', async () => {
-    simularBackend()
-    await abrir({
-      ...GASTO,
-      repartos: [
-        { usuario_id: ADRIANA, importe: 30.25 },
-        { usuario_id: ANTIGUO, importe: 30.25 },
-      ],
+    await vi.waitFor(() => expect(enviados(fetchMock)).toHaveLength(1))
+    const [{ url, cuerpo }] = enviados(fetchMock)
+    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/gastos/${GASTO_ID}$`))
+    expect(cuerpo).toEqual({
+      concepto: 'Cena en el Trastevere',
+      importe: 25,
+      categoria: 'entradas',
+      pagado_por: BERTA,
+      participantes: [BERTA, ADRIANA],
+      fecha: '2027-05-13',
     })
-
-    expect((screen.getByLabelText('Dividir con Adriana') as HTMLInputElement).checked).toBe(true)
-    expect(screen.queryByLabelText('Dividir con Berta')).not.toBeNull()
-    expect((screen.getByLabelText('Dividir con Berta') as HTMLInputElement).checked).toBe(false)
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false)
   })
 
 
+  it('mantiene los avisos de importe: un importe no válido no se envía', async () => {
+    const fetchMock = simularBackend()
+    await abrir()
 
+    await userEvent.clear(screen.getByLabelText('Importe'))
+    await userEvent.type(screen.getByLabelText('Importe'), '0')
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
 
+    expect(await screen.findByText('El importe tiene que ser mayor que 0')).toBeTruthy()
+    expect(enviados(fetchMock)).toHaveLength(0)
+  })
+
+  it('si el backend rechaza el cambio, muestra su motivo y sigue en el formulario', async () => {
+    simularBackend({
+      editar: () => json(403, { error: { codigo: 'sin_permiso', mensaje: 'Solo puede editar el gasto quien lo registró o el creador del viaje' } }),
+    })
+    const onGuardado = vi.fn()
+    await abrir(GASTO, { onGuardado })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+
+    expect(await screen.findByText('Solo puede editar el gasto quien lo registró o el creador del viaje')).toBeTruthy()
+    expect(onGuardado).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Guardar cambios' })).toBeTruthy()
+  })
 })

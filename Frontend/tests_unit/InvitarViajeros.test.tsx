@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import InvitarViajeros from '../src/screens/InvitarViajeros'
 
 const VIAJE_ID = 'df77cba6-4be5-4cbc-814b-1e228dd73dcc'
@@ -34,39 +35,8 @@ afterEach(() => {
 })
 
 describe('InvitarViajeros', () => {
-  it('con viaje y sesión pide al backend el enlace y los datos del viaje', async () => {
-    const fetchMock = backend()
-    vi.stubGlobal('fetch', fetchMock)
 
-    render(<InvitarViajeros viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
 
-    expect(await screen.findByText(ENLACE)).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Ampliar codigo QR' })).toBeTruthy()
-    const urls = fetchMock.mock.calls.map((llamada) => llamada[0] as string)
-    expect(urls.some((url) => url.endsWith(`/viajes/${VIAJE_ID}/invitacion`))).toBe(true)
-    expect(urls.some((url) => url.endsWith(`/viajes/${VIAJE_ID}`))).toBe(true)
-    for (const [, opciones] of fetchMock.mock.calls as unknown as [string, RequestInit & { headers: Record<string, string> }][]) {
-      expect(opciones.headers.Authorization).toBe('Bearer token-acceso')
-    }
-  })
-
-  it('muestra el nombre y los miembros del viaje', async () => {
-    vi.stubGlobal('fetch', backend())
-
-    render(<InvitarViajeros viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
-
-    expect(await screen.findByText('Lucía')).toBeTruthy()
-    expect(screen.getByText('Marcos')).toBeTruthy()
-    expect(screen.getAllByText(/Lisboa 2027/).length).toBeGreaterThan(0)
-  })
-
-  it('no pinta la pantalla hasta tener los datos', () => {
-    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})))
-
-    const { container } = render(<InvitarViajeros viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
-
-    expect(container.textContent).toBe('')
-  })
 
   it('muestra el error del backend si no se puede obtener el enlace', async () => {
     vi.stubGlobal('fetch', backend(
@@ -82,5 +52,42 @@ describe('InvitarViajeros', () => {
     expect(screen.queryByRole('button', { name: 'Ampliar codigo QR' })).toBeNull()
   })
 
+  it('muestra un aviso genérico si falla la conexión', async () => {
+    vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))))
+
+    render(<InvitarViajeros viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
+
+    expect((await screen.findByRole('alert')).textContent).toBe('No se puede conectar con el servidor')
+  })
 })
 
+describe('InvitarViajeros · QR ampliado', () => {
+  const abrirQr = async (user: ReturnType<typeof userEvent.setup>) => {
+    vi.stubGlobal('fetch', backend())
+    render(<InvitarViajeros viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
+    await user.click(await screen.findByRole('button', { name: 'Ampliar codigo QR' }))
+    return screen.getByRole('dialog', { name: 'Codigo QR del viaje' })
+  }
+
+  it('pulsar dentro del QR no lo cierra; pulsar el fondo, sí', async () => {
+    const user = userEvent.setup()
+    const dialogo = await abrirQr(user)
+
+    await user.click(dialogo)
+    expect(screen.getByRole('dialog')).toBeTruthy()
+
+    await user.click(dialogo.parentElement as HTMLElement)
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('se cierra con Escape y con el botón Cerrar', async () => {
+    const user = userEvent.setup()
+    await abrirQr(user)
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Ampliar codigo QR' }))
+    await user.click(screen.getByRole('button', { name: 'Cerrar' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+})

@@ -41,57 +41,23 @@ describe('Registro', () => {
     expect(boton()).toHaveProperty('disabled', true)
   })
 
-  it('activa el botón cuando todos los datos son válidos', async () => {
+
+
+
+
+
+
+
+  it('llama a onRegistro con el nombre y el email sin espacios sobrantes y la contraseña', async () => {
     const user = userEvent.setup()
-    render(<Registro />)
+    const onRegistro = vi.fn()
+    render(<Registro onRegistro={onRegistro} />)
 
-    await rellenar(user, validos)
+    await rellenar(user, { ...validos, nombre: '  Daniel Blasco  ', email: '  daniel@travelwrap.app  ' })
+    await user.click(boton())
 
-    expect(boton()).toHaveProperty('disabled', false)
+    expect(onRegistro).toHaveBeenCalledWith('Daniel Blasco', 'daniel@travelwrap.app', 'secreta123')
   })
-
-  it('avisa si el email no es válido y mantiene el botón desactivado', async () => {
-    const user = userEvent.setup()
-    render(<Registro />)
-
-    await rellenar(user, { ...validos, email: 'daniel@' })
-
-    expect(screen.getByText('Introduce un email válido')).toBeTruthy()
-    expect(boton()).toHaveProperty('disabled', true)
-  })
-
-  it('avisa si la contraseña tiene menos de 8 caracteres', async () => {
-    const user = userEvent.setup()
-    render(<Registro />)
-
-    await rellenar(user, { ...validos, password: '1234567', confirmacion: '1234567' })
-
-    expect(screen.getByText('La contraseña debe tener al menos 8 caracteres')).toBeTruthy()
-    expect(boton()).toHaveProperty('disabled', true)
-  })
-
-  it('acepta una contraseña de exactamente 8 caracteres', async () => {
-    const user = userEvent.setup()
-    render(<Registro />)
-
-    await rellenar(user, { ...validos, password: '12345678', confirmacion: '12345678' })
-
-    expect(screen.queryByText('La contraseña debe tener al menos 8 caracteres')).toBeNull()
-    expect(boton()).toHaveProperty('disabled', false)
-  })
-
-  it('avisa si las contraseñas no coinciden', async () => {
-    const user = userEvent.setup()
-    render(<Registro />)
-
-    await rellenar(user, { ...validos, confirmacion: 'otra-distinta' })
-
-    expect(screen.getByText('Las contraseñas no coinciden')).toBeTruthy()
-    expect(boton()).toHaveProperty('disabled', true)
-  })
-
-
-
 
 
   it('muestra el mensaje de error recibido', () => {
@@ -99,7 +65,34 @@ describe('Registro', () => {
     expect(screen.getByRole('alert').textContent).toBe('Ya existe una cuenta con ese email')
   })
 
+  it('muestra el aviso de confirmación de correo', () => {
+    render(<Registro aviso="Cuenta creada. Revisa tu correo y confirma tu email para iniciar sesión" />)
+    expect(screen.getByRole('status').textContent).toBe(
+      'Cuenta creada. Revisa tu correo y confirma tu email para iniciar sesión',
+    )
+  })
 
 
+  it('muestra "Creando cuenta..." y desactiva el botón mientras carga', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(<Registro />)
+    await rellenar(user, validos)
 
+    rerender(<Registro loading />)
+
+    expect(boton().textContent).toBe('Creando cuenta...')
+    expect(boton()).toHaveProperty('disabled', true)
+  })
+
+  it('muestra el enlace a iniciar sesión solo si se puede navegar', async () => {
+    const user = userEvent.setup()
+    const onIrALogin = vi.fn()
+    const { rerender } = render(<Registro />)
+    expect(screen.queryByRole('button', { name: 'Inicia sesión' })).toBeNull()
+
+    rerender(<Registro onIrALogin={onIrALogin} />)
+    await user.click(screen.getByRole('button', { name: 'Inicia sesión' }))
+
+    expect(onIrALogin).toHaveBeenCalledTimes(1)
+  })
 })

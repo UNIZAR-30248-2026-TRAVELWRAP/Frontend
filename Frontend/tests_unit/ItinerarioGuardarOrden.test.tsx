@@ -106,6 +106,11 @@ const arrastrar = async (origen: string, destino: string) => {
   })
 }
 
+const arrastrarSinEsperar = async (origen: string, destino: string) => {
+  await act(async () => {
+    void soltar.manejador?.({ active: { id: origen }, over: { id: destino } } as unknown as DragEndEvent)
+  })
+}
 
 afterEach(() => {
   cleanup()
@@ -145,8 +150,16 @@ describe('Itinerario · guardar el orden', () => {
     expect(JSON.parse(llamadasPut(fetchMock)[0][1].body).actividades).toEqual(['Desayuno', 'Paseo', 'Comida', 'Compras'])
   })
 
-  it('al guardar actualiza lo que se verá sin conexión', async () => {
-    simularBackend()
+
+  it('usa las posiciones que devuelve el servidor', async () => {
+    simularBackend(async () =>
+      respuesta(200, {
+        actividades: [
+          actividad('Compras', { orden: 7 }),
+          actividad('Paseo', { orden: 8 }),
+        ],
+      }),
+    )
     renderizar()
     await screen.findByText('Paseo')
 
@@ -154,11 +167,23 @@ describe('Itinerario · guardar el orden', () => {
 
     await waitFor(() => {
       const guardado = leerItinerario(VIAJE_ID)
-      expect(guardado?.actividades.find((a) => a.id === 'Compras')?.orden).toBe(2)
+      expect(guardado?.actividades.find((a) => a.id === 'Compras')?.orden).toBe(7)
     })
+    expect(titulosDeLaAgenda()).toEqual(['Desayuno', 'Comida', 'Compras', 'Paseo'])
   })
 
+  it('si el servidor falla vuelve al orden anterior y avisa', async () => {
+    simularBackend(() =>
+      respuesta(502, { error: { codigo: 'error_actividad', mensaje: 'No se ha podido guardar el orden de las actividades' } }),
+    )
+    renderizar()
+    await screen.findByText('Paseo')
 
+    await arrastrar('Compras', 'Paseo')
+
+    expect((await screen.findByRole('alert')).textContent).toBe('No se ha podido guardar el orden de las actividades')
+    expect(titulosDeLaAgenda()).toEqual(['Desayuno', 'Comida', 'Paseo', 'Compras'])
+  })
 
   it('si la agenda ha cambiado avisa, vuelve al orden anterior y recarga el día', async () => {
     let listados = 0

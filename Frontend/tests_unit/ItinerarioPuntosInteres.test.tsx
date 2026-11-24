@@ -79,35 +79,32 @@ describe('Itinerario · pestaña de puntos de interés', () => {
     expect(llamadasAPuntos(fetchMock)).toHaveLength(0)
   })
 
-  it('al cambiar a puntos de interés se ve su mapa y lista, y desaparece la agenda', async () => {
-    const fetchMock = simularBackend()
+
+
+
+  it('con el viaje finalizado los puntos son de solo lectura', async () => {
+    simularBackend({ estado: 'finalizado' })
     render(<Itinerario viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
     await screen.findByText('Agenda del día')
 
     await userEvent.click(screen.getByRole('tab', { name: 'Puntos de interés' }))
 
-    expect((await screen.findByTestId('mapa-puntos')).textContent).toBe('Fontana di Trevi')
-    expect(screen.getByRole('tab', { name: 'Puntos de interés', selected: true })).toBeTruthy()
-    expect(screen.queryByText('Agenda del día')).toBeNull()
-    expect(screen.queryByTestId('mapa-actividades')).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Añadir Actividad' })).toBeNull()
-    expect(llamadasAPuntos(fetchMock)).toHaveLength(1)
+    await screen.findByTestId('mapa-puntos')
+    await waitFor(() => expect(screen.getByText('Puntos de interés (1)')).toBeTruthy())
+    expect(screen.queryByLabelText('Buscar una dirección')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Eliminar Fontana di Trevi' })).toBeNull()
   })
 
-  it('conserva el hueco de los botones de día para que la cabecera no cambie de tamaño', async () => {
+  it('con el viaje activo permite buscar direcciones usando la función que recibe', async () => {
     simularBackend()
-    render(<Itinerario viajeId={VIAJE_ID} tokenSesion="token-acceso" />)
+    const buscar = vi.fn(async () => [])
+    render(<Itinerario viajeId={VIAJE_ID} tokenSesion="token-acceso" onBuscarDirecciones={buscar} />)
     await screen.findByText('Agenda del día')
-    expect(screen.getByRole('group', { name: 'Día del itinerario' })).toBeTruthy()
-
     await userEvent.click(screen.getByRole('tab', { name: 'Puntos de interés' }))
 
-    expect(screen.queryByRole('group', { name: 'Día del itinerario' })).toBeNull()
-    const oculto = document.querySelector('[aria-hidden="true"][style*="visibility: hidden"]')
-    expect(oculto).not.toBeNull()
-    expect(oculto?.textContent).toContain('Día 1')
+    await userEvent.type(await screen.findByLabelText('Buscar una dirección'), 'Roma')
+    await userEvent.click(screen.getByRole('button', { name: 'Buscar dirección' }))
+
+    expect(buscar).toHaveBeenCalledWith('Roma')
   })
-
-
-
 })

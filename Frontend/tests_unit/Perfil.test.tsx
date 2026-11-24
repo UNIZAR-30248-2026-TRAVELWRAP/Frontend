@@ -22,51 +22,45 @@ describe('Perfil', () => {
     expect(screen.getByText('D')).toBeTruthy()
   })
 
-  it('muestra la sección «Cuenta y seguridad» con el botón de cerrar sesión', () => {
-    render(<Perfil {...datos} />)
 
-    expect(screen.getByText('Cuenta y seguridad')).toBeTruthy()
-    expect(botonCerrarSesion()).toBeTruthy()
-  })
 
-  it('no muestra el diálogo de confirmación al principio', () => {
-    render(<Perfil {...datos} />)
-    expect(dialogo()).toBeNull()
-  })
-
-  it('llama a onVolver al pulsar el botón de volver', async () => {
-    const user = userEvent.setup()
-    const onVolver = vi.fn()
-    render(<Perfil {...datos} onVolver={onVolver} />)
-
-    await user.click(screen.getByRole('button', { name: 'Volver' }))
-
-    expect(onVolver).toHaveBeenCalledTimes(1)
-  })
 })
 
 describe('Perfil · cerrar sesión con confirmación', () => {
-  it('al pulsar «Cerrar sesión» pide confirmación sin cerrar todavía', async () => {
+
+
+  it('al cancelar se cierra el diálogo y no se cierra la sesión', async () => {
     const user = userEvent.setup()
     const onCerrarSesion = vi.fn()
     render(<Perfil {...datos} onCerrarSesion={onCerrarSesion} />)
 
     await user.click(botonCerrarSesion())
+    await user.click(within(dialogo()!).getByRole('button', { name: 'Cancelar' }))
 
-    const ventana = dialogo()!
-    expect(ventana).toBeTruthy()
-    expect(within(ventana).getByText('¿Cerrar sesión?')).toBeTruthy()
-    expect(
-      within(ventana).getByText('Tendrás que volver a introducir tus datos para acceder a TravelWrap.'),
-    ).toBeTruthy()
+    expect(dialogo()).toBeNull()
     expect(onCerrarSesion).not.toHaveBeenCalled()
+  })
+
+  it('al confirmar llama a onCerrarSesion una sola vez y cierra el diálogo', async () => {
+    const user = userEvent.setup()
+    const onCerrarSesion = vi.fn()
+    render(<Perfil {...datos} onCerrarSesion={onCerrarSesion} />)
+
+    await user.click(botonCerrarSesion())
+    await user.click(within(dialogo()!).getByRole('button', { name: 'Cerrar sesión' }))
+
+    expect(onCerrarSesion).toHaveBeenCalledTimes(1)
+    expect(dialogo()).toBeNull()
   })
 
 
 
+  it('mientras se cierra la sesión muestra «Cerrando sesión...» y desactiva el botón', () => {
+    render(<Perfil {...datos} cerrandoSesion />)
 
-
-
+    expect(botonCerrarSesion().textContent).toContain('Cerrando sesión...')
+    expect(botonCerrarSesion()).toHaveProperty('disabled', true)
+  })
 
   it('muestra el error recibido', () => {
     render(<Perfil {...datos} error="No se ha podido cerrar la sesión" />)

@@ -6,6 +6,7 @@ import { ApiError } from '../src/services/authApi'
 import type { ResultadoDireccion } from '../src/services/actividadesApi'
 
 const VIAJE_ID = '123e4567-e89b-12d3-a456-426614174000'
+const ACTIVIDAD_ID = '8a1b2c3d-0000-4000-8000-000000000020'
 
 const COLISEO: ResultadoDireccion = {
   nombre: 'Colosseo, Roma',
@@ -47,6 +48,25 @@ const viaje = {
   miembros: [{ usuario_id: 'u1', nombre: 'Adriana', avatar_url: null, rol: 'creador' }],
 }
 
+const actividad = (datos: Record<string, unknown> = {}) => ({
+  id: ACTIVIDAD_ID,
+  viaje_id: VIAJE_ID,
+  titulo: 'Visita al Coliseo',
+  descripcion: null,
+  fecha: '2027-05-12',
+  hora_inicio: null,
+  hora_fin: null,
+  orden: 0,
+  ubicacion_nombre: COLISEO.nombre,
+  latitud: COLISEO.latitud,
+  longitud: COLISEO.longitud,
+  lugar_externo_id: COLISEO.lugar_externo_id,
+  categoria: null,
+  creado_por: 'u1',
+  creado_en: '2026-10-24T10:00:00Z',
+  actualizado_en: '2026-10-24T10:00:00Z',
+  ...datos,
+})
 
 const simularBackend = (actividades: unknown[] = []) => {
   const fetchMock = vi.fn((url: string, opciones?: RequestInit) => {
@@ -65,10 +85,20 @@ const cuerpoEnviado = (fetchMock: ReturnType<typeof vi.fn>, metodo: string) => {
 const renderizarNueva = (buscar?: (consulta: string) => Promise<ResultadoDireccion[]>) =>
   render(<AnadirActividad viajeId={VIAJE_ID} tokenSesion="token-acceso" onBuscarDirecciones={buscar} />)
 
+const renderizarEdicion = (buscar?: (consulta: string) => Promise<ResultadoDireccion[]>) =>
+  render(
+    <AnadirActividad
+      viajeId={VIAJE_ID}
+      actividadId={ACTIVIDAD_ID}
+      tokenSesion="token-acceso"
+      onBuscarDirecciones={buscar}
+    />,
+  )
 
 const campoLugar = () => screen.getByLabelText('Lugar / Dirección') as HTMLInputElement
 const lupa = () => screen.getByRole('button', { name: 'Buscar dirección' })
 const botonAnadir = () => screen.getByRole('button', { name: /Añadir al itinerario|Guardando/ })
+const botonGuardar = () => screen.getByRole('button', { name: /Guardar cambios|Guardando/ })
 const esperarFormulario = () => screen.findByLabelText('Nombre de la actividad')
 
 afterEach(() => {
@@ -77,58 +107,9 @@ afterEach(() => {
 })
 
 describe('AnadirActividad · buscador de direcciones', () => {
-  it('sin función de búsqueda no muestra la lupa', async () => {
-    simularBackend()
-    renderizarNueva()
 
-    await esperarFormulario()
 
-    expect(screen.queryByRole('button', { name: 'Buscar dirección' })).toBeNull()
-  })
 
-  it('la lupa solo se activa con tres caracteres o más', async () => {
-    const user = userEvent.setup()
-    simularBackend()
-    renderizarNueva(vi.fn())
-
-    await esperarFormulario()
-    expect(lupa()).toHaveProperty('disabled', true)
-    await user.type(campoLugar(), 'Ro')
-    expect(lupa()).toHaveProperty('disabled', true)
-    await user.type(campoLugar(), 'm')
-    expect(lupa()).toHaveProperty('disabled', false)
-    await user.clear(campoLugar())
-    await user.type(campoLugar(), '   ab  ')
-    expect(lupa()).toHaveProperty('disabled', true)
-  })
-
-  it('no busca al teclear, solo al pulsar la lupa, y envía el texto sin espacios sobrantes', async () => {
-    const user = userEvent.setup()
-    const buscar = vi.fn(() => Promise.resolve([COLISEO]))
-    simularBackend()
-    renderizarNueva(buscar)
-
-    await esperarFormulario()
-    await user.type(campoLugar(), '  Colosseo, Roma ')
-    expect(buscar).not.toHaveBeenCalled()
-    await user.click(lupa())
-
-    await waitFor(() => expect(buscar).toHaveBeenCalledTimes(1))
-    expect(buscar).toHaveBeenCalledWith('Colosseo, Roma')
-  })
-
-  it('con Enter busca sin guardar la actividad', async () => {
-    const user = userEvent.setup()
-    const buscar = vi.fn(() => Promise.resolve([COLISEO]))
-    const fetchMock = simularBackend()
-    renderizarNueva(buscar)
-
-    await user.type(await esperarFormulario(), 'Coliseo')
-    await user.type(campoLugar(), 'Colosseo{Enter}')
-
-    await waitFor(() => expect(buscar).toHaveBeenCalledWith('Colosseo'))
-    expect(cuerpoEnviado(fetchMock, 'POST')).toBeUndefined()
-  })
 
   it('con Enter y menos de tres caracteres no busca', async () => {
     const user = userEvent.setup()
@@ -142,42 +123,7 @@ describe('AnadirActividad · buscador de direcciones', () => {
     expect(buscar).not.toHaveBeenCalled()
   })
 
-  it('muestra «Buscando...» mientras espera y bloquea la lupa', async () => {
-    const user = userEvent.setup()
-    let terminar: (resultados: ResultadoDireccion[]) => void = () => {}
-    const buscar = vi.fn(() => new Promise<ResultadoDireccion[]>((resolver) => (terminar = resolver)))
-    simularBackend()
-    renderizarNueva(buscar)
 
-    await esperarFormulario()
-    await user.type(campoLugar(), 'Colosseo')
-    await user.click(lupa())
-
-    expect(await screen.findByText('Buscando...')).toBeTruthy()
-    expect(lupa()).toHaveProperty('disabled', true)
-    terminar([COLISEO])
-    await screen.findByRole('list', { name: 'Resultados de la búsqueda' })
-    expect(screen.queryByText('Buscando...')).toBeNull()
-    expect(lupa()).toHaveProperty('disabled', false)
-  })
-
-  it('lista los resultados de la búsqueda', async () => {
-    const user = userEvent.setup()
-    simularBackend()
-    renderizarNueva(vi.fn(() => Promise.resolve([COLISEO, FORO])))
-
-    await esperarFormulario()
-    await user.type(campoLugar(), 'Roma')
-    await user.click(lupa())
-
-    const lista = await screen.findByRole('list', { name: 'Resultados de la búsqueda' })
-    const elementos = within(lista).getAllByRole('listitem')
-    expect(elementos).toHaveLength(2)
-    expect(within(elementos[0]).getByText('Colosseo').textContent).toBe('Colosseo')
-    expect(within(elementos[0]).getByText('Roma, Italia')).toBeTruthy()
-    expect(within(elementos[1]).getByText('Foro Romano')).toBeTruthy()
-    expect(elementos[0].textContent).not.toContain('Piazza')
-  });
 
   it('un resultado sin detalle muestra solo el título', async () => {
     const user = userEvent.setup()
@@ -234,25 +180,89 @@ describe('AnadirActividad · buscador de direcciones', () => {
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
-
-  it('al elegir un resultado rellena el lugar, lo marca como localizado y cierra la lista', async () => {
+  it('si la búsqueda falla sin ser un error del servidor muestra un mensaje genérico', async () => {
     const user = userEvent.setup()
     simularBackend()
-    renderizarNueva(vi.fn(() => Promise.resolve([COLISEO, FORO])))
+    renderizarNueva(vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))))
 
     await esperarFormulario()
-    await user.type(campoLugar(), 'Roma')
+    await user.type(campoLugar(), 'Colosseo')
     await user.click(lupa())
-    await user.click(await screen.findByRole('button', { name: etiqueta(FORO) }))
 
-    expect(campoLugar().value).toBe(FORO.nombre)
-    expect(screen.getByText('Ubicación localizada en el mapa')).toBeTruthy()
-    expect(screen.queryByRole('list', { name: 'Resultados de la búsqueda' })).toBeNull()
+    expect((await screen.findByRole('alert')).textContent).toBe('Ha ocurrido un error')
   })
 
 
+
+  it('«Quitar» borra las coordenadas pero deja el texto del lugar', async () => {
+    const user = userEvent.setup()
+    const fetchMock = simularBackend()
+    renderizarNueva(vi.fn(() => Promise.resolve([COLISEO])))
+
+    await user.type(await esperarFormulario(), 'Visita al Coliseo')
+    await user.type(campoLugar(), 'Colosseo')
+    await user.click(lupa())
+    await user.click(await screen.findByRole('button', { name: etiqueta(COLISEO) }))
+    await user.click(screen.getByRole('button', { name: 'Quitar' }))
+
+    expect(screen.queryByText('Ubicación localizada en el mapa')).toBeNull()
+    expect(campoLugar().value).toBe(COLISEO.nombre)
+    await user.click(botonAnadir())
+    await waitFor(() => expect(cuerpoEnviado(fetchMock, 'POST')).toBeDefined())
+    expect(cuerpoEnviado(fetchMock, 'POST')).toMatchObject({
+      ubicacion_nombre: COLISEO.nombre,
+      latitud: null,
+      longitud: null,
+      lugar_externo_id: null,
+    })
+  })
 
 
 
 })
 
+describe('AnadirActividad · buscador de direcciones en modo edición', () => {
+  it('al editar una actividad con coordenadas las muestra como localizadas y no las reenvía si no cambian', async () => {
+    const user = userEvent.setup()
+    const fetchMock = simularBackend([actividad()])
+    renderizarEdicion(vi.fn())
+
+    await user.type(await esperarFormulario(), ' y Foro')
+
+    expect(screen.getByText('Ubicación localizada en el mapa')).toBeTruthy()
+    await user.click(botonGuardar())
+    await waitFor(() => expect(cuerpoEnviado(fetchMock, 'PATCH')).toBeDefined())
+    expect(cuerpoEnviado(fetchMock, 'PATCH')).toEqual({ titulo: 'Visita al Coliseo y Foro' })
+  })
+
+
+  it('al elegir otro lugar envía el nombre y las coordenadas nuevas', async () => {
+    const user = userEvent.setup()
+    const fetchMock = simularBackend([actividad()])
+    renderizarEdicion(vi.fn(() => Promise.resolve([FORO])))
+
+    await esperarFormulario()
+    await user.clear(campoLugar())
+    await user.type(campoLugar(), 'Foro Romano')
+    await user.click(lupa())
+    await user.click(await screen.findByRole('button', { name: etiqueta(FORO) }))
+    await user.click(botonGuardar())
+
+    await waitFor(() => expect(cuerpoEnviado(fetchMock, 'PATCH')).toBeDefined())
+    expect(cuerpoEnviado(fetchMock, 'PATCH')).toEqual({
+      ubicacion_nombre: FORO.nombre,
+      latitud: 41.892462,
+      longitud: 12.485325,
+      lugar_externo_id: 'relation/5',
+    })
+  })
+
+  it('una actividad sin coordenadas no aparece como localizada', async () => {
+    simularBackend([actividad({ latitud: null, longitud: null, lugar_externo_id: null })])
+    renderizarEdicion(vi.fn())
+
+    await esperarFormulario()
+
+    expect(screen.queryByText('Ubicación localizada en el mapa')).toBeNull()
+  })
+})

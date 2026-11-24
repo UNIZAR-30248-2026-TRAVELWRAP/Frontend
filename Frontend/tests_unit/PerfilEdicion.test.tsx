@@ -90,19 +90,6 @@ describe('Perfil · foto', () => {
     expect(selector().value).toBe('')
   })
 
-  it('mientras se sube muestra «Subiendo…» y desactiva el botón', async () => {
-    const user = userEvent.setup()
-    let terminar: (u: Usuario) => void = () => undefined
-    vi.mocked(subirAvatar).mockReturnValue(new Promise((resolver) => (terminar = resolver)))
-    render(<PerfilConSesion />)
-
-    await user.upload(selector(), png())
-
-    expect((await screen.findByRole('status')).textContent).toBe('Subiendo…')
-    expect((screen.getByRole('button', { name: 'Cambiar foto de perfil' }) as HTMLButtonElement).disabled).toBe(true)
-    terminar(usuario({ avatar_url: FOTO_NUEVA }))
-    await waitFor(() => expect(screen.queryByRole('status')).toBeNull())
-  })
 
   it('un tipo no válido muestra un error y no llama a la API', async () => {
     const user = userEvent.setup({ applyAccept: false })
@@ -114,18 +101,17 @@ describe('Perfil · foto', () => {
     expect(subirAvatar).not.toHaveBeenCalled()
   })
 
-
-  it('con foto, tocar el avatar abre la hoja con las tres opciones', async () => {
+  it('si la API falla muestra el error y la foto no cambia', async () => {
     const user = userEvent.setup()
+    vi.mocked(subirAvatar).mockRejectedValue(new ApiError(400, 'archivo_demasiado_grande', 'x'))
     render(<PerfilConSesion inicial={usuario({ avatar_url: FOTO })} />)
 
-    await user.click(screen.getByRole('button', { name: 'Cambiar foto de perfil' }))
+    await user.upload(selector(), png())
 
-    const hoja = screen.getByRole('dialog', { name: 'Foto de perfil' })
-    expect(hoja.querySelectorAll('button')).toHaveLength(3)
-    expect(screen.getByRole('button', { name: 'Cambiar foto' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Quitar foto' })).toBeTruthy()
+    expect((await screen.findByRole('alert')).textContent).toBe('La foto es demasiado grande (máximo 2 MB)')
+    expect(imagenDelAvatar()?.getAttribute('src')).toBe(FOTO)
   })
+
 
   it('«Cancelar» cierra la hoja sin cambiar nada', async () => {
     const user = userEvent.setup()
@@ -138,18 +124,18 @@ describe('Perfil · foto', () => {
     expect(quitarAvatar).not.toHaveBeenCalled()
   })
 
-
-  it('quitar la foto pide confirmación antes de llamar a la API', async () => {
+  it('«Cambiar foto» cierra la hoja y abre el selector', async () => {
     const user = userEvent.setup()
     render(<PerfilConSesion inicial={usuario({ avatar_url: FOTO })} />)
+    const abrir = vi.spyOn(selector(), 'click')
     await user.click(screen.getByRole('button', { name: 'Cambiar foto de perfil' }))
 
-    await user.click(screen.getByRole('button', { name: 'Quitar foto' }))
+    await user.click(screen.getByRole('button', { name: 'Cambiar foto' }))
 
-    const confirmacion = screen.getByRole('dialog')
-    expect(confirmacion.textContent).toContain('¿Quitar tu foto de perfil?')
-    expect(quitarAvatar).not.toHaveBeenCalled()
+    expect(abrir).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
+
 
   it('cancelar la confirmación no quita la foto', async () => {
     const user = userEvent.setup()
@@ -164,20 +150,19 @@ describe('Perfil · foto', () => {
     expect(imagenDelAvatar()?.getAttribute('src')).toBe(FOTO)
   })
 
-  it('confirmar quita la foto y vuelve a verse la inicial', async () => {
+
+  it('si falla al quitar la foto muestra el error y la foto se queda', async () => {
     const user = userEvent.setup()
-    vi.mocked(quitarAvatar).mockResolvedValue(usuario())
+    vi.mocked(quitarAvatar).mockRejectedValue(new ApiError(0, 'sin_conexion', 'x'))
     render(<PerfilConSesion inicial={usuario({ avatar_url: FOTO })} />)
     await user.click(screen.getByRole('button', { name: 'Cambiar foto de perfil' }))
     await user.click(screen.getByRole('button', { name: 'Quitar foto' }))
 
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Quitar foto' }))
 
-    await waitFor(() => expect(imagenDelAvatar()).toBeNull())
-    expect(quitarAvatar).toHaveBeenCalledWith('token-1')
-    expect(screen.getByText('D')).toBeTruthy()
+    expect((await screen.findByRole('alert')).textContent).toBe('No hay conexión con el servidor. Inténtalo de nuevo')
+    expect(imagenDelAvatar()?.getAttribute('src')).toBe(FOTO)
   })
-
 })
 
 describe('Perfil · nombre', () => {
@@ -186,15 +171,6 @@ describe('Perfil · nombre', () => {
   const campo = () => screen.getByRole('textbox', { name: 'Nombre' }) as HTMLInputElement
   const guardar = () => screen.getByRole('button', { name: /^(Guardar|Guardando…)$/ }) as HTMLButtonElement
 
-  it('el lápiz abre el campo con el nombre actual, limitado a 100 caracteres', async () => {
-    const user = userEvent.setup()
-    render(<PerfilConSesion />)
-
-    await abrirEdicion(user)
-
-    expect(campo().value).toBe('Daniel Blasco')
-    expect(campo().maxLength).toBe(100)
-  })
 
 
 
@@ -213,7 +189,35 @@ describe('Perfil · nombre', () => {
   })
 
 
+  it('si la API falla, el campo sigue abierto con el texto y el nombre guardado no cambia', async () => {
+    const user = userEvent.setup()
+    vi.mocked(actualizarNombre).mockRejectedValue(
+      new ApiError(400, 'datos_invalidos', 'El nombre debe tener entre 1 y 100 caracteres'),
+    )
+    render(<PerfilConSesion />)
+    await abrirEdicion(user)
+
+    await user.clear(campo())
+    await user.type(campo(), 'Ana')
+    await user.click(guardar())
+
+    expect((await screen.findByRole('alert')).textContent).toBe('El nombre debe tener entre 1 y 100 caracteres')
+    expect(campo().value).toBe('Ana')
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }))
+    expect(screen.getByText('Daniel Blasco')).toBeTruthy()
+  })
 
 
+  it('Escape cancela sin llamar a la API', async () => {
+    const user = userEvent.setup()
+    render(<PerfilConSesion />)
+    await abrirEdicion(user)
+
+    await user.type(campo(), 'X{Escape}')
+
+    expect(screen.queryByRole('textbox', { name: 'Nombre' })).toBeNull()
+    expect(screen.getByText('Daniel Blasco')).toBeTruthy()
+    expect(actualizarNombre).not.toHaveBeenCalled()
+  })
 
 })

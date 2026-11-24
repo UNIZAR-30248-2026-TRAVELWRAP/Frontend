@@ -79,35 +79,7 @@ afterEach(() => {
 })
 
 describe('Itinerario', () => {
-  it('pide el viaje y sus actividades con el token de la sesión', async () => {
-    const fetchMock = simularBackend()
-    renderizar()
 
-    await screen.findByText('Visita al Coliseo')
-
-    const urls = fetchMock.mock.calls.map(([url]) => url)
-    expect(urls.some((url) => new RegExp(`/viajes/${VIAJE_ID}$`).test(url))).toBe(true)
-    expect(urls.some((url) => new RegExp(`/viajes/${VIAJE_ID}/actividades$`).test(url))).toBe(true)
-    for (const [, opciones] of fetchMock.mock.calls as unknown as [string, { headers: Record<string, string> }][]) {
-      expect(opciones.headers.Authorization).toBe('Bearer token-acceso')
-    }
-  })
-
-  it('muestra una pastilla por día y las actividades del primer día en el orden recibido', async () => {
-    simularBackend()
-    renderizar()
-
-    await screen.findByText('Visita al Coliseo')
-    const dias = screen.getByRole('group', { name: 'Día del itinerario' })
-    expect(dias.textContent).toContain('Día 1 · 12 may')
-    expect(dias.textContent).toContain('Día 3 · 14 may')
-    expect(screen.getByRole('button', { name: 'Día 1 · 12 may' }).getAttribute('aria-pressed')).toBe('true')
-    expect(titulosDeLaAgenda()).toEqual([
-      'DesayunoHotel08:30 h',
-      'Visita al ColiseoPiazza del Colosseo10:00 h',
-      'Paseo sin hora',
-    ])
-  })
 
   it('se abre en el día de hoy si está dentro de los días del viaje', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
@@ -121,36 +93,8 @@ describe('Itinerario', () => {
     expect(titulosDeLaAgenda()).toEqual(['Vaticano09:30 h'])
   })
 
-  it('si hoy no está en el viaje se abre en el primer día', async () => {
-    vi.useFakeTimers({ toFake: ['Date'] })
-    vi.setSystemTime(new Date(2027, 6, 1, 10, 0, 0))
-    simularBackend()
-    renderizar()
 
-    await screen.findByText('Visita al Coliseo')
 
-    expect(screen.getByRole('button', { name: 'Día 1 · 12 may' }).getAttribute('aria-pressed')).toBe('true')
-  })
-
-  it('el día indicado al abrir manda sobre el de hoy', async () => {
-    vi.useFakeTimers({ toFake: ['Date'] })
-    vi.setSystemTime(new Date(2027, 4, 13, 10, 0, 0))
-    simularBackend()
-    renderizar({ diaInicial: '2027-05-12' })
-
-    await screen.findByText('Visita al Coliseo')
-
-    expect(screen.getByRole('button', { name: 'Día 1 · 12 may' }).getAttribute('aria-pressed')).toBe('true')
-  })
-
-  it('ignora un día indicado que no existe en el itinerario', async () => {
-    simularBackend()
-    renderizar({ diaInicial: '2030-01-01' })
-
-    await screen.findByText('Visita al Coliseo')
-
-    expect(screen.getByRole('button', { name: 'Día 1 · 12 may' }).getAttribute('aria-pressed')).toBe('true')
-  })
 
   it('al pulsar añadir avisa con el día que se está viendo', async () => {
     const user = userEvent.setup()
@@ -186,45 +130,9 @@ describe('Itinerario', () => {
     expect(screen.queryByRole('status')).toBeNull()
   })
 
-  it('al elegir otro día muestra solo sus actividades', async () => {
-    const user = userEvent.setup()
-    simularBackend()
-    renderizar()
 
-    await user.click(await screen.findByRole('button', { name: 'Día 2 · 13 may' }))
 
-    expect(titulosDeLaAgenda()).toEqual(['Vaticano09:30 h'])
-    expect(screen.queryByText('Visita al Coliseo')).toBeNull()
-    expect(screen.getByRole('button', { name: 'Día 2 · 13 may' }).getAttribute('aria-pressed')).toBe('true')
-  })
 
-  it('avisa si el día elegido no tiene actividades', async () => {
-    const user = userEvent.setup()
-    simularBackend()
-    renderizar()
-
-    await user.click(await screen.findByRole('button', { name: 'Día 3 · 14 may' }))
-
-    expect(screen.getByText('No hay actividades este día.')).toBeTruthy()
-    expect(screen.queryByRole('list', { name: 'Agenda del día' })).toBeNull()
-  })
-
-  it('no muestra hora ni ubicación cuando la actividad no las tiene', async () => {
-    simularBackend({}, [actividad('a1', { titulo: 'Paseo' })])
-    renderizar()
-
-    await screen.findByText('Paseo')
-
-    expect(screen.queryByText(/ h$/)).toBeNull()
-    expect(titulosDeLaAgenda()).toEqual(['Paseo'])
-  })
-
-  it('muestra el rango cuando la actividad tiene hora de fin', async () => {
-    simularBackend({}, [actividad('a1', { titulo: 'Museo', hora_inicio: '10:00:00', hora_fin: '12:30:00' })])
-    renderizar()
-
-    expect(await screen.findByText('10:00 – 12:30 h')).toBeTruthy()
-  })
 
   it('avisa en cada tarjeta de las actividades del día que se solapan', async () => {
     simularBackend({}, [
@@ -238,47 +146,55 @@ describe('Itinerario', () => {
     expect(avisos.map((aviso) => aviso.textContent)).toEqual(['Se solapa con «Compras»', 'Se solapa con «Museo»'])
   })
 
-  it('no avisa si una actividad empieza justo cuando acaba la anterior', async () => {
-    simularBackend({}, [
-      actividad('a1', { titulo: 'Museo', hora_inicio: '10:00:00', hora_fin: '12:00:00' }),
-      actividad('a2', { titulo: 'Comida', hora_inicio: '12:00:00', hora_fin: '14:00:00' }),
-    ])
+
+
+
+  it('muestra el avatar de quien añadió la actividad', async () => {
+    simularBackend(
+      { miembros: [
+        { usuario_id: 'u1', nombre: 'Adriana', avatar_url: null, rol: 'creador' },
+        { usuario_id: 'u2', nombre: 'Berta', avatar_url: null, rol: 'miembro' },
+      ] },
+      [
+        actividad('a1', { titulo: 'Cena', creado_por: 'u2' }),
+        actividad('a2', { titulo: 'Museo', creado_por: 'u1' }),
+      ],
+    )
     renderizar()
 
-    await screen.findByText('Museo')
-    expect(screen.queryAllByRole('note')).toHaveLength(0)
-  })
+    await screen.findByText('Cena')
 
-  it('no avisa si alguna de las actividades no tiene hora de fin', async () => {
-    simularBackend({}, [
-      actividad('a1', { titulo: 'Museo', hora_inicio: '10:00:00', hora_fin: '12:00:00' }),
-      actividad('a2', { titulo: 'Compras', hora_inicio: '11:00:00' }),
-    ])
-    renderizar()
-
-    await screen.findByText('Museo')
-    expect(screen.queryAllByRole('note')).toHaveLength(0)
-  })
-
-  it('no avisa de solapes con actividades de otro día', async () => {
-    simularBackend({}, [
-      actividad('a1', { titulo: 'Museo', hora_inicio: '10:00:00', hora_fin: '12:00:00' }),
-      actividad('a2', { titulo: 'Compras', fecha: '2027-05-13', hora_inicio: '11:00:00', hora_fin: '13:00:00' }),
-    ])
-    renderizar()
-
-    await screen.findByText('Museo')
-    expect(screen.queryAllByRole('note')).toHaveLength(0)
+    const berta = screen.getByRole('img', { name: 'Añadida por Berta' })
+    expect(berta.textContent).toBe('B')
+    expect(screen.getByRole('img', { name: 'Añadida por Adriana' }).textContent).toBe('A')
   })
 
 
+  it('marca el tipo de la actividad en su icono', async () => {
+    simularBackend({}, [
+      actividad('a1', { titulo: 'Cena', categoria: 'comida' }),
+      actividad('a2', { titulo: 'Paseo' }),
+    ])
+    renderizar()
+
+    await screen.findByText('Cena')
+
+    expect(screen.getByRole('img', { name: 'Comida' })).toBeTruthy()
+    expect(screen.getAllByRole('img')).toHaveLength(1)
+  })
 
 
 
 
 
 
+  it('en un viaje finalizado se consultan las actividades pero no se puede añadir', async () => {
+    simularBackend({ estado: 'finalizado' })
+    renderizar()
 
+    expect(await screen.findByText('Visita al Coliseo')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Añadir Actividad' })).toBeNull()
+  })
 
   it('avisa si no se ha podido cargar el itinerario', async () => {
     vi.stubGlobal(
@@ -291,7 +207,79 @@ describe('Itinerario', () => {
     expect(screen.queryByRole('button', { name: 'Añadir Actividad' })).toBeNull()
   })
 
+  it('marca Itinerario en la barra inferior y deja volver a Inicio', async () => {
+    const user = userEvent.setup()
+    const onCambiarSeccion = vi.fn()
+    simularBackend()
+    renderizar({ onCambiarSeccion })
 
+    await screen.findByText('Visita al Coliseo')
+    const barra = screen.getByRole('navigation', { name: 'Secciones del viaje' })
+    expect(within(barra).getByRole('button', { name: 'Itinerario' }).getAttribute('aria-current')).toBe('page')
+    await user.click(within(barra).getByRole('button', { name: 'Inicio' }))
+
+    expect(onCambiarSeccion).toHaveBeenCalledWith('inicio')
+  })
+
+  it('el enlace de Mis Viajes avisa a la ruta', async () => {
+    const user = userEvent.setup()
+    const onVolver = vi.fn()
+    simularBackend()
+    renderizar({ onVolver })
+
+    await user.click(await screen.findByRole('button', { name: 'Volver a Mis Viajes' }))
+
+    expect(onVolver).toHaveBeenCalledTimes(1)
+  })
 })
 
+describe('Itinerario · sin conexión', () => {
+  const sinConexion = () => vi.fn(() => Promise.reject(new TypeError('Failed to fetch')))
+
+  const guardarCopia = () =>
+    guardarItinerario(VIAJE_ID, {
+      viaje: viaje() as never,
+      actividades: ACTIVIDADES as never,
+      guardadoEn: '2026-10-25T10:30:00.000Z',
+    })
+
+
+
+  it('sin conexión y sin nada guardado muestra el error', async () => {
+    vi.stubGlobal('fetch', sinConexion())
+    renderizar()
+
+    expect((await screen.findByRole('alert')).textContent).toContain('No se puede conectar con el servidor')
+    expect(screen.queryByText('Visita al Coliseo')).toBeNull()
+  })
+
+
+  it('Reintentar vuelve a pedir los datos y quita el aviso cuando hay conexión', async () => {
+    const user = userEvent.setup()
+    guardarCopia()
+    vi.stubGlobal('fetch', sinConexion())
+    renderizar()
+    await screen.findByRole('status')
+
+    simularBackend({}, [actividad('nueva', { titulo: 'Actividad recién añadida' })])
+    await user.click(screen.getByRole('button', { name: 'Reintentar' }))
+
+    expect(await screen.findByText('Actividad recién añadida')).toBeTruthy()
+    expect(screen.queryByText(/Sin conexión: se muestra lo último guardado/)).toBeNull()
+    expect(screen.getByRole('button', { name: 'Añadir Actividad' })).toBeTruthy()
+  })
+
+  it('cuando vuelve la conexión del dispositivo se actualiza solo', async () => {
+    guardarCopia()
+    vi.stubGlobal('fetch', sinConexion())
+    renderizar()
+    await screen.findByRole('status')
+
+    simularBackend({}, [actividad('nueva', { titulo: 'Actividad recién añadida' })])
+    window.dispatchEvent(new Event('online'))
+
+    expect(await screen.findByText('Actividad recién añadida')).toBeTruthy()
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+})
 

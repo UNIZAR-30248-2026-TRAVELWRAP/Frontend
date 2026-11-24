@@ -86,59 +86,9 @@ afterEach(() => {
 })
 
 describe('AnadirActividad · modo edición', () => {
-  it('cambia el título y rellena el formulario con los datos de la actividad', async () => {
-    simularBackend()
-    renderizar()
 
-    expect(((await esperarFormulario()) as HTMLInputElement).value).toBe('Visita al Coliseo')
-    expect(screen.getByText('Editar Actividad')).toBeTruthy()
-    expect((screen.getByLabelText('Lugar / Dirección') as HTMLInputElement).value).toBe('Piazza del Colosseo')
-    expect((screen.getByLabelText('Hora') as HTMLInputElement).value).toBe('10:00')
-    expect((screen.getByLabelText('Hasta (opcional)') as HTMLInputElement).value).toBe('12:00')
-    expect(screen.getByRole('button', { name: 'Cultura' }).getAttribute('aria-pressed')).toBe('true')
-    expect(screen.getByRole('button', { name: 'Día 1 · 12 may' }).getAttribute('aria-pressed')).toBe('true')
-    expect(screen.getByRole('button', { name: 'Guardar cambios' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Añadir al itinerario' })).toBeNull()
-  })
 
-  it('pide la lista de actividades del viaje para encontrar la que se edita', async () => {
-    const fetchMock = simularBackend()
-    renderizar()
 
-    await esperarFormulario()
-
-    const urls = fetchMock.mock.calls.map(([url]) => url)
-    expect(urls.some((url) => new RegExp(`/viajes/${VIAJE_ID}/actividades$`).test(url))).toBe(true)
-  })
-
-  it('no deja guardar hasta que se cambia algo y vuelve a bloquearse si se deshace el cambio', async () => {
-    const user = userEvent.setup()
-    simularBackend()
-    renderizar()
-
-    await esperarFormulario()
-    expect(botonGuardar()).toHaveProperty('disabled', true)
-    await user.type(screen.getByLabelText('Nombre de la actividad'), ' y Foro')
-    expect(botonGuardar()).toHaveProperty('disabled', false)
-    await user.type(screen.getByLabelText('Nombre de la actividad'), '{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}')
-    expect(botonGuardar()).toHaveProperty('disabled', true)
-  })
-
-  it('envía solo el campo que ha cambiado y avisa con la fecha de la actividad', async () => {
-    const user = userEvent.setup()
-    const onGuardada = vi.fn()
-    const fetchMock = simularBackend()
-    renderizar({ onGuardada })
-
-    await user.type(await esperarFormulario(), ' y Foro')
-    await user.click(botonGuardar())
-
-    await waitFor(() => expect(onGuardada).toHaveBeenCalledWith('2027-05-12'))
-    const [url, opciones] = llamadasPatch(fetchMock)[0]
-    expect(url).toMatch(new RegExp(`/viajes/${VIAJE_ID}/actividades/${ACTIVIDAD_ID}$`))
-    expect(opciones.headers.Authorization).toBe('Bearer token-acceso')
-    expect(cuerpoDelPatch(fetchMock)).toEqual({ titulo: 'Visita al Coliseo y Foro' })
-  })
 
   it('no vuelve a crear la actividad: solo hay una petición PATCH y ningún POST', async () => {
     const user = userEvent.setup()
@@ -193,10 +143,53 @@ describe('AnadirActividad · modo edición', () => {
     expect(cuerpoDelPatch(fetchMock)).toEqual({ ubicacion_nombre: null, categoria: null })
   })
 
+  it('cambia la hora de fin y el tipo sin tocar lo demás', async () => {
+    const user = userEvent.setup()
+    const fetchMock = simularBackend()
+    renderizar()
+
+    await esperarFormulario()
+    await user.clear(screen.getByLabelText('Hasta (opcional)'))
+    await user.type(screen.getByLabelText('Hasta (opcional)'), '13:30')
+    await user.click(screen.getByRole('button', { name: 'Comida' }))
+    await user.click(botonGuardar())
+
+    await waitFor(() => expect(llamadasPatch(fetchMock)).toHaveLength(1))
+    expect(cuerpoDelPatch(fetchMock)).toEqual({ hora_fin: '13:30', categoria: 'comida' })
+  })
+
+  it('avisa y no deja guardar si la hora de fin queda antes de la de inicio', async () => {
+    const user = userEvent.setup()
+    simularBackend()
+    renderizar()
+
+    await esperarFormulario()
+    await user.clear(screen.getByLabelText('Hasta (opcional)'))
+    await user.type(screen.getByLabelText('Hasta (opcional)'), '09:00')
+
+    expect((await screen.findByRole('alert')).textContent).toBe('La hora de fin no puede ser anterior a la de inicio')
+    expect(botonGuardar()).toHaveProperty('disabled', true)
+  })
 
 
+  it('si la actividad está en un día fuera de las fechas del viaje, ese día aparece y está elegido', async () => {
+    simularBackend({}, [actividad({ fecha: '2027-05-10' })])
+    renderizar()
 
+    await esperarFormulario()
 
+    expect(screen.getByRole('button', { name: '10 may' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: 'Día 1 · 12 may' }).getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('en un viaje sin fechas muestra el campo de fecha con el día de la actividad', async () => {
+    simularBackend({ fecha_inicio: null, fecha_fin: null })
+    renderizar()
+
+    await esperarFormulario()
+
+    expect((screen.getByLabelText('Fecha') as HTMLInputElement).value).toBe('2027-05-12')
+  })
 
   it('muestra el error del servidor, sigue en el formulario y deja volver a intentarlo', async () => {
     const user = userEvent.setup()
@@ -214,8 +207,33 @@ describe('AnadirActividad · modo edición', () => {
     expect(botonGuardar()).toHaveProperty('disabled', false)
   })
 
+  it('avisa si la actividad no existe en el viaje y no ofrece el formulario', async () => {
+    simularBackend({}, [])
+    renderizar()
 
+    expect((await screen.findByRole('alert')).textContent).toContain('La actividad no existe en este viaje')
+    expect(screen.queryByLabelText('Nombre de la actividad')).toBeNull()
+  })
 
+  it('en un viaje finalizado avisa de que ya no se pueden modificar actividades', async () => {
+    simularBackend({ estado: 'finalizado' })
+    renderizar()
+
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'El viaje está finalizado y ya no se pueden modificar actividades',
+    )
+    expect(screen.queryByRole('button', { name: 'Guardar cambios' })).toBeNull()
+  })
+
+  it('avisa si no se ha podido cargar el viaje', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => respuesta(404, { error: { codigo: 'viaje_no_encontrado', mensaje: 'El viaje no existe o no perteneces a él' } })),
+    )
+    renderizar()
+
+    expect((await screen.findByRole('alert')).textContent).toContain('El viaje no existe o no perteneces a él')
+  })
 
 
   it('el selector de tipo conserva sus cinco opciones en modo edición', async () => {

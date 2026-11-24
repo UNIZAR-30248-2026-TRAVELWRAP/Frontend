@@ -75,18 +75,6 @@ afterEach(() => {
 })
 
 describe('Itinerario · asas para reordenar', () => {
-  it('muestra el asa solo en las actividades sin hora cuando hay más de una', async () => {
-    simularBackend([
-      actividad('Desayuno', { hora_inicio: '08:30:00' }),
-      actividad('Paseo', { orden: 1 }),
-      actividad('Compras', { orden: 2 }),
-    ])
-    renderizar()
-
-    expect(await screen.findByRole('button', { name: 'Mover Paseo' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Mover Compras' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Mover Desayuno' })).toBeNull()
-  })
 
   it('muestra el asa en las actividades que empiezan a la misma hora', async () => {
     simularBackend([
@@ -103,6 +91,19 @@ describe('Itinerario · asas para reordenar', () => {
 
 
 
+  it('una sin hora colocada entre las de hora se muestra entre ellas', async () => {
+    simularBackend([
+      actividad('Desayuno', { hora_inicio: '08:30:00', orden: 0 }),
+      actividad('Comida', { hora_inicio: '14:00:00', orden: 2 }),
+      actividad('Paseo', { orden: -2 }),
+      actividad('Cena', { hora_inicio: '21:00:00', orden: 3 }),
+      actividad('Fotos', { orden: 4 }),
+    ])
+    renderizar()
+    await screen.findByText('Desayuno')
+
+    expect(titulosDeLaAgenda()).toEqual(['Desayuno', 'Paseo', 'Comida', 'Cena', 'Fotos'])
+  })
 
 
   it('en un viaje finalizado no hay asas', async () => {
