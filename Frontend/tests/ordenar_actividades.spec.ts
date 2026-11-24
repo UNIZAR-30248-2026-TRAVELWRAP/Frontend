@@ -120,8 +120,11 @@ const arrastrar = async (page: Page, origen: Locator, destino: Locator) => {
   if (!a || !b) throw new Error('No se encuentran el origen o el destino del arrastre');
   await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
   await page.mouse.down();
-  await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2 + 12, { steps: 4 });
-  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 14 });
+  // El sensor de arrastre necesita un instante para activarse (sobre todo en WebKit) antes de que llegue el movimiento
+  await esperarAlSensor(page);
+  await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2 + 12, { steps: 8 });
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 24 });
+  await esperarAlSensor(page);
   await page.mouse.up();
 };
 

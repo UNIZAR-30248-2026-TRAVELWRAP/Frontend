@@ -1,4 +1,5 @@
 import { test, expect, type Page, type Route } from '@playwright/test';
+import { irADiapositiva } from './support/wrap';
 
 const EMAIL = 'adriana@travelwrap.app';
 const USUARIO_ID = 'df77cba6-4be5-4cbc-814b-1e228dd73dcc';
@@ -102,7 +103,7 @@ const simularBackend = async (page: Page, sellos: Sello[] = []) => {
 const llegarALaUltima = async (page: Page) => {
   await page.goto(`/viajes/${VIAJE_ID}/resumen`);
   await expect(page.getByText('TravelWrap · Resumen')).toBeVisible();
-  for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight');
+  await irADiapositiva(page, 4);
   await expect(page.getByRole('button', { name: 'Sellar' })).toBeVisible();
 };
 
