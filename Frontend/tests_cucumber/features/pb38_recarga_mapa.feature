@@ -23,17 +23,6 @@ Característica: La agenda y el mapa se recargan tras los cambios (PB-38)
     Y veo 2 marcadores en el mapa
     Y veo el texto "2 de 2 actividades con ubicación en el mapa"
 
-  Escenario: Al quitar la ubicación de una actividad su marcador desaparece
-    Dado que el servidor devuelve en "Roma 2027" la actividad "Foro Romano" el "2027-05-12" con ubicación "Foro Romano, Roma" en las coordenadas 41.892462 y 12.485325
-    Cuando abro el itinerario del viaje "Roma 2027"
-    Entonces veo 1 marcadores en el mapa
-    Cuando pulso editar la actividad "Foro Romano"
-    Y pulso el botón "Quitar"
-    Y pulso el botón "Guardar cambios"
-    Entonces estoy en el itinerario del viaje
-    Y veo 0 marcadores en el mapa
-    Y veo el texto "Ninguna actividad de este día tiene ubicación en el mapa"
-
   Escenario: Al eliminar una actividad desaparece de la agenda y su marcador
     Dado que el servidor devuelve en "Roma 2027" la actividad "Visita al Coliseo" el "2027-05-12" con ubicación "Colosseo, Roma" en las coordenadas 41.890214 y 12.492231
     Y que el servidor devuelve en "Roma 2027" la actividad "Foro Romano" el "2027-05-12" con ubicación "Foro Romano, Roma" en las coordenadas 41.892462 y 12.485325

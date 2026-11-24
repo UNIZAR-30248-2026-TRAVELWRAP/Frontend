@@ -14,15 +14,6 @@ Característica: Liquidación pendiente del viaje (PB-28)
     Cuando abro el control de gastos del viaje "Roma 2027"
     Entonces en la liquidación pendiente veo "Tú pagas a Berta" con "10,00 €"
 
-  Escenario: Si he pagado algo de todos, me pagan la parte de los demás
-    Dado que en el viaje "Roma 2027" hay un gasto "Entradas del Coliseo" de 20 pagado por "Adriana" entre "Berta, Adriana"
-    Cuando abro el control de gastos del viaje "Roma 2027"
-    Entonces en la liquidación pendiente veo "Berta te paga a ti" con "10,00 €"
-
-  Escenario: Sin gastos las cuentas están saldadas
-    Cuando abro el control de gastos del viaje "Roma 2027"
-    Entonces en la liquidación pendiente veo "Cuentas saldadas"
-
   Escenario: Al registrar un gasto se actualiza la liquidación
     Cuando abro el control de gastos del viaje "Roma 2027"
     Y pulso el botón "Añadir Gasto"

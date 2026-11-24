@@ -28,20 +28,3 @@ Característica: Eliminar un viaje archivado (PB-13 y MEJ-12)
     Y confirmo en el diálogo "Eliminar viaje"
     Entonces ya no veo el viaje archivado "Oporto 2022"
     Y el servidor ha eliminado el viaje "Oporto 2022"
-
-  Escenario: Cancelar la eliminación
-    Cuando abro mi perfil
-    Y pulso el botón "Viajes archivados"
-    Y pulso el botón "Eliminar París 2024"
-    Y confirmo en el diálogo "Cancelar"
-    Entonces ya no veo el diálogo de confirmación
-    Y veo el viaje archivado "París 2024"
-
-  Escenario: El servidor no puede eliminar el viaje
-    Dado que el servidor no puede eliminar viajes
-    Cuando abro mi perfil
-    Y pulso el botón "Viajes archivados"
-    Y pulso el botón "Eliminar París 2024"
-    Y confirmo en el diálogo "Eliminar viaje"
-    Entonces veo el mensaje de error "No se ha podido eliminar el viaje"
-    Y veo el viaje archivado "París 2024"

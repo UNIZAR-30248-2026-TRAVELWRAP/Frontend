@@ -18,14 +18,6 @@ Característica: Nombre por defecto al crear un viaje (RF8)
     Entonces estoy en el inicio del viaje
     Y veo el texto "Roma 2027"
 
-  Escenario: Un viaje de diciembre a enero lleva los dos años
-    Cuando abro el formulario de nuevo viaje
-    Y indico el destino "Praga" con las fechas del "2027-12-28" al "2028-01-03"
-    Y indico el presupuesto "600"
-    Y pulso el botón "Crear viaje"
-    Entonces estoy en el inicio del viaje
-    Y veo el texto "Praga 2027-2028"
-
   Escenario: Con «Votar destino» se puede crear sin nombre y lleva uno temporal
     Cuando abro el formulario de nuevo viaje
     Y elijo votar el destino

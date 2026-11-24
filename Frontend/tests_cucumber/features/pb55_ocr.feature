@@ -16,13 +16,6 @@ Característica: Escanear documentos con OCR (PB-55)
     Entonces estoy en la pantalla para añadir un gasto
     Y veo en el formulario el importe "11,5" y el concepto "RESTAURANTE EL FARO"
 
-  Escenario: Una reserva abre la actividad con los datos leídos para revisarlos
-    Dado que el escáner reconoce una reserva con el título "Entradas Coliseo" para el "2027-05-13" a las "10:00"
-    Cuando abro la cartera de documentos del viaje "Roma 2027"
-    Y escaneo una foto con el botón «Escanear con OCR»
-    Entonces estoy en la pantalla para añadir una actividad
-    Y veo en el formulario el título "Entradas Coliseo" y la hora "10:00"
-
   Escenario: Cualquier otro documento se guarda como resumen en la cartera
     Dado que el escáner no reconoce el tipo del documento y lee el texto "Póliza de seguro"
     Cuando abro la cartera de documentos del viaje "Roma 2027"

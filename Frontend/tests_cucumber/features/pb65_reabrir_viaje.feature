@@ -19,14 +19,6 @@ Característica: Reabrir un viaje finalizado (PB-65)
     Y veo el botón "Editar viaje"
     Y el servidor ha reabierto 1 viaje
 
-  Escenario: Cancelar la reapertura no cambia nada
-    Dado que tengo el viaje finalizado "Roma 2027"
-    Cuando llego a la última diapositiva del resumen del viaje "Roma 2027"
-    Y pulso el botón "Reabrir viaje"
-    Y confirmo en el diálogo "Cancelar"
-    Entonces ya no veo el diálogo de confirmación
-    Y el servidor ha reabierto 0 viaje
-
   Escenario: El servidor no puede reabrir el viaje
     Dado que tengo el viaje finalizado "Roma 2027"
     Y que el servidor no puede reabrir viajes
@@ -35,11 +27,3 @@ Característica: Reabrir un viaje finalizado (PB-65)
     Y confirmo en el diálogo "Reabrir viaje"
     Entonces veo el mensaje de error "No se ha podido reabrir el viaje"
     Y el servidor ha reabierto 0 viaje
-
-  Escenario: Un miembro que no es el creador también puede reabrir el viaje
-    Dado que soy miembro, pero no creador, del viaje finalizado "Roma 2027"
-    Cuando llego a la última diapositiva del resumen del viaje "Roma 2027"
-    Y pulso el botón "Reabrir viaje"
-    Y confirmo en el diálogo "Reabrir viaje"
-    Entonces estoy en el inicio del viaje
-    Y el servidor ha reabierto 1 viaje

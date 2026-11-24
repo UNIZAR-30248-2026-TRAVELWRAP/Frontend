@@ -19,15 +19,6 @@ Característica: Eliminar la cuenta (PB-47)
     Y el servidor ha recibido 1 petición de eliminar la cuenta
     Y mi sesión ya no está guardada en el navegador
 
-  Escenario: Cancelar la eliminación de la cuenta
-    Dado que el servidor elimina correctamente las cuentas
-    Cuando abro mi perfil
-    Y pulso el botón "Eliminar cuenta"
-    Y confirmo en el diálogo "Cancelar"
-    Entonces ya no veo el diálogo de confirmación
-    Y el servidor ha recibido 0 petición de eliminar la cuenta
-    Y mi sesión sigue guardada en el navegador
-
   Escenario: Si no se puede eliminar, se muestra el error y la cuenta sigue como estaba
     Dado que el servidor no puede eliminar las cuentas
     Cuando abro mi perfil

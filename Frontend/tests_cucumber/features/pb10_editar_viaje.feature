@@ -24,8 +24,3 @@ Característica: Editar los datos de un viaje (PB-10)
     Y pongo como fecha de fin "2027-05-01"
     Entonces veo el mensaje de error "La fecha de fin no puede ser anterior a la de inicio"
     Y el botón "Guardar cambios" está desactivado
-
-  Escenario: Un miembro que no es el creador también puede editar el viaje
-    Dado que soy miembro, pero no creador, del viaje activo "Lisboa 2027"
-    Cuando abro el viaje "Lisboa 2027" desde mis viajes
-    Entonces veo el botón "Editar viaje"

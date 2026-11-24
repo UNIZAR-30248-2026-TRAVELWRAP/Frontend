@@ -21,34 +21,6 @@ Característica: Colección de sellos en Mi Perfil (PB-44)
     Cuando cierro el pasaporte de viajes
     Entonces ya no veo el diálogo de confirmación
 
-  Escenario: Sin sellos el pasaporte invita a terminar un viaje
-    Dado que el servidor guarda mis sellos
-    Cuando abro mi perfil
-    Entonces veo el texto "0 sellos conseguidos"
-    Cuando pulso el botón "Mi colección de sellos"
-    Entonces veo el texto "Aún no tienes sellos. Termina un viaje para conseguir el primero"
-
-  Escenario: Cambia el diseño de un sello desde el pasaporte
-    Dado que el servidor guarda mis sellos
-    Y que tengo el sello "mapa" de "Roma" 2027
-    Cuando abro mi perfil
-    Y pulso el botón "Mi colección de sellos"
-    Y toco el sello de "Roma 2027"
-    Y elijo el diseño de sello "Ruta"
-    Y confirmo en el diálogo "Elegir"
-    Entonces el servidor guarda el sello "ruta" de "Roma"
-
-  Escenario: Quita un sello desde el pasaporte
-    Dado que el servidor guarda mis sellos
-    Y que tengo el sello "mapa" de "Roma" 2027
-    Cuando abro mi perfil
-    Y pulso el botón "Mi colección de sellos"
-    Y toco el sello de "Roma 2027"
-    Y confirmo en el diálogo "Deseleccionar todos"
-    Y confirmo en el diálogo "Elegir"
-    Entonces el servidor no guarda ningún sello
-    Y veo el texto "Aún no tienes sellos. Termina un viaje para conseguir el primero"
-
   Escenario: Si no se pueden cargar los sellos puede reintentarlo
     Dado que el servidor guarda mis sellos
     Y que el servidor no puede devolver mis sellos

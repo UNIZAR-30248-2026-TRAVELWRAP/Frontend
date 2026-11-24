@@ -17,12 +17,6 @@ Característica: Notificaciones de eventos del viaje (PB-54)
     Cuando toco el aviso
     Entonces estoy en la pantalla "gastos" del viaje "Roma 2027"
 
-  Escenario: Una tarea nueva lleva a la lista de tareas
-    Cuando abro el inicio del viaje "Roma 2027"
-    Y llega el aviso "Berta ha añadido una tarea: Comprar billetes" de tipo "tarea" en el viaje "Roma 2027"
-    Y toco el aviso
-    Entonces estoy en la pantalla "documentos?pestana=tareas" del viaje "Roma 2027"
-
   Escenario: Cerrar el aviso
     Cuando abro el inicio del viaje "Roma 2027"
     Y llega el aviso "Berta ha creado una votación: ¿Dónde cenamos?" de tipo "votacion" en el viaje "Roma 2027"

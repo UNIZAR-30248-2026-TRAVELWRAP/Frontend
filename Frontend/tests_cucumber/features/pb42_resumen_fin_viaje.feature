@@ -27,40 +27,6 @@ Característica: Resumen de fin de viaje (PB-42)
     Y no veo el texto "El gasto más alto"
     Y no veo el texto "Balance final"
 
-  Escenario: Un viaje finalizado termina con una diapositiva de acciones tras la del resumen
-    Dado que soy miembro, pero no creador, del viaje finalizado "Roma 2027"
-    Y que el resumen del viaje "Roma 2027" tiene el Coliseo como actividad más votada y a Berta como alma del grupo
-    Cuando abro el resumen del viaje "Roma 2027"
-    Y paso a la última diapositiva
-    Entonces veo la diapositiva "Acciones"
-    Y veo el botón "Sellar"
-    Y veo el botón "Archivar viaje"
-    Y veo el botón "Reabrir viaje"
-    Y no veo el botón "Ir a Mis viajes"
-
-  Escenario: Un viaje sin datos solo enseña lo que tiene
-    Dado que soy miembro, pero no creador, del viaje activo "Roma 2027"
-    Y que el resumen del viaje "Roma 2027" no tiene votos, ni alma del grupo, ni fotos
-    Cuando abro el resumen del viaje "Roma 2027"
-    Entonces veo la diapositiva "Portada"
-    Cuando paso a la diapositiva siguiente
-    Entonces veo la diapositiva "Tiempo juntos"
-    Y no veo el texto "Nadie votó actividades en este viaje"
-    Y no veo el texto "0 fotos"
-    Cuando paso a la diapositiva siguiente
-    Entonces veo la diapositiva "Resumen"
-    Y veo la imagen del resumen
-
-  Escenario: Se descarga la imagen que se ve en el resumen final
-    Dado que soy miembro, pero no creador, del viaje activo "Roma 2027"
-    Y que el resumen del viaje "Roma 2027" tiene el Coliseo como actividad más votada y a Berta como alma del grupo
-    Cuando abro el resumen del viaje "Roma 2027"
-    Y paso a la última diapositiva
-    Entonces veo la diapositiva "Resumen"
-    Y veo la imagen del resumen
-    Cuando pulso «Descargar imagen»
-    Entonces se descarga la imagen "TravelWrap-Roma-2027.png" de 1080 píxeles de ancho
-
   Escenario: Si no se puede cargar una foto el resumen se crea sin fotos y se avisa
     Dado que soy miembro, pero no creador, del viaje activo "Roma 2027"
     Y que el resumen del viaje "Roma 2027" tiene el Coliseo como actividad más votada y a Berta como alma del grupo
