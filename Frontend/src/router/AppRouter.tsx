@@ -453,6 +453,16 @@ function RutaElegirDestino({ sesion }: { sesion: Sesion }) {
   );
 }
 
+// Cada pantalla nueva empieza arriba: sin esto, al entrar desde otra pantalla que estaba desplazada
+// se ve el contenido a mitad de página y no la cabecera
+function VolverArribaAlCambiarDePantalla() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [pathname]);
+  return null;
+}
+
 export default function AppRouter({
   session,
   handleLogin,
@@ -474,6 +484,7 @@ export default function AppRouter({
 }: AppRouterProps) {
   return (
     <BrowserRouter>
+      <VolverArribaAlCambiarDePantalla />
       {session && <AvisoNotificacion tokenSesion={session.token} />}
       {session && <MarcaSoloLectura tokenSesion={session.token} />}
       <Routes>
