@@ -7,6 +7,9 @@ import { expect } from '@playwright/test';
 import { idDelViaje } from './gestion_viajes.steps';
 import { paginaActual } from './login.steps';
 
+// Los importes enteros se muestran sin céntimos («30 €»), así que el texto esperado del feature se normaliza igual
+const sinCentimosEnteros = (texto: string) => texto.replace(/,00(?= €)/g, "");
+
 // Mismos miembros que «que soy miembro, pero no creador, del viaje activo»
 const ID_DE = { Berta: 'otro', Adriana: 'df77cba6-4be5-4cbc-814b-1e228dd73dcc' } as Record<string, string>;
 
@@ -247,7 +250,7 @@ When('quito del reparto a {string}', async (nombre: string) => {
 });
 
 Then('la parte de {string} es {string}', async (nombre: string, parte: string) => {
-  await expect(filaDelReparto(nombre).getByText(/€$/)).toHaveText(parte);
+  await expect(filaDelReparto(nombre).getByText(/€$/)).toHaveText(sinCentimosEnteros(parte));
 });
 
 Then('estoy en el control de gastos del viaje', async () => {
@@ -301,7 +304,7 @@ When('abro el control de gastos del viaje {string}', async (nombre: string) => {
 });
 
 Then('el total gastado es {string}', async (total: string) => {
-  await expect(paginaActual().getByRole('region', { name: 'Total gastado' })).toContainText(total);
+  await expect(paginaActual().getByRole('region', { name: 'Total gastado' })).toContainText(sinCentimosEnteros(total));
 });
 
 // Conceptos separados por comas, en el orden en que deben aparecer
@@ -336,7 +339,7 @@ Given(
 
 Then('mi saldo es {string} y {string}', async (saldo: string, estado: string) => {
   const tuSaldo = paginaActual().getByRole('group', { name: 'Tu saldo' });
-  await expect(tuSaldo).toContainText(saldo);
+  await expect(tuSaldo).toContainText(sinCentimosEnteros(saldo));
   await expect(tuSaldo).toContainText(estado);
 });
 
@@ -345,7 +348,7 @@ Then('el saldo de {string} es {string}', async (nombre: string, saldo: string) =
     .getByRole('list', { name: 'Saldo de cada miembro' })
     .getByRole('listitem')
     .filter({ hasText: nombre });
-  await expect(fila).toContainText(saldo);
+  await expect(fila).toContainText(sinCentimosEnteros(saldo));
 });
 
 // Liquidación pendiente (PB-28): transferencias propuestas, con quién paga, a quién y cuánto
@@ -354,11 +357,11 @@ Then('en la liquidación pendiente veo {string} con {string}', async (texto: str
     .getByRole('list', { name: 'Transferencias pendientes' })
     .getByRole('listitem')
     .filter({ hasText: texto });
-  await expect(fila).toContainText(importe);
+  await expect(fila).toContainText(sinCentimosEnteros(importe));
 });
 
 Then('en la liquidación pendiente veo {string}', async (texto: string) => {
-  await expect(paginaActual().getByRole('region', { name: 'Liquidación pendiente' })).toContainText(texto);
+  await expect(paginaActual().getByRole('region', { name: 'Liquidación' })).toContainText(texto);
 });
 
 // Detalle, modificar y eliminar (PB-29)
@@ -382,7 +385,7 @@ Then('estoy en el detalle del gasto', async () => {
 });
 
 Then('en el detalle veo el importe {string}', async (importe: string) => {
-  await expect(paginaActual().getByRole('region', { name: 'Datos del gasto' })).toContainText(importe);
+  await expect(paginaActual().getByRole('region', { name: 'Datos del gasto' })).toContainText(sinCentimosEnteros(importe));
 });
 
 Then('en el reparto del gasto la parte de {string} es {string}', async (nombre: string, parte: string) => {
@@ -390,7 +393,7 @@ Then('en el reparto del gasto la parte de {string} es {string}', async (nombre: 
     .getByRole('list', { name: 'Parte de cada miembro' })
     .getByRole('listitem')
     .filter({ hasText: nombre });
-  await expect(fila).toContainText(parte);
+  await expect(fila).toContainText(sinCentimosEnteros(parte));
 });
 
 Then(

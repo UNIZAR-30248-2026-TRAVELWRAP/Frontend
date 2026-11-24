@@ -95,7 +95,7 @@ describe('ControlGastos', () => {
     const [primera, segunda] = filas()
     expect(primera.textContent).toContain('Taxi al aeropuerto')
     expect(primera.textContent).toContain('Pagó Berta · 13 may')
-    expect(primera.textContent).toContain('35,00 €')
+    expect(primera.textContent).toContain('35 €')
     expect(segunda.textContent).toContain('Cena en el Trastevere')
     expect(segunda.textContent).toContain('Pagó Adriana · 12 may')
     expect(segunda.textContent).toContain('60,50 €')
@@ -137,7 +137,7 @@ describe('ControlGastos', () => {
 
     expect(screen.getByText('Todavía no hay gastos en este viaje.')).toBeTruthy()
     expect(screen.queryByRole('list', { name: 'Historial de gastos' })).toBeNull()
-    expect(screen.getByRole('region', { name: 'Total gastado' }).textContent).toContain('0,00 €')
+    expect(screen.getByRole('region', { name: 'Total gastado' }).textContent).toContain('0 €')
   })
 
   it('el botón Añadir Gasto avisa a quien abrió la pantalla', async () => {
@@ -226,7 +226,7 @@ describe('ControlGastos · balance', () => {
     conSaldos([saldo(BERTA, 'Berta', -30), saldo(ADRIANA, 'Adriana', 30)])
     await abrir()
 
-    expect(tuSaldo().textContent).toContain('+30,00 €')
+    expect(tuSaldo().textContent).toContain('+30 €')
     expect(tuSaldo().textContent).toContain('Te deben')
   })
 
@@ -234,7 +234,7 @@ describe('ControlGastos · balance', () => {
     conSaldos([saldo(BERTA, 'Berta', 25), saldo(ADRIANA, 'Adriana', -25)])
     await abrir()
 
-    expect(tuSaldo().textContent).toContain('-25,00 €')
+    expect(tuSaldo().textContent).toContain('-25 €')
     expect(tuSaldo().textContent).toContain('Debes')
   })
 
@@ -242,7 +242,7 @@ describe('ControlGastos · balance', () => {
     conSaldos([saldo(BERTA, 'Berta', 0), saldo(ADRIANA, 'Adriana', 0)])
     await abrir()
 
-    expect(tuSaldo().textContent).toContain('0,00 €')
+    expect(tuSaldo().textContent).toContain('0 €')
     expect(tuSaldo().textContent).toContain('Al día')
   })
 
@@ -252,8 +252,8 @@ describe('ControlGastos · balance', () => {
 
     const filasSaldo = within(screen.getByRole('list', { name: 'Saldo de cada miembro' })).getAllByRole('listitem')
     expect(filasSaldo.map((fila) => fila.textContent)).toEqual([
-      expect.stringContaining('Berta+40,00 €'),
-      expect.stringContaining('Adriana-40,00 €'),
+      expect.stringContaining('Berta+40 €'),
+      expect.stringContaining('Adriana-40 €'),
     ])
   })
 
@@ -261,7 +261,7 @@ describe('ControlGastos · balance', () => {
     conSaldos([saldo(BERTA, 'Berta', -10), saldo(ADRIANA, 'Adriana', 0), saldo('antiguo', null, 10)])
     await abrir()
 
-    expect(saldoDe('Antiguo miembro')?.textContent).toContain('+10,00 €')
+    expect(saldoDe('Antiguo miembro')?.textContent).toContain('+10 €')
   })
 
   it('si quien usa la app no aparece en el balance no muestra «Tu saldo»', async () => {
@@ -269,7 +269,7 @@ describe('ControlGastos · balance', () => {
     await abrir()
 
     expect(screen.queryByRole('group', { name: 'Tu saldo' })).toBeNull()
-    expect(saldoDe('Berta')?.textContent).toContain('0,00 €')
+    expect(saldoDe('Berta')?.textContent).toContain('0 €')
   })
 
   it('con saldos de diez cifras «Tu saldo» puede bajar debajo del total y la cifra no se parte', async () => {
@@ -312,7 +312,7 @@ describe('ControlGastos · liquidación', () => {
   const conTransferencias = (transferencias: unknown[]) =>
     simularBackend({ liquidacion: () => json(200, { transferencias, saldadas: [] }) })
 
-  const seccion = () => screen.getByRole('region', { name: 'Liquidación pendiente' })
+  const seccion = () => screen.getByRole('region', { name: 'Liquidación' })
   const filasLiquidacion = () =>
     within(screen.getByRole('list', { name: 'Transferencias pendientes' })).getAllByRole('listitem')
 
@@ -350,7 +350,7 @@ describe('ControlGastos · liquidación', () => {
     await abrir()
 
     const [fila] = filasLiquidacion()
-    expect(fila.textContent).toContain('Tú pagas a Berta30,00 €')
+    expect(fila.textContent).toContain('Tú pagas a Berta30 €')
     expect(fila.style.background).not.toBe('')
   })
 
@@ -358,14 +358,14 @@ describe('ControlGastos · liquidación', () => {
     conTransferencias([transferencia(BERTA, 'Berta', ADRIANA, 'Adriana', 12)])
     await abrir()
 
-    expect(filasLiquidacion()[0].textContent).toContain('Berta te paga a ti12,00 €')
+    expect(filasLiquidacion()[0].textContent).toContain('Berta te paga a ti12 €')
   })
 
   it('a quien ya dejó el viaje lo nombra como un antiguo miembro', async () => {
     conTransferencias([transferencia('antiguo', null, BERTA, 'Berta', 7)])
     await abrir()
 
-    expect(filasLiquidacion()[0].textContent).toContain('Un antiguo miembro paga a Berta7,00 €')
+    expect(filasLiquidacion()[0].textContent).toContain('Un antiguo miembro paga a Berta7 €')
   })
 
   it('si no se puede calcular la liquidación lo explica', async () => {
@@ -448,8 +448,8 @@ describe('ControlGastos · deudas saldadas', () => {
     await vi.waitFor(() => expect(screen.getByRole('region', { name: 'Deudas saldadas' })).toBeTruthy())
     const [, opciones] = fetchMock.mock.calls.find(([, o]) => o?.method === 'POST') as unknown as [string, RequestInit]
     expect(JSON.parse(opciones.body as string)).toEqual({ de_usuario_id: BERTA, importe: 30 })
-    expect(screen.getByRole('region', { name: 'Deudas saldadas' }).textContent).toContain('Berta pagó 30,00 € a Adriana')
-    expect(screen.getByRole('region', { name: 'Liquidación pendiente' }).textContent).toContain('Cuentas saldadas')
+    expect(screen.getByRole('region', { name: 'Deudas saldadas' }).textContent).toContain('Berta pagó 30 € a Adriana')
+    expect(screen.getByRole('region', { name: 'Liquidación' }).textContent).toContain('Cuentas saldadas')
   })
 
   it('quien la marcó puede deshacerla y la deuda vuelve a estar pendiente', async () => {

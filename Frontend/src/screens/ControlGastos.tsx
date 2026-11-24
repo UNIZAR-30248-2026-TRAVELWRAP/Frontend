@@ -346,7 +346,7 @@ export default function ControlGastos({
 
               {/* Transferencias para saldar las cuentas: las tuyas salen destacadas */}
               <section
-                aria-label="Liquidación pendiente"
+                aria-label="Liquidación"
                 style={{
                   background: "white",
                   borderRadius: RADIUS.xl,
@@ -356,7 +356,7 @@ export default function ControlGastos({
                   border: `1.5px solid ${C.border}`,
                 }}
               >
-                <SectionLabel>Liquidación pendiente</SectionLabel>
+                <SectionLabel>Liquidación</SectionLabel>
                 {errorDeuda && (
                   <div role="alert" style={{ ...estiloAlerta, marginBottom: 12 }}>
                     {errorDeuda}
