@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react"
+import CabeceraPantalla from "../components/CabeceraPantalla"
 import Avatar, { type Miembro } from "../components/Avatar"
 import DialogoConfirmacion from "../components/DialogoConfirmacion"
 import BarraInferior, { ALTO_BARRA_INFERIOR } from "../components/BarraInferior"
-import Heading from "../components/Heading"
-import Icon from "../components/Icon"
 import IconoColor from "../components/IconoColor"
 import SectionLabel from "../components/SectionLabel"
 import { ApiError } from "../services/authApi"
@@ -11,7 +10,7 @@ import { eliminarGasto, obtenerGasto, urlFotoGasto, type DetalleGasto as Detalle
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { viajeEnCache } from "../services/viajesEnCache"
 import { estiloAlerta } from "../styles/formulario"
-import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
+import { C, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
 import { CATEGORIAS_GASTO, conEuros, fechaDelGasto, iconoDeCategoriaGasto, tamanoSegunLongitud } from "../utils/gastos"
 
@@ -111,40 +110,12 @@ export default function DetalleGasto({
     <div style={{ background: C.bg, minHeight: "100vh" }}>
       <div style={{ maxWidth: 480, margin: "0 auto", paddingBottom: ALTO_BARRA_INFERIOR + 24 }}>
         {/* Cabecera */}
-        <div style={{ background: GRADIENTS.header, padding: "20px 20px 24px", borderRadius: RADIUS.header }}>
-          <button
-            type="button"
-            onClick={onVolver}
-            aria-label="Volver a Control de Gastos"
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: 0,
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              marginBottom: 4,
-            }}
-          >
-            <Icon name="arrow_left" size={13} color="rgba(255,255,255,0.55)" strokeWidth={2.5} />
-            <span
-              style={{
-                color: "rgba(255,255,255,0.55)",
-                fontSize: 11,
-                fontWeight: 700,
-                fontFamily: NUNITO,
-                letterSpacing: 1,
-                textTransform: "uppercase",
-              }}
-            >
-              Control de Gastos
-            </span>
-          </button>
-          <Heading size={22} color="white">
-            Detalle del gasto
-          </Heading>
-        </div>
+        <CabeceraPantalla
+          titulo="Detalle del gasto"
+          contexto={viaje?.nombre}
+          onVolver={onVolver}
+          etiquetaVolver="Volver a Control de Gastos" textoVolver="Control de Gastos"
+        />
 
         <div style={{ padding: "20px 16px 0" }}>
           {error && (

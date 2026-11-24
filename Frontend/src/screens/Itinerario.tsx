@@ -11,7 +11,8 @@ import Badge from "../components/Badge"
 import FilaOrdenable, { ZonaDeArrastre, type AsaDeArrastre } from "../components/FilaOrdenable"
 import DialogoConfirmacion from "../components/DialogoConfirmacion"
 import BarraInferior, { ALTO_BARRA_INFERIOR, type SeccionViaje } from "../components/BarraInferior"
-import Heading from "../components/Heading"
+import CabeceraPantalla from "../components/CabeceraPantalla"
+import PestanasCabecera from "../components/PestanasCabecera"
 import Icon from "../components/Icon"
 import IconoColor from "../components/IconoColor"
 import SectionLabel from "../components/SectionLabel"
@@ -32,7 +33,7 @@ import { MAX_PARADAS_GOOGLE_MAPS, urlDeGoogleMaps } from "../utils/googleMaps"
 import { guardarItinerario, leerItinerario } from "../services/itinerarioGuardado"
 import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { viajeEnCache } from "../services/viajesEnCache"
-import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
+import { C, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro, diasDelItinerario, fechaDeHoy, formatearFechasActivo } from "../utils/formatoViaje"
 import { moverActividad, ordenarAgenda, puedeReordenarse } from "../utils/ordenActividades"
 import { actividadEnCurso } from "../utils/actividadEnCurso"
@@ -280,126 +281,62 @@ export default function Itinerario({
   return (
     <div style={{ background: C.bg, minHeight: "100vh" }}>
       <div style={{ maxWidth: 480, margin: "0 auto", paddingBottom: ALTO_BARRA_INFERIOR + 24 }}>
-        <div style={{ background: GRADIENTS.header, padding: "20px 20px 22px", borderRadius: RADIUS.header }}>
-          <div style={{ marginBottom: viaje ? 16 : 0 }}>
-            <button
-              type="button"
-              onClick={onVolver}
-              aria-label="Volver a Mis Viajes"
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                padding: 0,
-                display: "flex",
-                alignItems: "center",
-                gap: 5,
-                marginBottom: 4,
-              }}
-            >
-              <Icon name="arrow_left" size={13} color="rgba(255,255,255,0.55)" strokeWidth={2.5} />
-              <span
-                style={{
-                  color: "rgba(255,255,255,0.55)",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  fontFamily: NUNITO,
-                  letterSpacing: 1,
-                  textTransform: "uppercase",
-                }}
-              >
-                Mis Viajes
-              </span>
-            </button>
-            <Heading size={22} color="white">
-              Itinerario
-            </Heading>
+        <CabeceraPantalla
+          titulo="Itinerario"
+          contexto={viaje?.nombre}
+          onVolver={onVolver}
+          etiquetaVolver="Volver a Mis Viajes" textoVolver="Mis Viajes"
+          pestanas={
+            viaje ? (
+              <PestanasCabecera
+                etiqueta="Vista del itinerario"
+                opciones={VISTAS.map(({ id, icono, texto }) => ({ id, icono, texto }))}
+                seleccionada={vista}
+                onChange={(id) => setVista(id as (typeof VISTAS)[number]["id"])}
+              />
+            ) : undefined
+          }
+        >
+          <div style={{ marginTop: 14 }}>
+            {dias.length > 0 && (  
+              <div  
+                role={vista === "agenda" ? "group" : undefined}  
+                aria-label={vista === "agenda" ? "Día del itinerario" : undefined}  
+                aria-hidden={vista === "agenda" ? undefined : true}  
+                style={{ display: "flex", gap: 8, overflowX: "auto", visibility: vista === "agenda" ? "visible" : "hidden" }}  
+              >  
+                {dias.map((d) => {  
+                  const activa = dia === d.fecha  
+                  return (  
+                    <button  
+                      type="button"  
+                      key={d.fecha}  
+                      aria-pressed={activa}  
+                      onClick={() => setDiaElegido(d.fecha)}  
+                      style={{  
+                        background: activa ? "white" : "rgba(255,255,255,0.18)",  
+                        color: activa ? C.blue : "rgba(255,255,255,0.85)",  
+                        border: "none",  
+                        borderRadius: 999,  
+                        padding: "8px 16px",  
+                        fontFamily: NUNITO,  
+                        fontWeight: 700,  
+                        fontSize: 12,  
+                        cursor: "pointer",  
+                        whiteSpace: "nowrap",  
+                        transition: "all 0.2s",  
+                        flexShrink: 0,  
+                        boxShadow: activa ? "0 2px 10px rgba(0,0,0,0.15)" : "none",  
+                      }}  
+                    >  
+                      {d.texto}  
+                    </button>  
+                  )  
+                })}  
+              </div>  
+            )}
           </div>
-          {viaje && (
-            <div
-              role="tablist"
-              aria-label="Vista del itinerario"
-              style={{
-                display: "flex",
-                background: "rgba(255,255,255,0.14)",
-                borderRadius: 12,
-                padding: 4,
-                gap: 3,
-                marginBottom: dias.length > 0 ? 14 : 0,
-              }}
-            >
-              {VISTAS.map(({ id, icono, texto }) => {
-                const seleccionada = vista === id
-                return (
-                  <button
-                    type="button"
-                    role="tab"
-                    key={id}
-                    aria-selected={seleccionada}
-                    onClick={() => setVista(id)}
-                    style={{
-                      flex: 1,
-                      minHeight: 44,
-                      background: seleccionada ? "white" : "transparent",
-                      color: seleccionada ? C.blue : "rgba(255,255,255,0.75)",
-                      border: "none",
-                      borderRadius: 9,
-                      padding: "8px 4px",
-                      fontFamily: NUNITO,
-                      fontWeight: 800,
-                      fontSize: 13,
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 5,
-                    }}
-                  >
-                    <Icon name={icono} size={14} color={seleccionada ? C.blue : "rgba(255,255,255,0.75)"} strokeWidth={2} />
-                    {texto}
-                  </button>
-                )
-              })}
-            </div>
-          )}
-          {dias.length > 0 && (
-            <div
-              role={vista === "agenda" ? "group" : undefined}
-              aria-label={vista === "agenda" ? "Día del itinerario" : undefined}
-              aria-hidden={vista === "agenda" ? undefined : true}
-              style={{ display: "flex", gap: 8, overflowX: "auto", visibility: vista === "agenda" ? "visible" : "hidden" }}
-            >
-              {dias.map((d) => {
-                const activa = dia === d.fecha
-                return (
-                  <button
-                    type="button"
-                    key={d.fecha}
-                    aria-pressed={activa}
-                    onClick={() => setDiaElegido(d.fecha)}
-                    style={{
-                      background: activa ? "white" : "rgba(255,255,255,0.18)",
-                      color: activa ? C.blue : "rgba(255,255,255,0.85)",
-                      border: "none",
-                      borderRadius: 999,
-                      padding: "8px 16px",
-                      fontFamily: NUNITO,
-                      fontWeight: 700,
-                      fontSize: 12,
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
-                      transition: "all 0.2s",
-                      flexShrink: 0,
-                      boxShadow: activa ? "0 2px 10px rgba(0,0,0,0.15)" : "none",
-                    }}
-                  >
-                    {d.texto}
-                  </button>
-                )
-              })}
-            </div>
-          )}
-        </div>
+        </CabeceraPantalla>
 
         <div style={{ padding: "16px 16px 0" }}>
           {error && (

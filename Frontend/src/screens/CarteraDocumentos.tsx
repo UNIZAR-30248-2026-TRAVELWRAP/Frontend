@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react"
 import BarraInferior, { ALTO_BARRA_INFERIOR, type SeccionViaje } from "../components/BarraInferior"
-import BotonVolver from "../components/BotonVolver"
+import CabeceraPantalla from "../components/CabeceraPantalla"
+import PestanasCabecera from "../components/PestanasCabecera"
 import DialogoConfirmacion from "../components/DialogoConfirmacion"
-import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import IconoColor from "../components/IconoColor"
 import ListaTareas from "../components/ListaTareas"
@@ -214,68 +214,19 @@ export default function CarteraDocumentos({
     <div style={{ background: C.bg, minHeight: "100vh" }}>
       <div style={{ maxWidth: 480, margin: "0 auto", paddingBottom: ALTO_BARRA_INFERIOR + 24 }}>
         {/* Cabecera */}
-        <div style={{ background: GRADIENTS.header, padding: "20px 20px 24px", borderRadius: RADIUS.header }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <BotonVolver onClick={onVolver} />
-            <div style={{ minWidth: 0 }}>
-              {viaje && (
-                <SectionLabel>
-                  <span
-                    style={{
-                      color: "rgba(255,255,255,0.55)",
-                      display: "block",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {viaje.nombre}
-                  </span>
-                </SectionLabel>
-              )}
-              <Heading size={22} color="white">
-                {pestana === "tareas" ? "Lista de Tareas" : "Cartera de Documentos"}
-              </Heading>
-            </div>
-          </div>
-          <div
-            role="tablist"
-            aria-label="Secciones de la cartera"
-            style={{ display: "flex", gap: 4, marginTop: 16, padding: 4, borderRadius: RADIUS.md, background: "rgba(255,255,255,0.14)" }}
-          >
-            {PESTANAS.map(({ id, texto, icono }) => {
-              const seleccionada = pestana === id
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  role="tab"
-                  aria-selected={seleccionada}
-                  onClick={() => setPestana(id)}
-                  style={{
-                    flex: 1,
-                    minHeight: 40,
-                    borderRadius: RADIUS.sm,
-                    border: "none",
-                    background: seleccionada ? "white" : "transparent",
-                    color: seleccionada ? C.blue : "rgba(255,255,255,0.8)",
-                    fontFamily: NUNITO,
-                    fontWeight: 800,
-                    fontSize: 13,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 6,
-                  }}
-                >
-                  <Icon name={icono} size={15} color="currentColor" strokeWidth={2} />
-                  {texto}
-                </button>
-              )
-            })}
-          </div>
-        </div>
+        <CabeceraPantalla
+          titulo={pestana === "tareas" ? "Lista de Tareas" : "Cartera de Documentos"}
+          contexto={viaje?.nombre}
+          onVolver={onVolver}
+          pestanas={
+            <PestanasCabecera
+              etiqueta="Secciones de la cartera"
+              opciones={PESTANAS}
+              seleccionada={pestana}
+              onChange={(id) => setPestana(id as Pestana)}
+            />
+          }
+        />
 
         <div style={{ padding: "20px 16px 0" }}>
           {error && (

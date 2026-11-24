@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
+import CabeceraPantalla from "../components/CabeceraPantalla"
 import AvatarStack from "../components/AvatarStack"
-import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import OpcionVotacion from "../components/OpcionVotacion"
 import ProponerOpcion from "../components/ProponerOpcion"
@@ -142,85 +142,42 @@ export default function ElegirDestino({ viajeId, tokenSesion, onVolver, onInvita
     <div style={{ background: C.bg, minHeight: "100vh" }}>
       <div style={{ maxWidth: 480, margin: "0 auto" }}>
         {/* Cabecera */}
-        <div style={{ background: GRADIENTS.header, padding: "20px 20px 24px", borderRadius: RADIUS.header }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-            <div style={{ minWidth: 0 }}>
-              <button
-                type="button"
-                onClick={onVolver}
-                aria-label="Volver a Mis Viajes"
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 5,
-                  marginBottom: 6,
-                }}
-              >
-                <Icon name="arrow_left" size={13} color="rgba(255,255,255,0.6)" strokeWidth={2.5} />
-                <span
-                  style={{
-                    color: "rgba(255,255,255,0.6)",
-                    fontSize: 11,
-                    fontWeight: 700,
-                    fontFamily: NUNITO,
-                    letterSpacing: 1,
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Mis Viajes
-                </span>
-              </button>
-              {viaje && (
-                <div
-                  style={{
-                    color: "rgba(255,255,255,0.6)",
-                    fontSize: 11,
-                    fontFamily: NUNITO,
-                    fontWeight: 800,
-                    letterSpacing: 1.2,
-                    textTransform: "uppercase",
-                    marginBottom: 2,
-                  }}
-                >
-                  {viaje.nombre}
-                </div>
-              )}
-              <Heading size={22} color="white">
-                Elegir Destino
-              </Heading>
-            </div>
-            {viaje && (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, paddingTop: 20 }}>
-                <AvatarStack members={miembros} size={32} />
-                <button
-                  type="button"
-                  onClick={onInvitar}
-                  style={{
-                    background: "rgba(255,255,255,0.18)",
-                    border: "none",
-                    borderRadius: 8,
-                    padding: "4px 11px",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4,
-                    color: "rgba(255,255,255,0.85)",
-                    fontSize: 10,
-                    fontFamily: NUNITO,
-                    fontWeight: 700,
-                  }}
-                >
-                  <Icon name="plus" size={11} color="rgba(255,255,255,0.85)" strokeWidth={2.5} />
-                  Invitar
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+        <CabeceraPantalla
+          titulo="Elegir Destino"
+          contexto={viaje?.nombre}
+          onVolver={onVolver}
+          etiquetaVolver="Volver a Mis Viajes" textoVolver="Mis Viajes"
+          derecha={
+            <>
+              {viaje && (  
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, paddingTop: 20 }}>  
+                  <AvatarStack members={miembros} size={32} />  
+                  <button  
+                    type="button"  
+                    onClick={onInvitar}  
+                    style={{  
+                      background: "rgba(255,255,255,0.18)",  
+                      border: "none",  
+                      borderRadius: 8,  
+                      padding: "4px 11px",  
+                      cursor: "pointer",  
+                      display: "flex",  
+                      alignItems: "center",  
+                      gap: 4,  
+                      color: "rgba(255,255,255,0.85)",  
+                      fontSize: 10,  
+                      fontFamily: NUNITO,  
+                      fontWeight: 700,  
+                    }}  
+                  >  
+                    <Icon name="plus" size={11} color="rgba(255,255,255,0.85)" strokeWidth={2.5} />  
+                    Invitar  
+                  </button>  
+                </div>  
+              )}  
+            </>
+          }
+        />
 
         <div style={{ padding: "20px 16px 28px" }}>
           {error && (

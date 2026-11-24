@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from "react"
 import BarraInferior, { ALTO_BARRA_INFERIOR, type SeccionViaje } from "../components/BarraInferior"
 import Avatar, { type Miembro } from "../components/Avatar"
-import BotonVolver from "../components/BotonVolver"
-import Heading from "../components/Heading"
-import SectionLabel from "../components/SectionLabel"
-import Icon from "../components/Icon"
+import CabeceraPantalla from "../components/CabeceraPantalla"
+import PestanasCabecera from "../components/PestanasCabecera"
 import { ApiError } from "../services/authApi"
 import { enviarMensaje, listarMensajes, type Mensaje } from "../services/chatApi"
 import { marcarChatLeido } from "../services/chatLeidos"
@@ -13,7 +11,7 @@ import { obtenerViaje, type ViajeDelUsuario } from "../services/viajesApi"
 import { viajeEnCache } from "../services/viajesEnCache"
 import { estiloAlerta } from "../styles/formulario"
 import { aMiembro } from "../utils/formatoViaje"
-import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
+import { C, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 
 // Mismo tamaño que la API devuelve de una vez y el límite de un mensaje
 const MENSAJES_POR_PAGINA = 50
@@ -124,73 +122,22 @@ export default function Chat({ viajeId, tokenSesion, usuarioId, onVolver, onAbri
     <div style={{ background: C.bg, minHeight: "100vh" }}>
       <div style={{ maxWidth: 480, margin: "0 auto", paddingBottom: ALTO_BARRA_INFERIOR + 88 }}>
         {/* Cabecera y pestañas: Chat (esta pantalla) y Galería */}
-        {/* La cabecera y las pestañas se quedan arriba al desplazarse por los mensajes */}
-        <div style={{ position: "sticky", top: 0, zIndex: 15, background: GRADIENTS.header, padding: "20px 20px 20px", borderRadius: RADIUS.header }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
-            <BotonVolver onClick={onVolver} />
-            <div style={{ minWidth: 0 }}>
-              {viaje && (
-                <SectionLabel>
-                  <span
-                    style={{
-                      color: "rgba(255,255,255,0.55)",
-                      display: "block",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {viaje.nombre}
-                  </span>
-                </SectionLabel>
-              )}
-              <Heading size={22} color="white">
-                Chat y Galería
-              </Heading>
-            </div>
-          </div>
-          <div
-            role="tablist"
-            aria-label="Chat y Galería"
-            style={{ display: "flex", background: "rgba(255,255,255,0.14)", borderRadius: 12, padding: 4, gap: 3 }}
-          >
-            {/* Mismo selector que en Galería: la pestaña activa va en blanco */}
-            {PESTANAS.map(({ id, icono, texto }) => {
-              const seleccionada = id === "chat"
-              return (
-                <button
-                  type="button"
-                  role="tab"
-                  key={id}
-                  aria-selected={seleccionada}
-                  onClick={() => {
-                    if (id === "galeria") onAbrirGaleria?.()
-                  }}
-                  style={{
-                    flex: 1,
-                    minHeight: 44,
-                    background: seleccionada ? "white" : "transparent",
-                    color: seleccionada ? C.blue : "rgba(255,255,255,0.75)",
-                    border: "none",
-                    borderRadius: 9,
-                    padding: "8px 4px",
-                    fontFamily: NUNITO,
-                    fontWeight: 800,
-                    fontSize: 13,
-                    cursor: seleccionada ? "default" : "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 5,
-                  }}
-                >
-                  <Icon name={icono} size={14} color={seleccionada ? C.blue : "rgba(255,255,255,0.75)"} strokeWidth={2} />
-                  {texto}
-                </button>
-              )
-            })}
-          </div>
-        </div>
+        <CabeceraPantalla
+          fija
+          titulo="Chat y Galería"
+          contexto={viaje?.nombre}
+          onVolver={onVolver}
+          pestanas={
+            <PestanasCabecera
+              etiqueta="Chat y Galería"
+              opciones={PESTANAS.map(({ id, icono, texto }) => ({ id, icono, texto }))}
+              seleccionada="chat"
+              onChange={(id) => {
+                if (id === "galeria") onAbrirGaleria?.();
+              }}
+            />
+          }
+        />
 
         <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
           {error && (

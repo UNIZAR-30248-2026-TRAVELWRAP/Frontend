@@ -1,8 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react"
+import { EtiquetaCabecera } from "../components/CabeceraPantalla"
 import Heading from "../components/Heading"
 import Icon from "../components/Icon"
 import IconoColor from "../components/IconoColor"
-import SectionLabel from "../components/SectionLabel"
 import {
   CATEGORIAS,
   crearActividad,
@@ -237,15 +237,15 @@ export default function AnadirActividad({
   return (
     <div style={{ background: C.bg, minHeight: "100vh" }}>
       <div style={{ maxWidth: 480, margin: "0 auto" }}>
-        <div style={{ background: GRADIENTS.header, padding: "20px 20px 24px", borderRadius: RADIUS.header }}>
+        <div style={{ background: GRADIENTS.header, padding: "20px 20px 22px", borderRadius: RADIUS.header }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: dias.length > 0 ? 16 : 0 }}>
             <BotonVolver onClick={onVolver} />
             <div style={{ minWidth: 0 }}>
-              <SectionLabel>
+              <EtiquetaCabecera>
                 <span style={{ color: "rgba(255,255,255,0.55)" }}>
                   Itinerario{viaje ? ` · ${viaje.nombre}` : ""}
                 </span>
-              </SectionLabel>
+              </EtiquetaCabecera>
               <Heading size={22} color="white">
                 {edicion ? "Editar Actividad" : "Añadir Actividad"}
               </Heading>

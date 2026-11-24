@@ -20,14 +20,14 @@ import {
   type Votacion,
 } from "../services/votacionesApi"
 import { escucharVotaciones } from "../services/votacionesTiempoReal"
-import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
+import { C, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
 import { conPorcentajes, enumerar, opcionesGanadoras, TIPOS_ELEGIBLES } from "../utils/votaciones"
 import { estiloDesplegable } from "../styles/formulario"
 
 type TipoCreable = (typeof TIPOS_ELEGIBLES)[number]["tipo"]
-import BotonVolver from "../components/BotonVolver"
-import SectionLabel from "../components/SectionLabel"
+import CabeceraPantalla from "../components/CabeceraPantalla"
+import PestanasCabecera from "../components/PestanasCabecera"
 import EstadoVacio from "../components/EstadoVacio"
 
 const FILTROS: { texto: string; tipo: TipoVotacion | null }[] = [
@@ -173,46 +173,20 @@ export default function Votaciones({ viajeId, tokenSesion, onVolver, onCrearVota
     <div style={{ background: C.bg, minHeight: "100vh" }}>
       <div style={{ maxWidth: 480, margin: "0 auto" }}>
         {/* Cabecera con filtros */}
-        <div style={{ background: GRADIENTS.header, padding: "20px 20px 22px", borderRadius: RADIUS.header }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-            <BotonVolver onClick={onVolver} />
-            <div style={{ minWidth: 0 }}>
-              {viaje && <SectionLabel>{viaje.nombre}</SectionLabel>}
-              <Heading size={22} color="white">
-                Votaciones
-              </Heading>
-            </div>
-          </div>
-          <div role="tablist" aria-label="Filtrar votaciones" style={{ display: "flex", gap: 8, overflowX: "auto" }}>
-            {FILTROS.map(({ texto, tipo }) => {
-              const activo = filtro === tipo
-              return (
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={activo}
-                  key={texto}
-                  onClick={() => setFiltro(tipo)}
-                  style={{
-                    background: activo ? "white" : "rgba(255,255,255,0.18)",
-                    color: activo ? C.blue : "rgba(255,255,255,0.85)",
-                    border: "none",
-                    borderRadius: 999,
-                    padding: "7px 16px",
-                    fontFamily: NUNITO,
-                    fontWeight: 700,
-                    fontSize: 12,
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  {texto}
-                </button>
-              )
-            })}
-          </div>
-        </div>
+        {/* Cabecera con filtros */}
+        <CabeceraPantalla
+          titulo="Votaciones"
+          contexto={viaje?.nombre}
+          onVolver={onVolver}
+          pestanas={
+            <PestanasCabecera
+              etiqueta="Filtrar votaciones"
+              opciones={FILTROS.map(({ texto, tipo }) => ({ id: tipo ?? "todas", texto }))}
+              seleccionada={filtro ?? "todas"}
+              onChange={(id) => setFiltro(id === "todas" ? null : (id as TipoVotacion))}
+            />
+          }
+        />
 
         <div style={{ padding: "16px 16px 28px" }}>
           {error && (

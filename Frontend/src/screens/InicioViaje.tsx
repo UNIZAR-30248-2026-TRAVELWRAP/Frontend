@@ -1,4 +1,5 @@
 ﻿import { useEffect, useState, type CSSProperties } from "react"
+import BotonVolver from "../components/BotonVolver"
 import AvatarStack from "../components/AvatarStack"
 import BarraInferior, { ALTO_BARRA_INFERIOR, type SeccionViaje } from "../components/BarraInferior"
 import Badge from "../components/Badge"
@@ -233,35 +234,9 @@ export default function InicioViaje({
           <FondoPortada url={viaje?.portada_url} />
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
             <div style={{ minWidth: 0 }}>
-              <button
-                type="button"
-                onClick={onVolver}
-                aria-label="Volver a Mis Viajes"
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 5,
-                  marginBottom: 16,
-                }}
-              >
-                <Icon name="arrow_left" size={13} color="rgba(255,255,255,0.6)" strokeWidth={2.5} />
-                <span
-                  style={{
-                    color: "rgba(255,255,255,0.6)",
-                    fontSize: 11,
-                    fontWeight: 700,
-                    fontFamily: NUNITO,
-                    letterSpacing: 1,
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Mis Viajes
-                </span>
-              </button>
+              <div style={{ marginBottom: 16 }}>
+                <BotonVolver onClick={onVolver} etiqueta="Volver a Mis Viajes" texto="Mis Viajes" />
+              </div>
 
               {viaje && (
                 <>
