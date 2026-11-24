@@ -24,6 +24,7 @@ import { viajeEnCache } from "../services/viajesEnCache"
 import { estiloAlerta } from "../styles/formulario"
 import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
+import EstadoVacio from "../components/EstadoVacio"
 import {
   aspectoDeDocumento,
   descargarDocumento,
@@ -397,9 +398,7 @@ export default function CarteraDocumentos({
 
               <SectionLabel>Documentos del viaje</SectionLabel>
               {documentos.length === 0 ? (
-                <p style={{ fontFamily: NUNITO, color: C.muted, fontSize: 13, textAlign: "center", padding: "24px 0" }}>
-                  Aún no hay documentos en la cartera del viaje.
-                </p>
+                <EstadoVacio icono="document">Aún no hay documentos en la cartera del viaje.</EstadoVacio>
               ) : (
                 <ul
                   aria-label="Documentos del viaje"

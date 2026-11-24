@@ -27,6 +27,8 @@ import { estiloDesplegable } from "../styles/formulario"
 
 type TipoCreable = (typeof TIPOS_ELEGIBLES)[number]["tipo"]
 import BotonVolver from "../components/BotonVolver"
+import SectionLabel from "../components/SectionLabel"
+import EstadoVacio from "../components/EstadoVacio"
 
 const FILTROS: { texto: string; tipo: TipoVotacion | null }[] = [
   { texto: "Todas", tipo: null },
@@ -174,9 +176,12 @@ export default function Votaciones({ viajeId, tokenSesion, onVolver, onCrearVota
         <div style={{ background: GRADIENTS.header, padding: "20px 20px 22px", borderRadius: RADIUS.header }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
             <BotonVolver onClick={onVolver} />
-            <Heading size={22} color="white">
-              Votaciones
-            </Heading>
+            <div style={{ minWidth: 0 }}>
+              {viaje && <SectionLabel>{viaje.nombre}</SectionLabel>}
+              <Heading size={22} color="white">
+                Votaciones
+              </Heading>
+            </div>
           </div>
           <div role="tablist" aria-label="Filtrar votaciones" style={{ display: "flex", gap: 8, overflowX: "auto" }}>
             {FILTROS.map(({ texto, tipo }) => {
@@ -257,9 +262,9 @@ export default function Votaciones({ viajeId, tokenSesion, onVolver, onCrearVota
           )}
 
           {votaciones && visibles.length === 0 && (
-            <div style={{ fontFamily: NUNITO, color: C.muted, fontSize: 13, textAlign: "center", padding: "24px 0" }}>
+            <EstadoVacio icono="vote">
               {filtro === null ? "Todavía no hay votaciones en este viaje." : "No hay votaciones de este tipo todavía."}
-            </div>
+            </EstadoVacio>
           )}
 
           {/* Votaciones abiertas */}

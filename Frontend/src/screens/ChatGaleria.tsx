@@ -16,6 +16,7 @@ import { C, GRADIENTS, NUNITO, RADIUS, SHADOWS } from "../styles/tokens"
 import { aMiembro } from "../utils/formatoViaje"
 import { compartirArchivo } from "../utils/compartir"
 import { archivoEsVideo, descripcionDeFoto, esVideo, motivoParaNoSubirFoto, textoDeEspacio, textoDeFotos, TIPOS_ARCHIVO } from "../utils/galeria"
+import EstadoVacio from "../components/EstadoVacio"
 
 const mensajeDeError = (e: unknown) => (e instanceof ApiError ? e.message : "Ha ocurrido un error")
 
@@ -294,12 +295,12 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
                         background: C.blue,
                         color: "white",
                         border: "none",
-                        borderRadius: 10,
+                        borderRadius: RADIUS.md,
                         minHeight: 44,
-                        padding: "6px 14px",
+                        padding: "10px 16px",
                         fontFamily: NUNITO,
                         fontWeight: 800,
-                        fontSize: 12,
+                        fontSize: 14,
                         cursor: subiendo ? "wait" : "pointer",
                         opacity: subiendo ? 0.7 : 1,
                         display: "flex",
@@ -322,9 +323,7 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
               )}
 
               {fotos.length === 0 ? (
-                <p style={{ fontFamily: NUNITO, color: C.muted, fontSize: 13, textAlign: "center", padding: "24px 0" }}>
-                  Aún no hay fotos en la galería del viaje.
-                </p>
+                <EstadoVacio icono="gallery">Aún no hay fotos en la galería del viaje.</EstadoVacio>
               ) : (
                 <ul
                   aria-label="Fotos del viaje"
