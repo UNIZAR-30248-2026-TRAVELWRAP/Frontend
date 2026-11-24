@@ -180,7 +180,7 @@ test.describe('Inicio del viaje y su gestión', () => {
     await expect(page.getByRole('button', { name: /Roma 2027/ })).toBeVisible();
 
     await page.goto('/viajes/roma');
-    await expect(page.getByText(/Este viaje está finalizado/)).toBeVisible();
+    await expect(page.getByRole('img', { name: 'Modo visualización: el viaje no se puede modificar' })).toBeVisible();
     await expect(page.getByRole('button', { name: /Editar viaje/ })).toHaveCount(0);
   });
 
@@ -197,8 +197,15 @@ test.describe('Inicio del viaje y su gestión', () => {
     await page.goto('/viajes/roma/resumen');
     // Las teclas solo cuentan cuando el resumen ya ha cargado
     await expect(page.getByText('TravelWrap · Resumen')).toBeVisible();
-    for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight');
-    await expect(page.getByRole('region')).toHaveAccessibleName(/4 de 4: Acciones/);
+    // Se avanza hasta la última diapositiva esperando a que cambie: una tecla pulsada antes de que el resumen
+    // escuche el teclado se pierde (WebKit)
+    await expect
+      .poll(async () => {
+        const etiqueta = (await page.getByRole('region').getAttribute('aria-label')) ?? '';
+        if (!/4 de 4/.test(etiqueta)) await page.keyboard.press('ArrowRight');
+        return etiqueta;
+      }, { timeout: 15000 })
+      .toMatch(/4 de 4: Acciones/);
     await page.getByRole('button', { name: 'Archivar viaje' }).click();
     const dialogo = page.getByRole('dialog');
     await expect(dialogo).toContainText('¿Archivar este viaje?');
@@ -293,7 +300,7 @@ test.describe('Inicio del viaje y su gestión', () => {
     await expect(tarjeta).toBeVisible();
     await expect(tarjeta).not.toContainText('En curso');
     await page.goto('/viajes/paris');
-    await expect(page.getByText(/Este viaje está finalizado/)).toBeVisible();
+    await expect(page.getByRole('img', { name: 'Modo visualización: el viaje no se puede modificar' })).toBeVisible();
     await expect(page.getByRole('button', { name: /Editar viaje/ })).toHaveCount(0);
   });
 

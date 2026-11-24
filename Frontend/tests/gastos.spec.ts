@@ -161,9 +161,9 @@ test.describe('Añadir gasto', () => {
 
     await page.getByLabel('Dividir con Berta').uncheck();
 
-    await expect(parteDe(page, 'Daniel')).toHaveText('5,00 €');
+    await expect(parteDe(page, 'Daniel')).toHaveText('5 €');
     await expect(parteDe(page, 'Berta')).toHaveCount(0);
-    await expect(parteDe(page, 'Adriana')).toHaveText('5,00 €');
+    await expect(parteDe(page, 'Adriana')).toHaveText('5 €');
   });
 
   test('sin importe válido no se envía y se explica el motivo', async ({ page }) => {
@@ -300,7 +300,7 @@ test.describe('Control de Gastos', () => {
     await expect(historial(page)).toHaveCount(2);
     await expect(historial(page).nth(0)).toContainText('Taxi al aeropuerto');
     await expect(historial(page).nth(0)).toContainText('Pagó Berta · 13 may');
-    await expect(historial(page).nth(0)).toContainText('35,00 €');
+    await expect(historial(page).nth(0)).toContainText('35 €');
     await expect(historial(page).nth(1)).toContainText('Cena en el Trastevere');
     await expect(historial(page).nth(1)).toContainText('Pagó Adriana · 12 may');
     await expect(page.getByRole('button', { name: 'Gastos' })).toHaveAttribute('aria-current', 'page');
@@ -313,7 +313,7 @@ test.describe('Control de Gastos', () => {
     await page.goto(rutaControl);
 
     await expect(page.getByText('Todavía no hay gastos en este viaje.')).toBeVisible();
-    await expect(page.getByRole('region', { name: 'Total gastado' })).toContainText('0,00 €');
+    await expect(page.getByRole('region', { name: 'Total gastado' })).toContainText('0 €');
   });
 
   test('un gasto registrado desde Control de Gastos aparece el primero y suma al total', async ({ page }) => {
@@ -353,7 +353,7 @@ test.describe('Control de Gastos', () => {
 
     await expect(historial(page)).toHaveCount(1);
     await expect(page.getByRole('button', { name: 'Añadir Gasto' })).toHaveCount(0);
-    await expect(page.getByText(/se pueden consultar sus gastos, pero ya no se pueden añadir/)).toBeVisible();
+    await expect(page.getByRole('img', { name: 'Modo visualización: el viaje no se puede modificar' })).toBeVisible();
   });
 });
 
@@ -393,11 +393,11 @@ test.describe('Balance de cada miembro', () => {
 
     await page.goto(rutaControl);
 
-    await expect(page.getByRole('group', { name: 'Tu saldo' })).toContainText('-60,00 €');
+    await expect(page.getByRole('group', { name: 'Tu saldo' })).toContainText('-60 €');
     await expect(page.getByRole('group', { name: 'Tu saldo' })).toContainText('Debes');
-    await expect(saldoDe(page, 'Daniel')).toContainText('+40,00 €');
-    await expect(saldoDe(page, 'Berta')).toContainText('+20,00 €');
-    await expect(saldoDe(page, 'Adriana')).toContainText('-60,00 €');
+    await expect(saldoDe(page, 'Daniel')).toContainText('+40 €');
+    await expect(saldoDe(page, 'Berta')).toContainText('+20 €');
+    await expect(saldoDe(page, 'Adriana')).toContainText('-60 €');
   });
 
   test('cuando te deben, «Tu saldo» sale en positivo', async ({ page }) => {
@@ -418,7 +418,7 @@ test.describe('Balance de cada miembro', () => {
 
     await page.goto(rutaControl);
 
-    await expect(page.getByRole('group', { name: 'Tu saldo' })).toContainText('0,00 €');
+    await expect(page.getByRole('group', { name: 'Tu saldo' })).toContainText('0 €');
     await expect(page.getByRole('group', { name: 'Tu saldo' })).toContainText('Al día');
   });
 
@@ -464,7 +464,7 @@ test.describe('Liquidación pendiente', () => {
     await simularLiquidacion(page, []);
 
     await page.goto(rutaControl);
-    await expect(page.getByRole('region', { name: 'Liquidación pendiente' })).toContainText('Cuentas saldadas');
+    await expect(page.getByRole('region', { name: 'Liquidación' })).toContainText('Cuentas saldadas');
   });
 
   test('cada transferencia dice quién paga a quién y destaca las tuyas', async ({ page }) => {
@@ -478,7 +478,7 @@ test.describe('Liquidación pendiente', () => {
     await page.goto(rutaControl);
     const filas = page.getByRole('list', { name: 'Transferencias pendientes' }).getByRole('listitem');
     await expect(filas.nth(0)).toContainText('Tú pagas a Berta');
-    await expect(filas.nth(0)).toContainText('30,00 €');
+    await expect(filas.nth(0)).toContainText('30 €');
     await expect(filas.nth(1)).toContainText('Berta paga a Daniel');
     await expect(filas.nth(1)).toContainText('12,50 €');
   });
@@ -622,8 +622,8 @@ test.describe('Detalle y gestión de un gasto', () => {
     await page.getByRole('button', { name: 'Guardar cambios' }).click();
 
     await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}/gastos/${GASTO_ID}$`));
-    await expect(detalle(page)).toContainText('30,00 €');
-    await expect(reparto(page).nth(1)).toContainText('15,00 €');
+    await expect(detalle(page)).toContainText('30 €');
+    await expect(reparto(page).nth(1)).toContainText('15 €');
   });
 
   test('eliminar tras confirmar vuelve a Control de Gastos sin el gasto', async ({ page }) => {

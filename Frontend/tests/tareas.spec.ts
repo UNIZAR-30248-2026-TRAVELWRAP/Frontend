@@ -208,7 +208,7 @@ test.describe('Lista de tareas colaborativa', () => {
     });
     await abrirTareas(page);
 
-    await expect(page.getByText(/El viaje está finalizado: se pueden consultar sus tareas/)).toBeVisible();
+    await expect(page.getByRole('img', { name: 'Modo visualización: el viaje no se puede modificar' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Nueva' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^Editar / })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^Eliminar / })).toHaveCount(0);

@@ -298,7 +298,7 @@ test.describe('Cartera de documentos', () => {
     await page.goto(rutaCartera);
 
     await expect(filas(page)).toHaveCount(1);
-    await expect(page.getByText(/ya no se pueden subir/)).toBeVisible();
+    await expect(page.getByRole('img', { name: 'Modo visualización: el viaje no se puede modificar' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Subir documento' })).toHaveCount(0);
     await expect(page.getByLabel('Elegir el documento que se va a subir')).toHaveCount(0);
   });

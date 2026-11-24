@@ -136,6 +136,6 @@ test.describe('Chat del grupo', () => {
     await page.goto(`/viajes/${VIAJE_ID}/chat`);
 
     await expect(page.getByLabel('Mensaje', { exact: true })).toBeDisabled();
-    await expect(page.getByText('El viaje está finalizado: el chat es de solo lectura.')).toBeVisible();
+    await expect(page.getByRole('img', { name: 'Modo visualización: el viaje no se puede modificar' })).toBeVisible();
   });
 });

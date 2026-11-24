@@ -250,7 +250,7 @@ test.describe('Galería de fotos', () => {
     await page.goto(rutaGaleria);
 
     await expect(miniaturas(page)).toHaveCount(3);
-    await expect(page.getByText(/ya no se pueden subir/)).toBeVisible();
+    await expect(page.getByRole('img', { name: 'Modo visualización: el viaje no se puede modificar' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Subir' })).toHaveCount(0);
     await expect(selector(page)).toHaveCount(0);
   });
