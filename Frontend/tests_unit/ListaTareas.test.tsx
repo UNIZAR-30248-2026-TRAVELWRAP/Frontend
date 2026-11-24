@@ -282,13 +282,12 @@ describe('ListaTareas: eliminar', () => {
 })
 
 describe('ListaTareas: viaje finalizado', () => {
-  it('es de solo lectura: sin «Nueva», «Editar» ni «Eliminar», con las casillas desactivadas y el aviso', async () => {
+  it('es de solo lectura: sin «Nueva», «Editar» ni «Eliminar», con las casillas desactivadas', async () => {
     await montar(viajeFinalizado)
 
     expect(screen.queryByRole('button', { name: 'Nueva' })).toBeNull()
     expect(screen.queryByRole('button', { name: /^Editar / })).toBeNull()
     expect(screen.queryByRole('button', { name: /^Eliminar / })).toBeNull()
     expect((casilla('Reservar la cena') as HTMLButtonElement).disabled).toBe(true)
-    expect(screen.getByText(/El viaje está finalizado: se pueden consultar sus tareas/)).toBeTruthy()
   })
 })

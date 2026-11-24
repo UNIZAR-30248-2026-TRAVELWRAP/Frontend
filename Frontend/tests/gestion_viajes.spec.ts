@@ -198,7 +198,7 @@ test.describe('Inicio del viaje y su gestión', () => {
     // Las teclas solo cuentan cuando el resumen ya ha cargado
     await expect(page.getByText('TravelWrap · Resumen')).toBeVisible();
     for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight');
-    await expect(page.getByRole('region')).toHaveAccessibleName(/3 de 3: Resumen/);
+    await expect(page.getByRole('region')).toHaveAccessibleName(/4 de 4: Acciones/);
     await page.getByRole('button', { name: 'Archivar viaje' }).click();
     const dialogo = page.getByRole('dialog');
     await expect(dialogo).toContainText('¿Archivar este viaje?');

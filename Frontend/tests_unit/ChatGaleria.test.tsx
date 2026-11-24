@@ -464,7 +464,6 @@ describe('ChatGaleria: borrar', () => {
     await abrirVisor()
 
     expect(screen.queryByRole('button', { name: 'Borrar foto' })).toBeNull()
-    expect(screen.getByText(/ya no se pueden subir ni borrar/)).toBeTruthy()
   })
 })
 
@@ -504,7 +503,6 @@ describe('ChatGaleria: viaje finalizado', () => {
     await abrir()
 
     expect(miniaturas()).toHaveLength(2)
-    expect(screen.getByText(/ya no se pueden subir/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Subir' })).toBeNull()
     expect(screen.queryByLabelText('Elegir las fotos o vídeos que se van a subir')).toBeNull()
   })

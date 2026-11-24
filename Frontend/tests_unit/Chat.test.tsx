@@ -126,12 +126,11 @@ describe('Chat · enviar', () => {
     expect(fetchMock.mock.calls.some(([, o]) => o?.method === 'POST')).toBe(false)
   })
 
-  it('con el viaje finalizado el campo está desactivado y lo explica', async () => {
+  it('con el viaje finalizado el campo está desactivado', async () => {
     simularBackend({ estado: 'finalizado' })
     await abrir()
 
     expect(screen.getByLabelText('Mensaje')).toHaveProperty('disabled', true)
-    expect(screen.getByText('El viaje está finalizado: el chat es de solo lectura.')).toBeTruthy()
   })
 })
 

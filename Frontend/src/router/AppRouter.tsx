@@ -34,6 +34,7 @@ import type { ResultadoEscaneo } from "../services/escaneoApi";
 const escaneoDeLaRuta = (estado: unknown): ResultadoEscaneo | undefined =>
   (estado as { escaneo?: ResultadoEscaneo } | null)?.escaneo;
 import AvisoNotificacion from "../components/AvisoNotificacion";
+import MarcaSoloLectura from "../components/MarcaSoloLectura";
 
 interface AppRouterProps {
   session: Sesion | null;
@@ -378,6 +379,7 @@ function RutaFinDeViaje({ sesion }: { sesion: Sesion }) {
       onVolver={volver}
       onReabierto={() => navigate(`/viajes/${encodeURIComponent(viajeId)}`, { replace: true })}
       onArchivado={() => navigate("/viajes/archivados", { replace: true })}
+      onVisualizar={() => navigate(`/viajes/${encodeURIComponent(viajeId)}`)}
     />
   );
 }
@@ -473,6 +475,7 @@ export default function AppRouter({
   return (
     <BrowserRouter>
       {session && <AvisoNotificacion tokenSesion={session.token} />}
+      {session && <MarcaSoloLectura tokenSesion={session.token} />}
       <Routes>
         {/* Ruta pública: si ya hay sesión, redirige al inicio (o a la invitación que se abrió sin sesión) */}
         <Route

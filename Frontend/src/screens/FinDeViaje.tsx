@@ -40,6 +40,8 @@ type FinDeViajeProps = {
   onReabierto?: () => void
   // Tras archivar el viaje desde el balance final (cualquier miembro, con el viaje finalizado y sin archivar)
   onArchivado?: () => void
+  // Entra en las secciones del viaje finalizado en modo solo lectura (sin reabrirlo)
+  onVisualizar?: () => void
 }
 
 const FONDOS = [
@@ -98,7 +100,7 @@ const estiloTarjeta: CSSProperties = {
   borderRadius: 14,
 }
 
-export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onReabierto, onArchivado }: FinDeViajeProps) {
+export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onReabierto, onArchivado, onVisualizar }: FinDeViajeProps) {
   const [viaje, setViaje] = useState<ViajeDelUsuario | null>(() => viajeEnCache(viajeId))
   const [confirmandoArchivar, setConfirmandoArchivar] = useState(false)
   const [archivando, setArchivando] = useState(false)
@@ -540,6 +542,14 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onReabierto
                       Archivar viaje
                     </button>
                   )}
+                  <button
+                    type="button"
+                    onClick={onVisualizar}
+                    style={{ ...estiloBotonControl(true), flex: "none" }}
+                  >
+                    <Icon name="eye" size={18} color="white" strokeWidth={2.2} />
+                    Entrar en modo visualización
+                  </button>
                   <button
                     type="button"
                     onClick={() => {

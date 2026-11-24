@@ -48,19 +48,6 @@ const botonCuadradoStyle: CSSProperties = {
   boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
   flexShrink: 0,
 }
-const avisoStyle = (fondo: string, borde: string): CSSProperties => ({
-  background: fondo,
-  border: `1.5px solid ${borde}`,
-  borderRadius: RADIUS.md,
-  padding: 14,
-  display: "flex",
-  alignItems: "flex-start",
-  gap: 10,
-  fontFamily: NUNITO,
-  fontSize: 13,
-  lineHeight: 1.5,
-  color: C.navy,
-})
 
 // Pantalla de inicio del viaje 
 type InicioViajeProps = {
@@ -457,15 +444,6 @@ export default function InicioViaje({
             </div>
           )}
 
-          {viaje && !activo && (
-            <div style={avisoStyle(C.lightAccent, `${C.accent}40`)}>
-              <Icon name="lock" size={18} color={C.accent} strokeWidth={2} />
-              <span>
-                Este viaje está finalizado: puedes consultarlo, pero ya no se
-                pueden modificar sus datos ni añadir actividades o gastos.
-              </span>
-            </div>
-          )}
 
           {/* Anclado sobre la barra inferior: viajeros con «Invitar» a la izquierda; votaciones y ajustes a la derecha */}
           {viaje && (

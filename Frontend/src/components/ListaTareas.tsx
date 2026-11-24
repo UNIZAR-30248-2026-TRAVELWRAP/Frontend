@@ -445,11 +445,7 @@ export default function ListaTareas({ viajeId, tokenSesion, viaje, usuarioId }: 
             Nueva
           </button>
         )
-      ) : (
-        <p style={{ fontFamily: NUNITO, color: C.muted, fontSize: 13, margin: "0 0 20px" }}>
-          El viaje está finalizado: se pueden consultar sus tareas, pero ya no se pueden modificar.
-        </p>
-      )}
+      ) : null}
 
       {creando && (
         <div style={{ marginBottom: 16 }}>

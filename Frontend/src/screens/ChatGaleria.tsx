@@ -315,12 +315,6 @@ export default function ChatGaleria({ viajeId, tokenSesion, onVolver, onCambiarS
                 )}
               </div>
 
-              {!activo && (
-                <p style={{ fontFamily: NUNITO, color: C.muted, fontSize: 13, margin: "0 0 16px" }}>
-                  El viaje está finalizado: se pueden ver las fotos y los vídeos, pero ya no se pueden subir ni borrar.
-                </p>
-              )}
-
               {errorSubida && (
                 <div role="alert" style={{ ...estiloAlerta, marginBottom: 16 }}>
                   {errorSubida}

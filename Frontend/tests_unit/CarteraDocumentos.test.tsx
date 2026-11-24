@@ -264,7 +264,6 @@ describe('CarteraDocumentos: viaje finalizado', () => {
 
     expect(screen.queryByRole('button', { name: 'Subir documento' })).toBeNull()
     expect(screen.queryByLabelText('Elegir el documento que se va a subir')).toBeNull()
-    expect(screen.getByText(/ya no se pueden subir/)).toBeTruthy()
     expect(within(screen.getByRole('list', { name: 'Documentos del viaje' })).getAllByRole('listitem')).toHaveLength(2)
   })
 

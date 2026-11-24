@@ -157,7 +157,6 @@ describe('ControlGastos', () => {
 
     expect(filas()).toHaveLength(2)
     expect(screen.queryByRole('button', { name: 'Añadir Gasto' })).toBeNull()
-    expect(screen.getByText(/se pueden consultar sus gastos, pero ya no se pueden añadir/)).toBeTruthy()
   })
 
   it('si no se pueden cargar los gastos lo explica', async () => {

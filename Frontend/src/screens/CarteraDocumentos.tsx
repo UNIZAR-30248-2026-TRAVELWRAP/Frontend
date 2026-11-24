@@ -363,11 +363,7 @@ export default function CarteraDocumentos({
                     PDF o imagen JPEG o PNG, de 8 MB como máximo
                   </p>
                 </>
-              ) : (
-                <p style={{ fontFamily: NUNITO, color: C.muted, fontSize: 13, margin: "0 0 20px" }}>
-                  El viaje está finalizado: se pueden consultar sus documentos, pero ya no se pueden subir.
-                </p>
-              )}
+              ) : null}
 
               {errorDescarga && (
                 <div role="alert" style={{ ...estiloAlerta, marginBottom: 16 }}>
