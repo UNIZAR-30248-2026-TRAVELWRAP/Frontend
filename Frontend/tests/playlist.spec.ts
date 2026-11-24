@@ -72,6 +72,7 @@ test.describe('Playlist del viaje', () => {
     await simularViaje(page);
 
     await page.goto(`/viajes/${VIAJE_ID}`);
+    await page.getByRole('button', { name: 'Añadir playlist' }).click();
     await page.getByLabel('Enlace de la playlist de Spotify').fill(`https://open.spotify.com/intl-es/playlist/${ID}?si=abc`);
     await page.getByRole('button', { name: 'Guardar playlist' }).click();
 

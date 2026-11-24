@@ -94,8 +94,9 @@ export default function TarjetaPlaylist({ viajeId, tokenSesion, activo }: Tarjet
     setError("")
   }
 
-  // La fila de edición se ve al enlazar una playlist por primera vez o al cambiarla
-  const mostrarEdicion = activo && (editando || !playlist)
+  // Sin playlist, primero se ve un botón para añadirla; el campo aparece al pulsarlo, o al cambiar una existente
+  const mostrarEdicion = activo && editando
+  const mostrarAnadir = activo && !playlist && !editando
   const reproductor = playlist ? urlEmbebida(playlist.url) : null
 
   return (
@@ -148,6 +149,29 @@ export default function TarjetaPlaylist({ viajeId, tokenSesion, activo }: Tarjet
         />
       ) : !playlist && !activo ? (
         <p style={{ margin: 0, fontFamily: NUNITO, color: "rgba(255,255,255,0.85)", fontSize: 12 }}>Este viaje no tiene playlist.</p>
+      ) : mostrarAnadir ? (
+        <button
+          type="button"
+          onClick={empezarACambiar}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            height: 36,
+            padding: "0 14px",
+            borderRadius: 18,
+            border: "none",
+            background: "white",
+            color: C.green,
+            fontFamily: NUNITO,
+            fontSize: 13,
+            fontWeight: 800,
+            cursor: "pointer",
+          }}
+        >
+          <Icon name="plus" size={14} color={C.green} strokeWidth={2.5} />
+          Añadir playlist
+        </button>
       ) : mostrarEdicion ? (
         <form onSubmit={guardar} noValidate>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
