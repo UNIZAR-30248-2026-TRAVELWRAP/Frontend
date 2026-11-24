@@ -55,7 +55,7 @@ export default function CabeceraPantalla({ titulo, contexto, onVolver, etiquetaV
         ...(fija ? { position: "sticky", top: 0, zIndex: 15 } : {}),
       }}
     >
-      {onVolver && <BotonVolver onClick={onVolver} etiqueta={etiquetaVolver} texto={textoVolver} />}
+      {onVolver && <BotonVolver onClick={onVolver} etiqueta={etiquetaVolver} texto={textoVolver ?? "Inicio"} />}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: pestanas ? 14 : 0 }}>
         <div style={{ minWidth: 0, flex: 1 }}>
           {contexto && <EtiquetaCabecera>{contexto}</EtiquetaCabecera>}

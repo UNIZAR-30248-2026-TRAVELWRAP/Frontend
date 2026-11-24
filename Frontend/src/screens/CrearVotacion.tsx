@@ -115,7 +115,7 @@ export default function CrearVotacion({ viajeId, tokenSesion, onVolver, onCreada
         {/* Cabecera con el tipo de votación */}
         <div style={{ background: GRADIENTS.header, padding: "20px 20px 22px", borderRadius: RADIUS.header }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <BotonVolver onClick={onVolver} />
+            <BotonVolver onClick={onVolver} texto="Inicio" />
             <div>
               <div
                 style={{

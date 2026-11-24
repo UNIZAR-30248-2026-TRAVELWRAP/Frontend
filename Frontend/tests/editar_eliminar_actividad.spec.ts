@@ -194,7 +194,7 @@ test.describe('Itinerario · editar una actividad', () => {
     expect(peticiones[0].cuerpo).toEqual({ hora_inicio: null, hora_fin: null, ubicacion_nombre: null });
   });
 
-  test('la flecha de volver regresa al día desde el que se entró sin guardar nada', async ({ page }) => {
+  test('la flecha de volver lleva al inicio del viaje sin guardar nada', async ({ page }) => {
     await entrarConSesion(page);
     const { peticiones } = await simularBackend(page);
 
@@ -204,8 +204,7 @@ test.describe('Itinerario · editar una actividad', () => {
     await page.getByLabel('Nombre de la actividad').fill('Vaticano y Sixtina');
     await page.getByRole('button', { name: 'Volver' }).click();
 
-    await expect(page).toHaveURL(urlItinerario('2027-05-13'));
-    await expect(agenda(page)).toHaveText(['Vaticano09:30 h']);
+    await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}$`));
     expect(peticiones).toHaveLength(0);
   });
 

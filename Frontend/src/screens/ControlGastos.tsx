@@ -144,7 +144,7 @@ export default function ControlGastos({
           titulo="Control de Gastos"
           contexto={viaje?.nombre}
           onVolver={onVolver}
-          etiquetaVolver="Volver a Mis Viajes" textoVolver="Mis Viajes"
+          etiquetaVolver="Volver a Mis Viajes" textoVolver="Inicio"
         />
 
         <div style={{ padding: "20px 16px 0" }}>

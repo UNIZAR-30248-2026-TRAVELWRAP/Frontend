@@ -697,7 +697,7 @@ export default function FinDeViaje({ viajeId, tokenSesion, onVolver, onReabierto
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "0 20px 12px" }}>
-          <BotonVolver onClick={onVolver} />
+          <BotonVolver onClick={onVolver} texto="Inicio" />
           {total > 0 && (
             <div aria-hidden="true" style={{ flex: 1, display: "flex", gap: 6 }}>
               <style>{`@keyframes wrap-progreso { from { width: 0 } to { width: 100% } }`}</style>

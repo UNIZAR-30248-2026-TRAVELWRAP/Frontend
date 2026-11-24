@@ -114,7 +114,7 @@ export default function DetalleGasto({
           titulo="Detalle del gasto"
           contexto={viaje?.nombre}
           onVolver={onVolver}
-          etiquetaVolver="Volver a Control de Gastos" textoVolver="Control de Gastos"
+          etiquetaVolver="Volver a Control de Gastos" textoVolver="Inicio"
         />
 
         <div style={{ padding: "20px 16px 0" }}>

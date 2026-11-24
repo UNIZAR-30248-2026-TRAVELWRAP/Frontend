@@ -239,7 +239,7 @@ export default function AnadirActividad({
       <div style={{ maxWidth: 480, margin: "0 auto" }}>
         <div style={{ background: GRADIENTS.header, padding: "20px 20px 22px", borderRadius: RADIUS.header }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: dias.length > 0 ? 16 : 0 }}>
-            <BotonVolver onClick={onVolver} />
+            <BotonVolver onClick={onVolver} texto="Inicio" />
             <div style={{ minWidth: 0 }}>
               <EtiquetaCabecera>
                 <span style={{ color: "rgba(255,255,255,0.55)" }}>

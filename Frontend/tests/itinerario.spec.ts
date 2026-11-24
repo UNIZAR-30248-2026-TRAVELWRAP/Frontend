@@ -188,7 +188,7 @@ test.describe('Itinerario · agenda del día', () => {
     await expect(agenda(page)).toHaveText(['Vaticano09:30 h', 'Cena en el Trastevere']);
   });
 
-  test('la flecha de volver del formulario regresa al mismo día', async ({ page }) => {
+  test('la flecha de volver del formulario lleva al inicio del viaje', async ({ page }) => {
     await entrarConSesion(page);
     await simularBackend(page);
 
@@ -197,8 +197,7 @@ test.describe('Itinerario · agenda del día', () => {
     await page.getByRole('button', { name: 'Añadir Actividad' }).click();
     await page.getByRole('button', { name: 'Volver' }).click();
 
-    await expect(page).toHaveURL(/\/viajes\/roma\/itinerario\?fecha=2027-05-14$/);
-    await expect(page.getByRole('button', { name: 'Día 3 · 14 may' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page).toHaveURL(/\/viajes\/roma$/);
   });
 
   test('un día fuera de las fechas del viaje lo avisa', async ({ page }) => {

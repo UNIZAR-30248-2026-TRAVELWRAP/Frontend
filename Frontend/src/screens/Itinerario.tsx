@@ -285,7 +285,7 @@ export default function Itinerario({
           titulo="Itinerario"
           contexto={viaje?.nombre}
           onVolver={onVolver}
-          etiquetaVolver="Volver a Mis Viajes" textoVolver="Mis Viajes"
+          etiquetaVolver="Volver a Mis Viajes" textoVolver="Inicio"
           pestanas={
             viaje ? (
               <PestanasCabecera

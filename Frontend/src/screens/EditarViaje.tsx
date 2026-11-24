@@ -178,7 +178,7 @@ export default function EditarViaje({ viajeId, tokenSesion, onVolver, onGuardado
         {/* Cabecera */}
         <div style={{ background: GRADIENTS.header, padding: "20px 20px 22px", borderRadius: RADIUS.header }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <BotonVolver onClick={onVolver} />
+            <BotonVolver onClick={onVolver} texto="Inicio" />
             <div>
               <Heading size={22} color="white">
                 Editar viaje

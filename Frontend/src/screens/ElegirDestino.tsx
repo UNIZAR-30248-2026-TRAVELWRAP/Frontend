@@ -146,7 +146,7 @@ export default function ElegirDestino({ viajeId, tokenSesion, onVolver, onInvita
           titulo="Elegir Destino"
           contexto={viaje?.nombre}
           onVolver={onVolver}
-          etiquetaVolver="Volver a Mis Viajes" textoVolver="Mis Viajes"
+          etiquetaVolver="Volver a Mis Viajes" textoVolver="Inicio"
           derecha={
             <>
               {viaje && (  

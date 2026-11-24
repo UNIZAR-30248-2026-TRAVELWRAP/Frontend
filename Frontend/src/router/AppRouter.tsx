@@ -200,7 +200,7 @@ function RutaCrearVotacion({ sesion }: { sesion: Sesion }) {
       key={viajeId}
       viajeId={viajeId}
       tokenSesion={sesion.token}
-      onVolver={volverALaLista}
+      onVolver={() => navigate(`/viajes/${viajeId}`)}
       onCreada={volverALaLista}
     />
   );
@@ -219,7 +219,7 @@ function RutaItinerario({ sesion }: { sesion: Sesion }) {
       viajeId={viajeId}
       tokenSesion={sesion.token}
       diaInicial={parametros.get("fecha") ?? ""}
-      onVolver={() => navigate("/")}
+      onVolver={() => navigate(`/viajes/${viajeId}`)}
       onAnadirActividad={(fecha) => navigate(`/viajes/${viajeId}/actividades/nueva${fecha ? `?fecha=${fecha}` : ""}`)}
       onEditarActividad={(actividad) =>
         navigate(`/viajes/${viajeId}/actividades/${actividad.id}/editar?fecha=${actividad.fecha}`)
@@ -245,7 +245,7 @@ function RutaAnadirActividad({ sesion }: { sesion: Sesion }) {
       fechaInicial={fechaInicial}
       datosEscaneados={escaneo?.tipo === "actividad" ? escaneo.datos : undefined}
       fotoRuta={escaneo?.foto_ruta}
-      onVolver={() => navigate(rutaItinerario(viajeId, fechaInicial))}
+      onVolver={() => navigate(`/viajes/${viajeId}`)}
       onGuardada={(fecha) => navigate(rutaItinerario(viajeId, fecha), { replace: true })}
       onBuscarDirecciones={(consulta) => buscarDirecciones(consulta, sesion.token).then((resultado) => resultado.direcciones)}
     />
@@ -254,16 +254,14 @@ function RutaAnadirActividad({ sesion }: { sesion: Sesion }) {
 
 function RutaEditarActividad({ sesion }: { sesion: Sesion }) {
   const { viajeId = "", actividadId = "" } = useParams();
-  const [parametros] = useSearchParams();
   const navigate = useNavigate();
-  const fechaDeVuelta = parametros.get("fecha") ?? "";
   return (
     <AnadirActividad
       key={actividadId}
       viajeId={viajeId}
       actividadId={actividadId}
       tokenSesion={sesion.token}
-      onVolver={() => navigate(rutaItinerario(viajeId, fechaDeVuelta))}
+      onVolver={() => navigate(`/viajes/${viajeId}`)}
       onGuardada={(fecha) => navigate(rutaItinerario(viajeId, fecha), { replace: true })}
       onBuscarDirecciones={(consulta) => buscarDirecciones(consulta, sesion.token).then((resultado) => resultado.direcciones)}
     />
@@ -279,7 +277,7 @@ function RutaControlGastos({ sesion }: { sesion: Sesion }) {
       viajeId={viajeId}
       tokenSesion={sesion.token}
       usuarioId={sesion.usuario.id}
-      onVolver={() => navigate("/")}
+      onVolver={() => navigate(`/viajes/${viajeId}`)}
       onAnadirGasto={() => navigate(`/viajes/${viajeId}/gastos/nuevo`)}
       onAbrirGasto={(gastoId) => navigate(`/viajes/${viajeId}/gastos/${gastoId}`)}
       onCambiarSeccion={(seccion) => navigate(rutaDeSeccion(viajeId, seccion))}
@@ -298,7 +296,7 @@ function RutaDetalleGasto({ sesion }: { sesion: Sesion }) {
       gastoId={gastoId}
       tokenSesion={sesion.token}
       usuarioId={sesion.usuario.id}
-      onVolver={() => navigate(`/viajes/${viajeId}/gastos`)}
+      onVolver={() => navigate(`/viajes/${viajeId}`)}
       onModificar={() => navigate(`/viajes/${viajeId}/gastos/${gastoId}/editar`)}
       onEliminado={() => navigate(`/viajes/${viajeId}/gastos`, { replace: true })}
     />
@@ -332,7 +330,7 @@ function RutaEditarGasto({ sesion }: { sesion: Sesion }) {
       tokenSesion={sesion.token}
       usuarioId={sesion.usuario.id}
       gastoInicial={gasto}
-      onVolver={volverAlDetalle}
+      onVolver={() => navigate(`/viajes/${viajeId}`)}
       onGuardado={volverAlDetalle}
     />
   );
@@ -366,17 +364,12 @@ function RutaCarteraDocumentos({ sesion }: { sesion: Sesion }) {
 function RutaFinDeViaje({ sesion }: { sesion: Sesion }) {
   const { viajeId = "" } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
-  const volver = () => {
-    if (location.key === "default") void navigate("/", { replace: true });
-    else void navigate(-1);
-  };
   return (
     <FinDeViaje
       key={viajeId}
       viajeId={viajeId}
       tokenSesion={sesion.token}
-      onVolver={volver}
+      onVolver={() => navigate(`/viajes/${viajeId}`)}
       onReabierto={() => navigate(`/viajes/${encodeURIComponent(viajeId)}`, { replace: true })}
       onArchivado={() => navigate("/viajes/archivados", { replace: true })}
       onVisualizar={() => navigate(`/viajes/${encodeURIComponent(viajeId)}`)}
@@ -429,7 +422,7 @@ function RutaAnadirGasto({ sesion }: { sesion: Sesion }) {
       viajeId={viajeId}
       tokenSesion={sesion.token}
       usuarioId={sesion.usuario.id}
-      onVolver={volverAControlGastos}
+      onVolver={() => navigate(`/viajes/${viajeId}`)}
       onRegistrado={volverAControlGastos}
       datosEscaneados={escaneo?.tipo === "gasto" ? escaneo.datos : undefined}
       fotoRuta={escaneo?.foto_ruta}
@@ -446,7 +439,7 @@ function RutaElegirDestino({ sesion }: { sesion: Sesion }) {
       key={viajeId}
       viajeId={viajeId}
       tokenSesion={sesion.token}
-      onVolver={() => navigate("/")}
+      onVolver={() => navigate(`/viajes/${viajeId}`)}
       onInvitar={() => navigate(`/viajes/${viajeId}/invitar`)}
       onDestinoFijado={() => navigate(`/viajes/${viajeId}`, { replace: true })}
     />

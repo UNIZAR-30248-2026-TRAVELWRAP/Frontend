@@ -236,14 +236,14 @@ test.describe('Añadir gasto', () => {
     await expect(page).toHaveURL(new RegExp(`${rutaFormulario}$`));
   });
 
-  test('el botón de volver lleva a Control de Gastos', async ({ page }) => {
+  test('el botón de volver lleva al inicio del viaje', async ({ page }) => {
     await entrarConSesion(page);
     await simularBackend(page);
 
     await page.goto(rutaFormulario);
     await page.getByRole('button', { name: 'Volver' }).click();
 
-    await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}/gastos$`));
+    await expect(page).toHaveURL(new RegExp(`/viajes/${VIAJE_ID}$`));
   });
 });
 

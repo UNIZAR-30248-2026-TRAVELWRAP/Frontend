@@ -91,7 +91,7 @@ export default function ViajesArchivados({ tokenSesion, onVolver, onVerViaje }: 
         {/* Cabecera */}
         <div style={{ background: GRADIENTS.header, padding: "20px 20px 22px", borderRadius: RADIUS.header }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <BotonVolver onClick={onVolver} />
+            <BotonVolver onClick={onVolver} texto="Perfil" />
             <div>
               <Heading size={22} color="white">
                 Viajes archivados
