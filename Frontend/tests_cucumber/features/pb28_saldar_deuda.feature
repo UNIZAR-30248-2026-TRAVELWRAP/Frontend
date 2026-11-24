@@ -14,7 +14,7 @@ Característica: Marcar una deuda como saldada (PB-28)
     Cuando abro el control de gastos del viaje "Roma 2027"
     Y pulso el botón "Marcar como saldada la deuda de Berta"
     Entonces en la liquidación pendiente veo "Cuentas saldadas"
-    Y en las deudas saldadas veo "Berta pagó 10,00 € a Adriana"
+    Y en las deudas saldadas veo "Berta pagó 10 € a Adriana"
 
   Escenario: Quien marcó la deuda puede deshacer la marca
     Dado que en el viaje "Roma 2027" hay un gasto "Entradas del Coliseo" de 20 pagado por "Adriana" entre "Berta, Adriana"

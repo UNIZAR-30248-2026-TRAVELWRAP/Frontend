@@ -25,6 +25,6 @@ Característica: Abandonar un viaje (PB-32)
     Cuando abro el inicio del viaje "Roma 2027"
     Y pulso el botón "Abandonar"
     Entonces veo el diálogo de confirmación "Tienes cuentas pendientes"
-    Y veo el texto "Debes 30,00 € en este viaje."
+    Y veo el texto "Debes 30 € en este viaje."
     Y veo el botón "Ir a Control de Gastos"
     Y el servidor no registra ningún abandono
