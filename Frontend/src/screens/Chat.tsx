@@ -119,8 +119,8 @@ export default function Chat({ viajeId, tokenSesion, usuarioId, onVolver, onAbri
   }
 
   return (
-    <div style={{ background: C.bg, minHeight: "100vh" }}>
-      <div style={{ maxWidth: 480, margin: "0 auto", paddingBottom: ALTO_BARRA_INFERIOR + 88 }}>
+    <div style={{ background: C.bg, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      <div style={{ maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: ALTO_BARRA_INFERIOR + 88, flex: 1, display: "flex", flexDirection: "column" }}>
         {/* Cabecera y pestañas: Chat (esta pantalla) y Galería */}
         <CabeceraPantalla
           fija
@@ -139,7 +139,8 @@ export default function Chat({ viajeId, tokenSesion, usuarioId, onVolver, onAbri
           }
         />
 
-        <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+        {/* Los mensajes se alinean abajo, como en WhatsApp: con pocos mensajes no se quedan arriba */}
+        <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12, flex: 1, justifyContent: "flex-end" }}>
           {error && (
             <div role="alert" style={estiloAlerta}>
               {error}
