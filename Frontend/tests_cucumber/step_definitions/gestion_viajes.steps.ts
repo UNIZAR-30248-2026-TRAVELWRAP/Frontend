@@ -313,6 +313,18 @@ Then('estoy en la pantalla de viajes archivados', async () => {
   await expect(paginaActual()).toHaveURL(/\/viajes\/archivados$/);
 });
 
+// Viaje finalizado o archivado: un velo gris y un candado cubren el viaje (MarcaSoloLectura)
+const marcaSoloLectura = () =>
+  paginaActual().getByRole('img', { name: 'Modo visualización: el viaje no se puede modificar' });
+
+Then('veo el modo visualización', async () => {
+  await expect(marcaSoloLectura()).toBeVisible();
+});
+
+Then('no veo el modo visualización', async () => {
+  await expect(marcaSoloLectura()).toHaveCount(0);
+});
+
 Then('veo el texto {string}', async (texto: string) => {
   await expect(paginaActual().getByText(texto).first()).toBeVisible();
 });

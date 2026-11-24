@@ -67,7 +67,7 @@ Característica: Galería de fotos compartida del viaje (PB-42)
     Cuando abro la galería del viaje "Roma 2026"
     Entonces veo en la galería, por este orden, "coliseo.jpg"
     Y no veo el botón "Subir"
-    Y veo el texto "ya no se pueden subir"
+    Y veo el modo visualización
 
   Escenario: Una foto se puede ampliar, pasar a la siguiente y cerrar
     Dado que soy miembro, pero no creador, del viaje activo "Roma 2027"

@@ -22,7 +22,7 @@ Característica: Finalizar y archivar un viaje (PB-12 y MEJ-12)
   Escenario: Un viaje finalizado es de solo lectura
     Dado que tengo el viaje finalizado "Roma 2027"
     Cuando abro el inicio del viaje "Roma 2027"
-    Entonces veo el texto "Este viaje está finalizado"
+    Entonces veo el modo visualización
     Y no veo el botón "Editar viaje"
     Y no veo el botón "Finalizar viaje"
 
@@ -53,7 +53,7 @@ Característica: Finalizar y archivar un viaje (PB-12 y MEJ-12)
   Escenario: Un viaje archivado sigue siendo de solo lectura
     Dado que tengo el viaje archivado "Roma 2027"
     Cuando abro el inicio del viaje "Roma 2027"
-    Entonces veo el texto "Este viaje está finalizado"
+    Entonces veo el modo visualización
     Y no veo el botón "Editar viaje"
     Y no veo el botón "Finalizar viaje"
 

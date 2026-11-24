@@ -70,5 +70,5 @@ Característica: Foto de portada del viaje (PB-53)
   Escenario: En un viaje finalizado no se puede cambiar la portada
     Dado que soy miembro, pero no creador, del viaje finalizado "Praga 2025"
     Cuando abro el inicio del viaje "Praga 2025"
-    Entonces veo el texto "Este viaje está finalizado"
+    Entonces veo el modo visualización
     Y no veo el botón "Cambiar portada"

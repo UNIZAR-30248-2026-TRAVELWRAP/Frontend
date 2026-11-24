@@ -31,7 +31,7 @@ Característica: Desarchivar un viaje (PB-51 y MEJ-12)
     Y abro mis viajes
     Entonces veo el viaje anterior "París 2024" en mis viajes, no en curso
     Cuando abro el inicio del viaje "París 2024"
-    Entonces veo el texto "Este viaje está finalizado"
+    Entonces veo el modo visualización
     Y no veo el botón "Editar viaje"
 
   Escenario: Cancelar el desarchivado

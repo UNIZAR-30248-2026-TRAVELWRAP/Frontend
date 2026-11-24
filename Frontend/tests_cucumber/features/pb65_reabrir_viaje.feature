@@ -15,7 +15,7 @@ Característica: Reabrir un viaje finalizado (PB-65)
     Entonces veo el diálogo de confirmación "¿Reabrir este viaje?"
     Cuando confirmo en el diálogo "Reabrir viaje"
     Entonces estoy en el inicio del viaje
-    Y no veo el texto "Este viaje está finalizado"
+    Y no veo el modo visualización
     Y veo el botón "Editar viaje"
     Y el servidor ha reabierto 1 viaje
 

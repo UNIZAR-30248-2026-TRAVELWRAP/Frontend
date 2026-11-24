@@ -47,4 +47,4 @@ Característica: Subir un documento a la cartera del viaje (PB-30)
     Cuando abro la cartera de documentos del viaje "Roma 2026"
     Entonces veo en la cartera de documentos, por este orden, "Reserva del hotel.pdf"
     Y no veo el botón "Subir documento"
-    Y veo el texto "ya no se pueden subir"
+    Y veo el modo visualización
