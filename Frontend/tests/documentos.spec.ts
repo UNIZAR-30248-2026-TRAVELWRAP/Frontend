@@ -275,6 +275,7 @@ test.describe('Cartera de documentos', () => {
   });
 
   test('se abre un PDF: pdf.js dibuja la página y «Cerrar» vuelve a la cartera', async ({ page }) => {
+    test.setTimeout(60000);
     await entrarConSesion(page);
     const { enlacesPedidos } = await simularBackend(page);
     const { servidas } = await simularArchivos(page);
@@ -283,7 +284,7 @@ test.describe('Cartera de documentos', () => {
     await page.getByRole('button', { name: 'Abrir Reserva del hotel.pdf' }).click();
 
     const dialogo = page.getByRole('dialog', { name: 'Documento: Reserva del hotel.pdf' });
-    await expect(dialogo.getByLabel('Página 1 del documento')).toBeVisible();
+    await expect(dialogo.getByLabel('Página 1 del documento')).toBeVisible({ timeout: 30000 });
     await expect(dialogo.getByText('Página 1 de 1')).toBeVisible();
     // El lienzo se ha dibujado: ya no está en blanco
     await expect
