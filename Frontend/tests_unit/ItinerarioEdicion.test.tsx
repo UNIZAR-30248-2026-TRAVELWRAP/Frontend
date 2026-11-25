@@ -149,8 +149,8 @@ describe('Itinerario · editar y eliminar actividades', () => {
     await waitFor(() => expect(screen.queryByText('Visita al Coliseo')).toBeNull())
     await waitFor(() => {
       const despues = fetchMock.mock.calls.slice(peticionesAntes).map(([url]) => String(url))
-      expect(despues.filter((url) => url.endsWith('/actividades')).length).toBe(1)
-      expect(despues.filter((url) => url.endsWith(`/viajes/${VIAJE_ID}`)).length).toBe(1)
+      expect(despues.filter((url) => url.endsWith('/actividades'))).toHaveLength(1)
+      expect(despues.filter((url) => url.endsWith(`/viajes/${VIAJE_ID}`))).toHaveLength(1)
     })
     expect(screen.getByText('Paseo sin hora')).toBeTruthy()
   })

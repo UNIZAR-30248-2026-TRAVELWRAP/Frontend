@@ -154,7 +154,7 @@ test.describe('Buscar la dirección de una actividad', () => {
     await expect(lupa).toBeDisabled();
     await page.getByLabel('Lugar / Dirección').pressSequentially('Colosseo');
     await expect(lupa).toBeEnabled();
-    await page.waitForTimeout(300);
+    await expect(() => expect(busquedas.length).toBeGreaterThan(0)).not.toPass({ timeout: 500 });
 
     expect(busquedas).toHaveLength(0);
   });
