@@ -1,7 +1,7 @@
 // Test unitario de las pantallas de confirmación de un documento escaneado: Añadir Gasto y Añadir Actividad
 // muestran los datos leídos para revisarlos antes de guardar
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import AnadirGasto from '../src/screens/AnadirGasto'
 import AnadirActividad from '../src/screens/AnadirActividad'
 

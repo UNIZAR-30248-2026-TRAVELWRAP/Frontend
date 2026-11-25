@@ -10,7 +10,6 @@ import ControlGastos from '../src/screens/ControlGastos'
 const VIAJE_ID = '123e4567-e89b-12d3-a456-426614174000'
 const ADRIANA = 'df77cba6-4be5-4cbc-814b-1e228dd73dcc'
 const BERTA = '5b1f0c2e-8a7d-4c3b-9e6f-2d4a1b3c5e7f'
-const DANIEL = '8c4d2e1f-3a5b-4c6d-9e7f-1a2b3c4d5e6f'
 
 const miembros = [
   { usuario_id: BERTA, nombre: 'Berta', avatar_url: null, rol: 'creador' },
@@ -189,7 +188,6 @@ describe('ControlGastos · balance', () => {
 
   const conSaldos = (saldos: unknown[]) => simularBackend({ balance: () => json(200, { saldos }) })
 
-  const tuSaldo = () => screen.getByRole('group', { name: 'Tu saldo' })
   const saldoDe = (nombre: string) =>
     within(screen.getByRole('list', { name: 'Saldo de cada miembro' }))
       .getAllByRole('listitem')
@@ -224,7 +222,6 @@ describe('ControlGastos · liquidación', () => {
   const conTransferencias = (transferencias: unknown[]) =>
     simularBackend({ liquidacion: () => json(200, { transferencias, saldadas: [] }) })
 
-  const seccion = () => screen.getByRole('region', { name: 'Liquidación' })
   const filasLiquidacion = () =>
     within(screen.getByRole('list', { name: 'Transferencias pendientes' })).getAllByRole('listitem')
 

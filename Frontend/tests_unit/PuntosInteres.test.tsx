@@ -142,7 +142,6 @@ const renderizar = (opciones: { editable?: boolean; buscar?: (c: string) => Prom
     />,
   )
 
-const ficha = () => screen.queryAllByRole('dialog').find((d) => !d.textContent?.includes('Se eliminará')) ?? null
 
 beforeEach(() => {
   vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })))

@@ -1,9 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError } from '../src/services/authApi'
 import {
   MAX_BYTES_AVATAR,
   MAX_BYTES_FOTO_ORIGINAL,
-  mensajeErrorPerfil,
   prepararAvatar,
   validarFotoAvatar,
 } from '../src/utils/avatar'

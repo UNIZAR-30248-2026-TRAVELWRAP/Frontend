@@ -5,7 +5,6 @@ import {
   CATEGORIAS,
   crearActividad,
   editarActividad,
-  eliminarActividad,
   iconoDeCategoria,
   listarActividades,
 } from '../src/services/actividadesApi'

@@ -35,7 +35,6 @@ const RESUMEN = {
   alma_del_grupo: { usuario_id: BERTA, nombre: 'Berta', pagos: 2, planes_propuestos: 4, fotos_subidas: 1 },
 }
 
-const RESUMEN_VACIO = { dias: 4, actividad_mas_votada: null, alma_del_grupo: null }
 
 const foto = { id: 'f1', viaje_id: VIAJE_ID, nombre: 'coliseo.jpg', tipo_mime: 'image/jpeg', tamano_bytes: 1, subido_por: BERTA, creado_en: '2027-05-12T10:00:00Z', url: 'https://storage.test/coliseo.jpg' }
 

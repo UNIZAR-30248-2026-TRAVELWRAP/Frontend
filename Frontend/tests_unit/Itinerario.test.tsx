@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Itinerario from '../src/screens/Itinerario'
-import { guardarItinerario, leerItinerario } from '../src/services/itinerarioGuardado'
+import { guardarItinerario } from '../src/services/itinerarioGuardado'
 
 const VIAJE_ID = '123e4567-e89b-12d3-a456-426614174000'
 

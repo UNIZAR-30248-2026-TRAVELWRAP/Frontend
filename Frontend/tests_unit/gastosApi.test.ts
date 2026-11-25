@@ -3,14 +3,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../src/services/authApi'
 import {
   crearGasto,
-  editarGasto,
-  eliminarGasto,
   listarGastos,
   obtenerBalance,
   obtenerGasto,
   obtenerLiquidacion,
-  marcarDeudaSaldada,
-  deshacerDeudaSaldada,
   type NuevoGasto,
 } from '../src/services/gastosApi'
 

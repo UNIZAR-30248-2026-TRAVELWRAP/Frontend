@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import MapaActividades, { ALTO_MAPA, type PuntoDelMapa } from '../src/components/MapaActividades'
 
 type LineaFalsa = { puntos: number[][]; opciones: { color: string; dashArray: string; interactive: boolean } }

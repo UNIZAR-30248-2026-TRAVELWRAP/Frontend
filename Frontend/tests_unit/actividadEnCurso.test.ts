@@ -1,6 +1,6 @@
 // Test unitario de la actividad en curso y la próxima actividad del viaje
 import { describe, expect, it } from 'vitest'
-import { actividadEnCurso, etiquetaCuandoEmpieza, etiquetaDia, proximaActividad } from '../src/utils/actividadEnCurso'
+import { actividadEnCurso, etiquetaCuandoEmpieza, proximaActividad } from '../src/utils/actividadEnCurso'
 
 const HOY = '2027-05-12'
 const a = (id: string, hora_inicio: string | null, hora_fin: string | null = null, fecha = HOY, orden = 0) => ({

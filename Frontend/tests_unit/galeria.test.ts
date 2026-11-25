@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
   archivoEsVideo,
-  descripcionDeFoto,
   esVideo,
   MAX_BYTES_FOTO,
   MAX_BYTES_VIDEO,

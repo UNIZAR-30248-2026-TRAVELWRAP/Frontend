@@ -229,8 +229,6 @@ describe('moverActividad', () => {
     actividad('otroDia', { fecha: '2027-05-13', orden: 0 }),
   ]
 
-  const deLaFecha = (lista: ActividadOrdenable[], fecha = '2027-05-12') =>
-    ids(ordenarDia(lista.filter((a) => a.fecha === fecha)))
 
 
 

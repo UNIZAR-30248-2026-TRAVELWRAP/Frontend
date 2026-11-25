@@ -87,14 +87,6 @@ const DATOS_DEL_RESUMEN: Record<string, unknown> = {
 
 // Pasa de diapositiva con la flecha y espera a que el resumen muestre la siguiente («2 de 2», «3 de 5»...).
 // Así no se pulsa mientras los datos cargan ni se desfasa con el avance automático de cada diapositiva
-const avanzarDiapositivas = async (veces: number): Promise<void> => {
-  const resumen = paginaActual().getByRole('region', { name: /Resumen del viaje, \d+ de \d+/ });
-  await expect(resumen).toHaveAccessibleName(/Resumen del viaje, 1 de \d+/);
-  for (let diapositiva = 2; diapositiva <= veces + 1; diapositiva++) {
-    await paginaActual().keyboard.press('ArrowRight');
-    await expect(resumen).toHaveAccessibleName(new RegExp(`Resumen del viaje, ${diapositiva} de \\d+`));
-  }
-};
 
 const simularBackend = async () => {
   if (rutaRegistrada) return;

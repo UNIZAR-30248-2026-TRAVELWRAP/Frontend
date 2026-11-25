@@ -1,6 +1,6 @@
 // Test unitario de la pantalla Chat: conversación, envío, mensajes en tiempo real e historial
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Chat from '../src/screens/Chat'
 import { escucharMensajes } from '../src/services/chatTiempoReal'

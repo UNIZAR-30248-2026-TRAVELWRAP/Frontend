@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { borrarItinerario, borrarItinerarios, guardarItinerario, leerItinerario } from '../src/services/itinerarioGuardado'
-import { borrarSesion, guardarSesion, leerSesion } from '../src/services/sesionStorage'
 
 // Itinerario completo, como lo devuelve la API
 const itinerario = (id: string) => ({

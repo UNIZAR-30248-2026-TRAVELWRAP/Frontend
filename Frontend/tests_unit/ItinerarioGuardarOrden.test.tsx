@@ -106,11 +106,6 @@ const arrastrar = async (origen: string, destino: string) => {
   })
 }
 
-const arrastrarSinEsperar = async (origen: string, destino: string) => {
-  await act(async () => {
-    void soltar.manejador?.({ active: { id: origen }, over: { id: destino } } as unknown as DragEndEvent)
-  })
-}
 
 afterEach(() => {
   cleanup()

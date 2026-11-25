@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../src/services/authApi'
-import { abandonarViaje, archivarViaje, desarchivarViaje, editarViaje, eliminarViaje, finalizarViaje, reabrirViaje } from '../src/services/viajesApi'
+import { archivarViaje, desarchivarViaje, editarViaje, eliminarViaje, finalizarViaje, reabrirViaje } from '../src/services/viajesApi'
 
 const VIAJE_ID = '123e4567-e89b-12d3-a456-426614174000'
 

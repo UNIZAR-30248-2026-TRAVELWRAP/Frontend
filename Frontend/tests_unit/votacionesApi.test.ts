@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../src/services/authApi'
-import { cerrarVotacion, crearVotacion, listarVotaciones, proponerOpcion, retirarVoto, votar } from '../src/services/votacionesApi'
+import { cerrarVotacion, crearVotacion, listarVotaciones, proponerOpcion } from '../src/services/votacionesApi'
 
 const VIAJE_ID = '123e4567-e89b-12d3-a456-426614174000'
 const VOTACION_ID = '6f1c2d3e-0000-4000-8000-000000000010'

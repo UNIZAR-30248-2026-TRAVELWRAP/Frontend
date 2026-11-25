@@ -75,11 +75,6 @@ const simularBackend = (
   return fetchMock
 }
 
-const llamadasDelete = (fetchMock: ReturnType<typeof vi.fn>) =>
-  fetchMock.mock.calls.filter(([, opciones]) => (opciones as RequestInit | undefined)?.method === 'DELETE') as unknown as [
-    string,
-    RequestInit & { headers: Record<string, string> },
-  ][]
 
 const renderizar = (props: Partial<Parameters<typeof Itinerario>[0]> = {}) =>
   render(<Itinerario viajeId={VIAJE_ID} tokenSesion="token-acceso" {...props} />)

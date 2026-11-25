@@ -9,7 +9,6 @@ const GASTO_ID = '9f3c2a1b-7d6e-4f5a-8b9c-0d1e2f3a4b5c'
 const ADRIANA = 'df77cba6-4be5-4cbc-814b-1e228dd73dcc'
 const BERTA = '5b1f0c2e-8a7d-4c3b-9e6f-2d4a1b3c5e7f'
 const DANIEL = '8c4d2e1f-3a5b-4c6d-9e7f-1a2b3c4d5e6f'
-const ANTIGUO = 'a7b8c9d0-e1f2-4a3b-8c4d-5e6f7a8b9c0d'
 
 const miembros = [
   { usuario_id: DANIEL, nombre: 'Daniel', avatar_url: null, rol: 'creador' },

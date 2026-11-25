@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest'
-import { diasDelItinerario, fechaDeHoy } from '../src/utils/formatoViaje'
+import { describe, expect, it } from 'vitest'
+import { diasDelItinerario } from '../src/utils/formatoViaje'
 
 describe('diasDelItinerario', () => {
   it('con las fechas del viaje lista sus días numerados', () => {

@@ -350,13 +350,6 @@ test.describe('Control de Gastos', () => {
 // Saldos que devuelve GET /gastos/balance. Se registra después del resto de rutas, así que tiene prioridad.
 // Devuelve cuántas veces se ha pedido el balance
 
-const saldo = (usuarioId: string, nombre: string, valor: number) => ({
-  usuario_id: usuarioId,
-  nombre,
-  pagado: Math.max(valor, 0),
-  parte: Math.max(-valor, 0),
-  saldo: valor,
-});
 
 
 

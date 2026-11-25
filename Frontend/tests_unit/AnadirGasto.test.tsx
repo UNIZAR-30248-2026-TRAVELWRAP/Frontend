@@ -1,6 +1,6 @@
 // Test unitario de la pantalla AnadirGasto
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import AnadirGasto from '../src/screens/AnadirGasto'
 
@@ -39,8 +39,6 @@ const abrir = async (props = {}) => {
   await screen.findByRole('radiogroup', { name: 'Quién pagó' })
 }
 
-const parteDe = (nombre: string) =>
-  within(screen.getByLabelText(`Dividir con ${nombre}`).closest('label') as HTMLElement).queryByText(/€$/)?.textContent
 
 afterEach(() => {
   cleanup()
