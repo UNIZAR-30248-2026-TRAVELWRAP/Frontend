@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import Avatar from '../src/components/Avatar'
-import { aMiembro } from '../src/utils/formatoViaje'
 
 afterEach(() => {
   cleanup()
