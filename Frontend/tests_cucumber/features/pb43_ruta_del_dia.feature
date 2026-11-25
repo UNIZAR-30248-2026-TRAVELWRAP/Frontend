@@ -1,5 +1,5 @@
 # language: es
-Característica: Ruta sugerida del día en el mapa (PB-43)
+Característica: Ruta sugerida del día en el mapa (PB-43 y PB-58)
   Como miembro de un viaje
   Quiero ver una línea que una las actividades del día en el mapa
   Para saber en qué orden recorrerlas
@@ -16,9 +16,8 @@ Característica: Ruta sugerida del día en el mapa (PB-43)
     Entonces veo 2 marcadores en el mapa
     Y veo una línea que une las actividades en el mapa
 
-  Escenario: Con una sola actividad con ubicación no hay línea
+  Escenario: Con dos ubicaciones se puede abrir la ruta en Google Maps (PB-58)
     Dado que el servidor devuelve en "Roma 2027" la actividad "Visita al Coliseo" el "2027-05-12" con ubicación "Colosseo, Roma" en las coordenadas 41.890214 y 12.492231
+    Y que el servidor devuelve en "Roma 2027" la actividad "Foro Romano" el "2027-05-12" con ubicación "Foro Romano, Roma" en las coordenadas 41.892462 y 12.485325
     Cuando abro el itinerario del viaje "Roma 2027"
-    Entonces veo 1 marcadores en el mapa
-    Y no veo ninguna línea en el mapa
-    Y no veo el enlace "Abrir en Google Maps"
+    Entonces el enlace "Abrir en Google Maps" abre en una pestaña nueva la ruta a pie de "41.890214,12.492231" a "41.892462,12.485325"
