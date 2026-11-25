@@ -64,3 +64,28 @@ test.describe('PB-04 · Iniciar sesión con email y contraseña', () => {
 
 
 });
+
+test.describe('PB-60 · Pantalla de carga', () => {
+  test('al abrir la aplicación con sesión guardada se ve «Cargando...» hasta que el servidor responde', async ({ page }) => {
+    await page.addInitScript((datos) => localStorage.setItem('travelwrap.sesion', JSON.stringify(datos)), sesion);
+    let liberar: () => void = () => {};
+    const respuesta = new Promise<void>((resolver) => {
+      liberar = resolver;
+    });
+    await page.route('**/api/auth/refresh', async (route) => {
+      await respuesta;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token: sesion.token, refresh_token: sesion.refresh_token }),
+      });
+    });
+
+    await page.goto('/');
+    await expect(page.getByRole('status')).toContainText('Cargando...');
+
+    liberar();
+    await expect(page.getByRole('button', { name: `Perfil de ${EMAIL}` })).toBeVisible();
+    await expect(page.getByText('Cargando...')).toHaveCount(0);
+  });
+});
