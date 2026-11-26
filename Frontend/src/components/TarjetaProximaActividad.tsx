@@ -17,7 +17,7 @@ export default function TarjetaProximaActividad({ actividad, ahora }: TarjetaPro
       style={{
         background: "#FFF4E8",
         borderRadius: RADIUS.lg,
-        padding: 16,
+        padding: "10px 12px",
         border: "1.5px solid #F6C48F",
         boxShadow: SHADOWS.cardSoft,
       }}
@@ -30,7 +30,7 @@ export default function TarjetaProximaActividad({ actividad, ahora }: TarjetaPro
           fontFamily: NUNITO,
           letterSpacing: 1,
           textTransform: "uppercase",
-          marginBottom: 10,
+          marginBottom: 6,
         }}
       >
         Próxima actividad
@@ -38,9 +38,9 @@ export default function TarjetaProximaActividad({ actividad, ahora }: TarjetaPro
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <div
           style={{
-            width: 42,
-            height: 42,
-            borderRadius: 13,
+            width: 36,
+            height: 36,
+            borderRadius: 12,
             background: "white",
             display: "flex",
             alignItems: "center",
@@ -51,7 +51,7 @@ export default function TarjetaProximaActividad({ actividad, ahora }: TarjetaPro
           <Icon name="pin" size={20} color={C.accent} strokeWidth={1.8} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: NUNITO, fontSize: 15, fontWeight: 800, color: C.navy, overflowWrap: "anywhere" }}>
+          <div style={{ fontFamily: NUNITO, fontSize: 14, fontWeight: 800, color: C.navy, overflowWrap: "anywhere" }}>
             {actividad.titulo}
           </div>
           <div
